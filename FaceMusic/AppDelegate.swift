@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import ARKit
+import AudioKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -15,6 +17,31 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        return true
+    }
+    
+    func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        if !ARFaceTrackingConfiguration.isSupported {
+            /*
+             Shipping apps cannot require a face-tracking-compatible device, and thus must
+             offer face tracking AR as a secondary feature. In a shipping app, use the
+             `isSupported` property to determine whether to offer face tracking AR features.
+             This sample code has no features other than a demo of ARKit face tracking, so
+             it replaces the AR view (the initial storyboard in the view controller) with
+             an alternate view controller containing a static error message.
+             */
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
+        }
+        do {
+            Settings.bufferLength = .short
+            try AVAudioSession.sharedInstance().setPreferredIOBufferDuration(Settings.bufferLength.duration)
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord,
+                                                            options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothA2DP])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch let err {
+            print(err)
+        }
         return true
     }
 

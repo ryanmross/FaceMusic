@@ -15,12 +15,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private var customStatsLabel: UILabel!
     
-    
     var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
     
     let conductor = VoiceConductor()
+    let faceDataBrain = FaceDataBrain()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -37,8 +37,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Create custom stats box
         createCustomStats()
         
-        // Update label with custom data
-        updateCustomStats()
+        // Register for face data updates
+        NotificationCenter.default.addObserver(self, selector: #selector(updateCustomStats(_:)), name: .faceDataUpdated, object: nil)
         
     }
     
@@ -67,7 +67,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Pause the view's session
         sceneView.session.pause()
     }
-
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
         guard error is ARError else { return }
@@ -130,38 +133,43 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         present(alertController, animated: true, completion: nil)
     }
     
-    //MARK: - Custom Stats
-    
-    func createCustomStats() {
-        // Create and add a custom label
-        
-        customStatsLabel = UILabel()
-        customStatsLabel.translatesAutoresizingMaskIntoConstraints = false
-        customStatsLabel.textColor = .white
-        customStatsLabel.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        customStatsLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-        customStatsLabel.text = "Custom Info: Loading..."
-        customStatsLabel.numberOfLines = 0
-        sceneView.addSubview(customStatsLabel)
+    // MARK: - Custom Stats
 
-        // Position the label at the top
-        NSLayoutConstraint.activate([
-            customStatsLabel.leadingAnchor.constraint(equalTo: sceneView.leadingAnchor, constant: 10),
-            customStatsLabel.trailingAnchor.constraint(lessThanOrEqualTo: sceneView.trailingAnchor, constant: -10),
-            customStatsLabel.topAnchor.constraint(equalTo: sceneView.topAnchor, constant: 20),
-            customStatsLabel.heightAnchor.constraint(lessThanOrEqualToConstant: 100)
-        ])
+      func createCustomStats() {
+          // Create and add a custom label
+          customStatsLabel = UILabel()
+          customStatsLabel.translatesAutoresizingMaskIntoConstraints = false
+          customStatsLabel.textColor = .white
+          customStatsLabel.backgroundColor = UIColor.black.withAlphaComponent(0.5)
+          customStatsLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+          customStatsLabel.text = "Custom Info: Loading..."
+          customStatsLabel.numberOfLines = 0
+          sceneView.addSubview(customStatsLabel)
 
-    }
-    
-    func updateCustomStats() {
-        // Example: Update custom stats
-        customStatsLabel.text = """
-        Custom Info:
-        - Nodes: \(sceneView.scene.rootNode.childNodes.count)
-        - Timestamp: \(Date())
-        """
-    }
+          // Position the label at the top
+          NSLayoutConstraint.activate([
+              customStatsLabel.leadingAnchor.constraint(equalTo: sceneView.leadingAnchor, constant: 10),
+              customStatsLabel.trailingAnchor.constraint(lessThanOrEqualTo: sceneView.trailingAnchor, constant: -10),
+              customStatsLabel.topAnchor.constraint(equalTo: sceneView.topAnchor, constant: 20),
+              customStatsLabel.heightAnchor.constraint(lessThanOrEqualToConstant: 100)
+          ])
+      }
+
+      @objc func updateCustomStats(_ notification: Notification) {
+          guard let faceData = notification.object as? FaceData else { return }
+
+          // Update the custom stats label with the FaceData
+          DispatchQueue.main.async {
+              self.customStatsLabel.text = """
+              Yaw: \(faceData.yaw)
+              Pitch: \(faceData.pitch)
+              Roll: \(faceData.roll)
+              Vertical Direction: \(faceData.vertPosition.toString())
+              Horizontal Direction: \(faceData.horizPosition.toString())
+              """
+          }
+      }
+
 }
 
 //MARK: - ARSCNViewDelegate
@@ -188,14 +196,20 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         }
         // Add virtual content to the scene when a face is detected.
     }
-    
+
     func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
         guard let faceAnchor = anchor as? ARFaceAnchor,
               let contentController = faceAnchorsAndContentControllers[faceAnchor],
               let contentNode = contentController.contentNode else {
             return
         }
-        // Handle updates to the ARFaceAnchor and associated content.
+        
+        let faceData = faceDataBrain.processFaceData(faceAnchor)
+        
+        conductor.updateWithNewData(faceData: faceData)
+        
+        // Post a notification with the FaceData
+        NotificationCenter.default.post(name: .faceDataUpdated, object: faceData)
 
 
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)
@@ -211,4 +225,9 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
     }
     
     
+}
+
+// MARK: - Notification Name Extension
+extension Notification.Name {
+    static let faceDataUpdated = Notification.Name("faceDataUpdated")
 }

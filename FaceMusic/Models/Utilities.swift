@@ -102,3 +102,13 @@ func printTimestamp() {
     let milliseconds = Int(timestamp * 1000)
     print(milliseconds)
 }
+
+
+extension matrix_float4x4 {
+    func extractYawPitchRoll() -> (yaw: Float, pitch: Float, roll: Float) {
+        let roll = atan2(self[1][0], self[0][0])
+        let pitch = atan2(self[2][1], self[2][2])
+        let yaw = atan2(-self[2][0], sqrt(self[2][1] * self[2][1] + self[2][2] * self[2][2]))
+        return (yaw, pitch, roll)
+    }
+}

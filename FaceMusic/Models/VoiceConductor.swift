@@ -5,6 +5,59 @@ import Tonic
 
 class VoiceConductor: ObservableObject, HasAudioEngine {
     
+    var faceData: FaceData?
+//    var vertDirection: vertDirection = .none
+//    var horizDirection: horizDirection = .none
+    
+    func updateWithNewData(faceData: FaceData) {
+        
+        self.faceData = faceData
+//        self.vertDirection = faceData.vertPosition
+//        self.horizDirection = faceData.horizPosition
+        
+        // Post the notification
+        NotificationCenter.default.post(name: .faceDataUpdated, object: faceData)
+
+        
+        let interpolatedPitch: UInt8 = UInt8(faceData.pitch.interpolated(
+            fromLowerBound: -1,
+            fromUpperBound: 0.4,
+            toLowerBound: 35,
+            toUpperBound: 100))
+
+        let interpolatedJawOpen: Float = faceData.jawOpen.interpolated(
+            fromLowerBound: 0,
+            fromUpperBound: 1,
+            toLowerBound: 1,
+            toUpperBound: 0)
+
+        let interpolatedMouthClose: Float = faceData.mouthClose.interpolated(
+            fromLowerBound: 0,
+            fromUpperBound: 1,
+            toLowerBound: 0,
+            toUpperBound: 1)
+
+        let interpolatedMouthFunnel: Float = faceData.mouthFunnel.interpolated(
+            fromLowerBound: 0,
+            fromUpperBound: 1,
+            toLowerBound: 0,
+            toUpperBound: 1)
+
+        let scaledNote = self.mapToNearestScaleTone(interpolatedPitch)
+        let midiNoteToFrequency: Float = self.midiNoteToFrequency(scaledNote)
+
+        self.voc.frequency = midiNoteToFrequency
+        self.voc.tongueDiameter = interpolatedJawOpen
+        self.voc.tonguePosition = interpolatedMouthFunnel
+        self.voc.tenseness = 1.0
+        self.voc.nasality = 0.0
+
+        // Optional: Handle direction-based logic (if needed)
+        print("Vertical Direction: \(faceData.vertPosition), Horizontal Direction: \(faceData.horizPosition)")
+    }
+
+    
+    
     func mapToNearestScaleTone(_ midiNote: UInt8) -> UInt8 {
         // Define the MIDI note numbers for the C major scale
         let scale: [UInt8] = [0, 2, 4, 5, 7, 9, 11,
@@ -38,48 +91,8 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
     }
     
-    func updateWithNewData(yaw: Float, pitch: Float, roll: Float, jawOpen: Float, mouthFunnel: Float, mouthClose: Float) {
-
-        let interpolatedPitch: UInt8 = UInt8(pitch.interpolated(
-            fromLowerBound: -1,
-            fromUpperBound: 0.4,
-            toLowerBound: 35,
-            toUpperBound: 100))
-
-        let interpolatedjawOpen: Float = Float(jawOpen.interpolated(
-            fromLowerBound: 0,
-            fromUpperBound: 1,
-            toLowerBound: 1,
-            toUpperBound: 0))
-        
-        let interpolatedMouthClose: Float = Float(mouthClose.interpolated(
-            fromLowerBound: 0,
-            fromUpperBound: 1,
-            toLowerBound: 0,
-            toUpperBound: 1))
-
-        let interpolatedMouthFunnel: Float = Float(mouthFunnel.interpolated(
-            fromLowerBound: 0,
-            fromUpperBound: 1,
-            toLowerBound: 0,
-            toUpperBound: 1))
-
-        let scaledNote = self.mapToNearestScaleTone(interpolatedPitch)
-        let midiNoteToFrequency: Float = self.midiNoteToFrequency(scaledNote)
-
-        self.voc.frequency = midiNoteToFrequency
-        self.voc.tongueDiameter = interpolatedjawOpen
-        self.voc.tonguePosition = interpolatedMouthFunnel
-        self.voc.tenseness = 1.0
-        self.voc.nasality = 0.0
-        
-        // let faceDirection = interpretFaceDirection(yaw: yaw, pitch: pitch, roll: roll)
-        //print("Face direction is: \(faceDirection.vertDirection) \(faceDirection.horizDirection)")
-        
-    }
     
     
-
     
     let engine = AudioEngine()
 

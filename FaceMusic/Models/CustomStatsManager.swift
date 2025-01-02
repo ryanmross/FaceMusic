@@ -4,33 +4,91 @@ import ARKit
 
 class CustomStatsManager {
     
-    private var customStatsLabel: UILabel!
-    private var sceneView: ARSCNView!
+    private let statsContainerView: UIView
+    private let toggleButton: UIButton
+    private let statsLabel: UILabel
+    private var isExpanded = false
+    
+    var statsContainerHeightConstraint: NSLayoutConstraint!
     
     init(sceneView: ARSCNView) {
-        self.sceneView = sceneView
-        createCustomStats()
-    }
+        // Create stats container view
+        statsContainerView = UIView()
+        statsContainerView.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        statsContainerView.layer.cornerRadius = 8
+        statsContainerView.clipsToBounds = true
+        statsContainerView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Set the initial height constraint for statsContainerView
+        statsContainerHeightConstraint = statsContainerView.heightAnchor.constraint(equalToConstant: 40)
+        statsContainerHeightConstraint.isActive = true
 
-    func createCustomStats() {
-        // Create and add a custom label
-        customStatsLabel = UILabel()
-        customStatsLabel.translatesAutoresizingMaskIntoConstraints = false
-        customStatsLabel.textColor = .white
-        customStatsLabel.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-        customStatsLabel.font = UIFont.monospacedSystemFont(ofSize: 10, weight: .medium)
-        customStatsLabel.text = "Custom Info: Loading..."
-        customStatsLabel.numberOfLines = 0
-        sceneView.addSubview(customStatsLabel)
+        // Create stats label
+        statsLabel = UILabel()
+        statsLabel.numberOfLines = 0
+        statsLabel.textColor = .white
+        statsLabel.font = UIFont(name: "Courier", size: 9)
+        statsLabel.text = "loading face tracking stats..."
+        statsLabel.isHidden = true
+        statsLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        // Position the label at the top
+        // Create toggle button
+        toggleButton = UIButton()
+        toggleButton.setTitle("+ Face Tracking Data", for: .normal)
+        toggleButton.titleLabel?.font = UIFont(name: "Courier", size: 9)
+        toggleButton.contentHorizontalAlignment = .left
+        toggleButton.setTitleColor(.white, for: .normal)
+        toggleButton.addTarget(self, action: #selector(toggleStatsVisibility), for: .touchUpInside)
+        toggleButton.translatesAutoresizingMaskIntoConstraints = false
+        
+
+        // Add subviews to stats container
+        statsContainerView.addSubview(toggleButton)
+        statsContainerView.addSubview(statsLabel)
+
+        // Add the stats container to the scene view
+        sceneView.addSubview(statsContainerView)
+
+        // Set up constraints
         NSLayoutConstraint.activate([
-           customStatsLabel.leadingAnchor.constraint(equalTo: sceneView.safeAreaLayoutGuide.leadingAnchor, constant: 10),
-           customStatsLabel.trailingAnchor.constraint(lessThanOrEqualTo: sceneView.safeAreaLayoutGuide.trailingAnchor, constant: -10),
-           customStatsLabel.topAnchor.constraint(equalTo: sceneView.safeAreaLayoutGuide.topAnchor, constant: 20),
-//           customStatsLabel.heightAnchor.constraint(lessThanOrEqualToConstant: 100)
+            statsContainerView.leadingAnchor.constraint(equalTo: sceneView.safeAreaLayoutGuide.leadingAnchor, constant: 10),
+            statsContainerView.trailingAnchor.constraint(equalTo: sceneView.safeAreaLayoutGuide.trailingAnchor, constant: -10),
+            statsContainerView.topAnchor.constraint(equalTo: sceneView.safeAreaLayoutGuide.topAnchor, constant: 20),
+            
+            // Constraints for toggleButton
+            toggleButton.topAnchor.constraint(equalTo: statsContainerView.topAnchor, constant: 5),
+            toggleButton.leadingAnchor.constraint(equalTo: statsContainerView.leadingAnchor, constant: 10),
+            toggleButton.trailingAnchor.constraint(equalTo: statsContainerView.trailingAnchor, constant: -10), // Allow button to expand horizontally
+            toggleButton.heightAnchor.constraint(equalToConstant: 30),
+
+            // Constraints for statsLabel
+            statsLabel.topAnchor.constraint(equalTo: toggleButton.bottomAnchor, constant: 5),
+            statsLabel.leadingAnchor.constraint(equalTo: statsContainerView.leadingAnchor, constant: 10),
+            statsLabel.trailingAnchor.constraint(equalTo: statsContainerView.trailingAnchor, constant: -10),
+            statsLabel.bottomAnchor.constraint(equalTo: statsContainerView.bottomAnchor, constant: -5)
         ])
     }
+
+    
+    @objc private func toggleStatsVisibility() {
+        isExpanded.toggle()
+
+        UIView.animate(withDuration: 0.3) {
+            if self.isExpanded {
+                self.toggleButton.setTitle("- Face Tracking Data", for: .normal)
+                self.statsLabel.isHidden = false
+                self.statsLabel.sizeToFit()
+                self.statsLabel.frame.size.height = 100
+                self.statsContainerHeightConstraint.constant = self.statsLabel.frame.origin.y + self.statsLabel.frame.height + 10
+            } else {
+                self.toggleButton.setTitle("+ Face Tracking Data", for: .normal)
+                self.statsLabel.isHidden = true
+                self.statsLabel.frame.size.height = 0
+                self.statsContainerHeightConstraint.constant = self.toggleButton.frame.height + 10
+            }
+        }
+    }
+
 
     func updateFaceStats(with faceData: FaceData) {
         // Example stats array with data range
@@ -55,7 +113,7 @@ class CustomStatsManager {
         
         // Update the label with the new stats text
         DispatchQueue.main.async {
-            self.customStatsLabel.text = "\(statsText) \nhorizPosition: \(faceData.horizPosition) \nvertPosition:  \(faceData.vertPosition)"
+            self.statsLabel.text = "\(statsText) \nhorizPosition: \(faceData.horizPosition) \nvertPosition:  \(faceData.vertPosition)"
         }
     }
 

@@ -14,7 +14,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     @IBOutlet weak var sceneView: ARSCNView!
     
-    private var customStatsManager: CustomStatsManager!
+    var statsStackView: UIStackView!
+    
+    private var faceStatsManager: FaceStatsManager!
+    private var audioStatsManager: AudioStatsManager!
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
@@ -35,8 +38,24 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Show statistics such as fps and timing information for testing purposes
         sceneView.showsStatistics = true
         
+        
+        statsStackView = UIStackView()
+        statsStackView.axis = .vertical
+        statsStackView.spacing = 10
+        statsStackView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(statsStackView)
+        
+        NSLayoutConstraint.activate([
+            statsStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            statsStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            statsStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
+        ])
+        
+
+        
         // Initialize stat box for testing purposes
-        customStatsManager = CustomStatsManager(sceneView: sceneView)
+        faceStatsManager = FaceStatsManager(stackView: statsStackView, title: "Face Tracking")
+        audioStatsManager = AudioStatsManager(stackView: statsStackView, title: "Audio Debugging")
         
         // Setup settings button
         createSettingsButton()
@@ -203,8 +222,12 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         
         conductor.updateWithNewData(with: faceData)
         
-        // Update the custom stats
-        customStatsManager.updateFaceStats(with: faceData)
+        // Update stats
+        faceStatsManager.updateFaceStats(with: faceData)
+        
+        let audioData = "test"
+        
+        audioStatsManager.updateAudioStats(with: audioData)
 
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)
         // Update the content controller with new data.

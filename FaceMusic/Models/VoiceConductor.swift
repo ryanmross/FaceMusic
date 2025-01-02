@@ -6,20 +6,12 @@ import Tonic
 class VoiceConductor: ObservableObject, HasAudioEngine {
     
     var faceData: FaceData?
-//    var vertDirection: vertDirection = .none
-//    var horizDirection: horizDirection = .none
     
-    func updateWithNewData(faceData: FaceData) {
+    func updateWithNewData(with faceData: FaceData) {
         
         self.faceData = faceData
-//        self.vertDirection = faceData.vertPosition
-//        self.horizDirection = faceData.horizPosition
-        
-        // Post the notification
-        NotificationCenter.default.post(name: .faceDataUpdated, object: faceData)
 
-        
-        let interpolatedPitch: UInt8 = UInt8(faceData.pitch.interpolated(
+        let interpolatedPitch: Int8 = Int8(faceData.pitch.interpolated(
             fromLowerBound: -1,
             fromUpperBound: 0.4,
             toLowerBound: 35,
@@ -52,15 +44,13 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         self.voc.tenseness = 1.0
         self.voc.nasality = 0.0
 
-        // Optional: Handle direction-based logic (if needed)
-        print("Vertical Direction: \(faceData.vertPosition), Horizontal Direction: \(faceData.horizPosition)")
     }
 
     
     
-    func mapToNearestScaleTone(_ midiNote: UInt8) -> UInt8 {
+    func mapToNearestScaleTone(_ midiNote: Int8) -> Int8 {
         // Define the MIDI note numbers for the C major scale
-        let scale: [UInt8] = [0, 2, 4, 5, 7, 9, 11,
+        let scale: [Int8] = [0, 2, 4, 5, 7, 9, 11,
                                         12, 14, 16, 17, 19, 21, 23,
                                         24, 26, 28, 29, 31, 33, 35,
                                         36, 38, 40, 41, 43, 45, 47,
@@ -87,7 +77,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         return nearestNote
     }
     
-    func midiNoteToFrequency(_ midiNote: UInt8) -> Float {
+    func midiNoteToFrequency(_ midiNote: Int8) -> Float {
         return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
     }
     
@@ -104,6 +94,12 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
 
     init() {
         engine.output = voc
+        do {
+            try engine.start()
+            print("Audio engine started successfully.")
+        } catch let error as NSError {
+            print("Audio engine failed to start with error: \(error.localizedDescription)")
+        }
     }
 }
 

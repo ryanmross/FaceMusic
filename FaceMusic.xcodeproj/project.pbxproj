@@ -22,6 +22,8 @@
 		8DEBE57A2D2367AE004F4EDD /* MusicTheory in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5792D2367AE004F4EDD /* MusicTheory */; };
 		8DEBE5822D25E23D004F4EDD /* Tonic in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5812D25E23D004F4EDD /* Tonic */; };
 		8DEBE5852D25E285004F4EDD /* SoundpipeAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5842D25E285004F4EDD /* SoundpipeAudioKit */; };
+		8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5922D262C40004F4EDD /* SwiftEntryKit */; };
+		8DEBE5972D262CBE004F4EDD /* SettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEBE5962D262CBE004F4EDD /* SettingsViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +58,7 @@
 		8D199ABB2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMusicUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		8DCC213E2C19372B00225D5F /* VirtualContent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VirtualContent.swift; sourceTree = "<group>"; };
 		8DCC21402C19373C00225D5F /* TexturedFace.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TexturedFace.swift; sourceTree = "<group>"; };
+		8DEBE5962D262CBE004F4EDD /* SettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +72,7 @@
 			files = (
 				8DEBE5822D25E23D004F4EDD /* Tonic in Frameworks */,
 				8D199ACA2C190FD500BD63A8 /* AudioKit in Frameworks */,
+				8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */,
 				8DEBE5852D25E285004F4EDD /* SoundpipeAudioKit in Frameworks */,
 				8DEBE57A2D2367AE004F4EDD /* MusicTheory in Frameworks */,
 			);
@@ -154,6 +158,7 @@
 		8D199ACC2C19202D00BD63A8 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
+				8DEBE5962D262CBE004F4EDD /* SettingsViewController.swift */,
 				8D199A9D2C190F6300BD63A8 /* FaceTrackerViewController.swift */,
 			);
 			path = Controllers;
@@ -192,6 +197,7 @@
 				8DEBE5792D2367AE004F4EDD /* MusicTheory */,
 				8DEBE5812D25E23D004F4EDD /* Tonic */,
 				8DEBE5842D25E285004F4EDD /* SoundpipeAudioKit */,
+				8DEBE5922D262C40004F4EDD /* SwiftEntryKit */,
 			);
 			productName = FaceMusic;
 			productReference = 8D199A962C190F6300BD63A8 /* FaceMusic.app */;
@@ -241,7 +247,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1540;
+				LastUpgradeCheck = 1620;
 				TargetAttributes = {
 					8D199A952C190F6300BD63A8 = {
 						CreatedOnToolsVersion = 15.4;
@@ -270,6 +276,7 @@
 				8DEBE5782D2367AE004F4EDD /* XCRemoteSwiftPackageReference "MusicTheory" */,
 				8DEBE5802D25E23D004F4EDD /* XCRemoteSwiftPackageReference "Tonic" */,
 				8DEBE5832D25E285004F4EDD /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */,
+				8DEBE5912D262C40004F4EDD /* XCRemoteSwiftPackageReference "SwiftEntryKit" */,
 			);
 			productRefGroup = 8D199A972C190F6300BD63A8 /* Products */;
 			projectDirPath = "";
@@ -319,6 +326,7 @@
 				8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */,
 				8D199A9A2C190F6300BD63A8 /* AppDelegate.swift in Sources */,
 				8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */,
+				8DEBE5972D262CBE004F4EDD /* SettingsViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -558,7 +566,6 @@
 		8D199AC32C190F6400BD63A8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -578,7 +585,6 @@
 		8D199AC42C190F6400BD63A8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -598,7 +604,6 @@
 		8D199AC62C190F6400BD63A8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MTVA5Y5HB2;
@@ -616,7 +621,6 @@
 		8D199AC72C190F6400BD63A8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MTVA5Y5HB2;
@@ -705,6 +709,14 @@
 				minimumVersion = 5.6.1;
 			};
 		};
+		8DEBE5912D262C40004F4EDD /* XCRemoteSwiftPackageReference "SwiftEntryKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/huri000/SwiftEntryKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -727,6 +739,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8DEBE5832D25E285004F4EDD /* XCRemoteSwiftPackageReference "SoundpipeAudioKit" */;
 			productName = SoundpipeAudioKit;
+		};
+		8DEBE5922D262C40004F4EDD /* SwiftEntryKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8DEBE5912D262C40004F4EDD /* XCRemoteSwiftPackageReference "SwiftEntryKit" */;
+			productName = SwiftEntryKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

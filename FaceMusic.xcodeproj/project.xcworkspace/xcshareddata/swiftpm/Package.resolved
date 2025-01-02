@@ -1,5 +1,5 @@
 {
-  "originHash" : "a170a52a9ae1e129f07a9b3a9c884f295e2b35410a1f35fcc25f528d09dc400e",
+  "originHash" : "b1c7edb50cc2ca383dc0fcd8be60d3b64081878174f7d45df888ffd23e760192",
   "pins" : [
     {
       "identity" : "audiokit",
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "ee7d9542078ae48b24744a67c0350a12f9de354b",
         "version" : "5.6.1"
+      }
+    },
+    {
+      "identity" : "swiftentrykit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/huri000/SwiftEntryKit",
+      "state" : {
+        "revision" : "5ad36cccf0c4b9fea32f4e9b17a8e38f07563ef0",
+        "version" : "2.0.0"
       }
     },
     {

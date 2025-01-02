@@ -57,7 +57,7 @@ class FaceDataBrain {
         
         // Interpret vertical and horizontal directions
         let upperLimit: Float = 0.06
-        let lowerLimit: Float = -0.56
+        let lowerLimit: Float = -0.4
         let rightLimit: Float = -0.30
         let leftLimit: Float = 0.30
         

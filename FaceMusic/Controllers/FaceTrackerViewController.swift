@@ -8,19 +8,21 @@
 import UIKit
 import SceneKit
 import ARKit
+import SwiftEntryKit
 
 class FaceTrackerViewController: UIViewController, ARSessionDelegate {
-
+    
     @IBOutlet weak var sceneView: ARSCNView!
     
-    private var customStatsLabel: UILabel!
+    private var customStatsManager: CustomStatsManager!
     
-    var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
+    private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
+    
+    private let conductor = VoiceConductor()
+    private let faceDataBrain = FaceDataBrain()
+    
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
-    
-    let conductor = VoiceConductor()
-    let faceDataBrain = FaceDataBrain()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -30,16 +32,44 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.session.delegate = self
         sceneView.automaticallyUpdatesLighting = true
         
-        // Show statistics such as fps and timing information
+        // Show statistics such as fps and timing information for testing purposes
         sceneView.showsStatistics = true
         
-       
-        // Create custom stats box
-        createCustomStats()
+        // Initialize stat box for testing purposes
+        customStatsManager = CustomStatsManager(sceneView: sceneView)
         
-        // Register for face data updates
-        NotificationCenter.default.addObserver(self, selector: #selector(updateCustomStats(_:)), name: .faceDataUpdated, object: nil)
-        
+        // Setup settings button
+        createSettingsButton()
+    }
+  
+    
+    private func createSettingsButton() {
+        let gearButton = UIButton(type: .system)
+        gearButton.setTitle("⚙️", for: .normal)
+        gearButton.frame = CGRect(x: view.frame.width - 60, y: view.frame.height - 60, width: 40, height: 40)
+        gearButton.addTarget(self, action: #selector(settingsButtonTapped), for: .touchUpInside)
+        view.addSubview(gearButton)
+    }
+    
+    @objc private func settingsButtonTapped() {
+        displaySettingsPopup()
+    }
+    
+    private func displaySettingsPopup() {
+        let settingsViewController = SettingsViewController()
+        var attributes = EKAttributes()
+        attributes.displayDuration = .infinity
+        attributes.name = "Top Note"
+        attributes.windowLevel = .normal
+        attributes.position = .center
+        attributes.entryInteraction = .absorbTouches
+        attributes.screenInteraction = .dismiss
+        attributes.scroll = .enabled(swipeable: true, pullbackAnimation: .easeOut)
+        attributes.positionConstraints = .fullScreen
+        attributes.screenBackground = .color(color: EKColor(UIColor.black.withAlphaComponent(0.3)))
+        attributes.entryBackground = .clear
+
+        SwiftEntryKit.display(entry: settingsViewController, using: attributes)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -47,7 +77,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         // Create a session configuration
         //let configuration = ARWorldTrackingConfiguration()
-
+        
         // Run the view's session
         //sceneView.session.run(configuration)
     }
@@ -82,7 +112,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         ]
         let errorMessage = messages.compactMap({ $0 }).joined(separator: "\n")
         
-         DispatchQueue.main.async {
+        DispatchQueue.main.async {
             self.displayErrorMessage(title: "The AR session failed.", message: errorMessage)
         }
     }
@@ -91,6 +121,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func resetTracking() {
         guard ARFaceTrackingConfiguration.isSupported else { return }
         let configuration = ARFaceTrackingConfiguration()
+        
+        configuration.maximumNumberOfTrackedFaces = 1
+        
         if #available(iOS 13.0, *) {
             configuration.maximumNumberOfTrackedFaces = ARFaceTrackingConfiguration.supportedNumberOfTrackedFaces
         }
@@ -114,7 +147,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         return true
         // Indicate whether the home indicator should be hidden.
     }
-
+    
     override var prefersStatusBarHidden: Bool {
         return true
         // Indicate whether the status bar should be hidden.
@@ -132,44 +165,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         alertController.addAction(restartAction)
         present(alertController, animated: true, completion: nil)
     }
-    
-    // MARK: - Custom Stats
-
-      func createCustomStats() {
-          // Create and add a custom label
-          customStatsLabel = UILabel()
-          customStatsLabel.translatesAutoresizingMaskIntoConstraints = false
-          customStatsLabel.textColor = .white
-          customStatsLabel.backgroundColor = UIColor.black.withAlphaComponent(0.5)
-          customStatsLabel.font = UIFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-          customStatsLabel.text = "Custom Info: Loading..."
-          customStatsLabel.numberOfLines = 0
-          sceneView.addSubview(customStatsLabel)
-
-          // Position the label at the top
-          NSLayoutConstraint.activate([
-              customStatsLabel.leadingAnchor.constraint(equalTo: sceneView.leadingAnchor, constant: 10),
-              customStatsLabel.trailingAnchor.constraint(lessThanOrEqualTo: sceneView.trailingAnchor, constant: -10),
-              customStatsLabel.topAnchor.constraint(equalTo: sceneView.topAnchor, constant: 20),
-              customStatsLabel.heightAnchor.constraint(lessThanOrEqualToConstant: 100)
-          ])
-      }
-
-      @objc func updateCustomStats(_ notification: Notification) {
-          guard let faceData = notification.object as? FaceData else { return }
-
-          // Update the custom stats label with the FaceData
-          DispatchQueue.main.async {
-              self.customStatsLabel.text = """
-              Yaw: \(faceData.yaw)
-              Pitch: \(faceData.pitch)
-              Roll: \(faceData.roll)
-              Vertical Direction: \(faceData.vertPosition.toString())
-              Horizontal Direction: \(faceData.horizPosition.toString())
-              """
-          }
-      }
-
 }
 
 //MARK: - ARSCNViewDelegate
@@ -206,11 +201,10 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         
         let faceData = faceDataBrain.processFaceData(faceAnchor)
         
-        conductor.updateWithNewData(faceData: faceData)
+        conductor.updateWithNewData(with: faceData)
         
-        // Post a notification with the FaceData
-        NotificationCenter.default.post(name: .faceDataUpdated, object: faceData)
-
+        // Update the custom stats
+        customStatsManager.updateFaceStats(with: faceData)
 
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)
         // Update the content controller with new data.
@@ -220,14 +214,11 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         guard let faceAnchor = anchor as? ARFaceAnchor else { return }
         // Handle the removal of an ARFaceAnchor.
 
+        print("REMOVED AR ANCHOR")
+        
         faceAnchorsAndContentControllers[faceAnchor] = nil
         // Remove the face anchor from the dictionary.
     }
     
     
-}
-
-// MARK: - Notification Name Extension
-extension Notification.Name {
-    static let faceDataUpdated = Notification.Name("faceDataUpdated")
 }

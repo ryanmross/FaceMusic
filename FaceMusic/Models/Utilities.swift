@@ -86,7 +86,7 @@ extension FloatingPoint {
   }
 }
 
-func noteName(forMIDINote midiNote: UInt8) -> String {
+func noteName(forMIDINote midiNote: Int8) -> String {
     let noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
     let octave = Int(midiNote / 12) - 1
     let noteIndex = Int(midiNote % 12)

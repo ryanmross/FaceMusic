@@ -6,6 +6,37 @@ import Tonic
 class VoiceConductor: ObservableObject, HasAudioEngine {
     
     var faceData: FaceData?
+    let engine = AudioEngine()
+    
+    @Published var isPlaying: Bool = false {
+        didSet { isPlaying ? voc.start() : voc.stop() }
+    }
+
+    var voc = VocalTract()
+
+    init() {
+        engine.output = voc
+        do {
+            try engine.start()
+            print("Audio engine started successfully.")
+        } catch let error as NSError {
+            print("Audio engine failed to start with error: \(error.localizedDescription)")
+        }
+    }
+    
+    func pauseAudio() {
+        engine.stop()
+    }
+
+    func resumeAudio() {
+        do {
+            try engine.start()
+        } catch {
+            print("Error resuming audio engine: \(error)")
+        }
+    }
+    
+    
     
     func updateWithNewData(with faceData: FaceData) {
         
@@ -43,7 +74,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         self.voc.tonguePosition = interpolatedMouthFunnel
         self.voc.tenseness = 1.0
         self.voc.nasality = 0.0
-
+        
     }
 
     
@@ -80,26 +111,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     func midiNoteToFrequency(_ midiNote: Int8) -> Float {
         return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
     }
-    
-    
-    
-    
-    let engine = AudioEngine()
 
-    @Published var isPlaying: Bool = false {
-        didSet { isPlaying ? voc.start() : voc.stop() }
-    }
-
-    var voc = VocalTract()
-
-    init() {
-        engine.output = voc
-        do {
-            try engine.start()
-            print("Audio engine started successfully.")
-        } catch let error as NSError {
-            print("Audio engine failed to start with error: \(error.localizedDescription)")
-        }
-    }
+   
 }
 

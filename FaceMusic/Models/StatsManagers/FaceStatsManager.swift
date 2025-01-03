@@ -44,7 +44,7 @@ class FaceStatsManager: StatsWindowManager {
     }
     
     private func generateProgressBar(from value: Float) -> String {
-        let numBars = Int(value * 20)
+        let numBars = max(0, min(20, Int(value * 20)))  // Ensure numBars is between 0 and 20
         let bars = String(repeating: "|", count: numBars)
         let emptySpace = String(repeating: "-", count: 20 - numBars)
         return bars + emptySpace

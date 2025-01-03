@@ -60,10 +60,9 @@ class StatsWindowManager {
         // Add stats window to the stack view
         stackView.addArrangedSubview(statsContainerView)
         
+        
         NSLayoutConstraint.activate([
-            statsContainerView.leadingAnchor.constraint(equalTo: stackView.leadingAnchor, constant: 10),
-            statsContainerView.trailingAnchor.constraint(equalTo: stackView.trailingAnchor, constant: -10),
-            
+
             // Constraints for toggleButton
             toggleButton.topAnchor.constraint(equalTo: statsContainerView.topAnchor, constant: 5),
             toggleButton.leadingAnchor.constraint(equalTo: statsContainerView.leadingAnchor, constant: 10),
@@ -74,7 +73,9 @@ class StatsWindowManager {
             statsLabel.leadingAnchor.constraint(equalTo: statsContainerView.leadingAnchor, constant: 10),
             statsLabel.trailingAnchor.constraint(equalTo: statsContainerView.trailingAnchor, constant: -10),
             statsLabel.bottomAnchor.constraint(equalTo: statsContainerView.bottomAnchor, constant: -5)
+             
         ])
+         
     }
     
     @objc func toggleStatsVisibility() {

@@ -21,14 +21,27 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
-    private let conductor = VoiceConductor()
+   
+    
     private let faceDataBrain = FaceDataBrain()
     
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
     
+    
+    
+    private var conductor = VoiceConductor()
+    
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        
+        DispatchQueue.main.async {
+            if let appDelegate = UIApplication.shared.delegate as? AppDelegate, let conductor = appDelegate.conductor {
+            }
+
+        }
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -45,10 +58,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         statsStackView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(statsStackView)
         
+        
         NSLayoutConstraint.activate([
             statsStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             statsStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
-            statsStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
+            statsStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10)
         ])
         
 
@@ -103,11 +117,16 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        
+        print("viewDidAppear")
+        
         // Actions to take when the view appears on the screen.
         UIApplication.shared.isIdleTimerDisabled = true
         
         resetTracking()
         // Disable the idle timer and reset AR tracking.
+        
+        conductor.resumeAudio()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -115,11 +134,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         // Pause the view's session
         sceneView.session.pause()
+        
+        print("viewWillDisappear")
+        conductor.pauseAudio()
     }
     
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-    }
     
     func session(_ session: ARSession, didFailWithError error: Error) {
         guard error is ARError else { return }
@@ -141,11 +160,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         guard ARFaceTrackingConfiguration.isSupported else { return }
         let configuration = ARFaceTrackingConfiguration()
         
-        configuration.maximumNumberOfTrackedFaces = 1
         
-        if #available(iOS 13.0, *) {
-            configuration.maximumNumberOfTrackedFaces = ARFaceTrackingConfiguration.supportedNumberOfTrackedFaces
-        }
+        configuration.maximumNumberOfTrackedFaces = 1
+
         configuration.isLightEstimationEnabled = true
         sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         
@@ -154,12 +171,15 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
+        print("SessionWasInterrupted")
+        conductor.pauseAudio()
     }
     
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
+        print("SessionInterruptionEnded")
+        conductor.resumeAudio()
+        //resetTracking()
     }
     
     override var prefersHomeIndicatorAutoHidden: Bool {
@@ -196,7 +216,10 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         // Conductor Start
         
         conductor.start()
+        print("Conductor: Start")
+        
         conductor.isPlaying.toggle()
+        print("Conductor: isPlaying.toggle()")
         
         
         // If this is the first time with this anchor, get the controller to create content.
@@ -225,7 +248,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         // Update stats
         faceStatsManager.updateFaceStats(with: faceData)
         
-        let audioData = "test"
+        let audioData = "Frequency: \(String(describing: conductor.voc.frequency)) \nConnection Tree: \(String(describing: conductor.voc.parameters)) \nisPlaying: \(String(describing: conductor.isPlaying)) \n"
         
         audioStatsManager.updateAudioStats(with: audioData)
 

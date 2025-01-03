@@ -18,9 +18,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
-        return true
-    }
+            // Initialize the VoiceConductor
+            conductor = VoiceConductor()
+            
+            // Setup face tracker view controller with conductor
+            setupFaceTrackerViewController()
+
+            return true
+        }
     
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         if !ARFaceTrackingConfiguration.isSupported {
@@ -32,6 +37,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
              it replaces the AR view (the initial storyboard in the view controller) with
              an alternate view controller containing a static error message.
              */
+            
+            // RYAN - I need an unsupportedDeviceMessage storyboard here
+            
             let storyboard = UIStoryboard(name: "Main", bundle: nil)
             window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
         }
@@ -45,9 +53,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print(err)
         }
         
-        conductor = VoiceConductor()
         return true
     }
+    
+    func setupFaceTrackerViewController() {
+            guard let window = window else { return }
+            
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            if let faceTrackerVC = storyboard.instantiateViewController(withIdentifier: "FaceTrackerViewController") as? FaceTrackerViewController {
+                // Inject the conductor into the FaceTrackerViewController
+                faceTrackerVC.conductor = conductor
+                window.rootViewController = faceTrackerVC
+            }
+        }
 
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.

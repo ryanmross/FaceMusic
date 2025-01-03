@@ -30,18 +30,21 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     
     
-    private var conductor = VoiceConductor()
+    var conductor: VoiceConductor!
+    
+    init(conductor: VoiceConductor) {
+       self.conductor = conductor
+       super.init(nibName: nil, bundle: nil)
+   }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+    }
     
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        
-        DispatchQueue.main.async {
-            if let appDelegate = UIApplication.shared.delegate as? AppDelegate, let conductor = appDelegate.conductor {
-            }
-
-        }
         
         // Set the view's delegate
         sceneView.delegate = self

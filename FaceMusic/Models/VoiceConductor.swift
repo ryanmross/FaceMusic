@@ -10,6 +10,9 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     let mixer = Mixer()
     
     // need to let user pick these
+    
+    
+    
     var key: Key = Key(root: .C , scale: .minor)
     
     var pitchSet = PitchSet()
@@ -51,11 +54,11 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         }
         
         // create the pitch set with pitches based on our key
-        self.pitchSet = refreshPitchSet(for: self.key)
+        refreshPitchSet(for: self.key)
         
     }
     
-    func refreshPitchSet(for key: Key) -> PitchSet {
+    func refreshPitchSet(for key: Key) {
         pitchSet = PitchSet() // Initialize the PitchSet here
         
         for midiNote in -60...120 { // MIDI note range from -60 (C-2) to 120 (B8)
@@ -64,8 +67,9 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
                 pitchSet.add(pitch)
             }
         }
-        return pitchSet
     }
+    
+
 
     
     
@@ -111,7 +115,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             toLowerBound: 0,
             toUpperBound: 1)
 
-        let scaledNote = self.mapToNearestScaleTone(midiNote: interpolatedPitch, key: self.key)
+        let scaledNote = self.mapToNearestScaleTone(midiNote: interpolatedPitch)
         let midiNoteToFrequency: Float = self.midiNoteToFrequency(scaledNote)
 
         self.voc.frequency = midiNoteToFrequency
@@ -122,7 +126,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         
     }
 
-    func mapToNearestScaleTone(midiNote: Int8, key: Key) -> Int8 {
+    func mapToNearestScaleTone(midiNote: Int8) -> Int8 {
         let inputPitch = Pitch(intValue: Int(midiNote))
         var closestPitch: Pitch? = nil
         var smallestDifference = Int8.max
@@ -130,7 +134,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         // Loop through a range of possible MIDI notes and compare with pitchSet
         for i in -60...120 { // MIDI note range
             let pitch = Pitch(intValue: i)
-            if pitch.existsNaturally(in: key) && pitchSet.contains(pitch) {
+            if pitchSet.contains(pitch) {
                 let difference = abs(pitch.midiNoteNumber - inputPitch.midiNoteNumber)
                 if difference < smallestDifference {
                     smallestDifference = difference
@@ -139,7 +143,15 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             }
         }
         
-        return Int8(closestPitch!.intValue )
+        guard let validClosestPitch = closestPitch else {
+            print("No matching pitch found in pitchSet.")
+            return midiNote  // Return the original midiNote if no closest pitch was found
+        }
+        
+        let note = Note(pitch: validClosestPitch, key: key)
+        print("Note: \(note)")
+        
+        return Int8(validClosestPitch.intValue)
     }
 
 

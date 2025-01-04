@@ -30,16 +30,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     
     
-    var conductor: VoiceConductor!
+    private var conductor = VoiceConductor()
     
-    init(conductor: VoiceConductor) {
-       self.conductor = conductor
-       super.init(nibName: nil, bundle: nil)
-   }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-    }
     
     
     override func viewDidLoad() {
@@ -94,6 +86,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private func displaySettingsPopup() {
         let settingsViewController = SettingsViewController()
+        
+        // Pass the conductor instance to SettingsViewController
+        settingsViewController.conductor = self.conductor
+        
+        
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
         attributes.name = "Top Note"

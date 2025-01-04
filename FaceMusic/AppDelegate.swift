@@ -44,7 +44,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
         }
         do {
-            Settings.bufferLength = .short
+            Settings.bufferLength = .huge
+            Settings.enableLogging = true
             try AVAudioSession.sharedInstance().setPreferredIOBufferDuration(Settings.bufferLength.duration)
             try AVAudioSession.sharedInstance().setCategory(.playAndRecord,
                                                             options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothA2DP])

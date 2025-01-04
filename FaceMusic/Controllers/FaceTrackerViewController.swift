@@ -50,6 +50,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.delegate = self
         sceneView.session.delegate = self
         sceneView.automaticallyUpdatesLighting = true
+        sceneView.preferredFramesPerSecond = 24 // Lower frame rate to prioritize audio
         
         // Show statistics such as fps and timing information for testing purposes
         sceneView.showsStatistics = true
@@ -166,7 +167,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         configuration.maximumNumberOfTrackedFaces = 1
 
-        configuration.isLightEstimationEnabled = true
+        configuration.isLightEstimationEnabled = false
+        
         sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         
         faceAnchorsAndContentControllers.removeAll()
@@ -221,8 +223,8 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         conductor.start()
         print("Conductor: Start")
         
-        conductor.isPlaying.toggle()
-        print("Conductor: isPlaying.toggle()")
+        conductor.isPlaying = true
+        print("Conductor: isPlaying = true")
         
         
         // If this is the first time with this anchor, get the controller to create content.

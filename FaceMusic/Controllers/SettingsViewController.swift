@@ -1,132 +1,169 @@
-// SettingsViewController.swift
-
 import UIKit
 import Tonic
+import SwiftEntryKit
 
-class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource  {
+class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     
-    var conductor: VoiceConductor?  // The conductor to update
-
-    // UI elements for key and scale
+    var conductor: VoiceConductor?
+    let appSettings = AppSettings()
+    
     var keyPicker: UIPickerView!
-    var scaleSegmentedControl: UISegmentedControl!
-    
-    let keyOptions = ["Cb", "Gb", "Db", "Ab", "Eb", "Bb", "F", "C", "G", "D", "A", "E", "B", "F#", "C#"]
-    let scales = ["Major", "Minor"]  // Example scales
+    var scalePicker: UIPickerView!
+    var applyButton: UIButton!  // Add an apply button
+    var closeButton: UIButton!  // Add the close button (X)
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        // Initialize the UI elements
         setupUI()
+        configurePickersWithConductorSettings()  // Call this after UI setup
     }
     
     private func setupUI() {
         // Set up the key picker
         keyPicker = UIPickerView()
-        keyPicker.frame = CGRect(x: 50, y: 100, width: 200, height: 150)
+        keyPicker.frame = CGRect(x: 50, y: 100, width: 150, height: 150)
         keyPicker.delegate = self
         keyPicker.dataSource = self
-        view.addSubview(keyPicker)
+        keyPicker.tag = 0  // Set tag for identifying the picker
+        keyPicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5) // 50% transparent black
         
-        // Set up the scale segmented control (Major/Minor)
-        scaleSegmentedControl = UISegmentedControl(items: scales)
-        scaleSegmentedControl.frame = CGRect(x: 50, y: 270, width: 200, height: 30)
-        scaleSegmentedControl.selectedSegmentIndex = 0  // Default to Major
-        scaleSegmentedControl.addTarget(self, action: #selector(scaleChanged), for: .valueChanged)
-        view.addSubview(scaleSegmentedControl)
+        // Set up the scale picker
+        scalePicker = UIPickerView()
+        scalePicker.frame = CGRect(x: 220, y: 100, width: 150, height: 150)
+        scalePicker.delegate = self
+        scalePicker.dataSource = self
+        scalePicker.tag = 1  // Set tag for identifying the picker
+        scalePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5) // 50% transparent black
+
+        // Create a horizontal stack view to layout the pickers side by side
+        let stackView = UIStackView(arrangedSubviews: [keyPicker, scalePicker])
+        stackView.axis = .horizontal
+        stackView.distribution = .fillEqually
+        stackView.spacing = 10
+
+        // Add the stack view to the view
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stackView)
+
+        // Constraints for the stack view
         
-        // Add a button to apply the changes (optional)
-        let applyButton = UIButton(type: .system)
-        applyButton.frame = CGRect(x: 50, y: 320, width: 200, height: 40)
+        NSLayoutConstraint.activate([
+            stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -50), // Move up slightly
+            stackView.heightAnchor.constraint(equalToConstant: 150),
+            stackView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9)  // Occupy 90% of the width
+        ])
+         
+        
+        // Create and configure applyButton
+        applyButton = UIButton(type: .system)
         applyButton.setTitle("Apply", for: .normal)
         applyButton.addTarget(self, action: #selector(applyChanges), for: .touchUpInside)
+        applyButton.backgroundColor = .systemBlue
+        applyButton.tintColor = .white
+        applyButton.layer.cornerRadius = 10
+        
+        // Add the apply button below the stack view
+        applyButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(applyButton)
+        
+        // Constraints for the apply button
+        
+        NSLayoutConstraint.activate([
+            applyButton.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 20),  // Position it below the stack view
+            applyButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            applyButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
+            applyButton.heightAnchor.constraint(equalToConstant: 44)
+        ])
+         
+        
+        // Create and configure closeButton (X)
+        closeButton = UIButton(type: .system)
+        closeButton.setTitle("X", for: .normal)
+        closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 24)  // Make the X large and bold
+        closeButton.setTitleColor(.white, for: .normal)  // White X color
+        closeButton.backgroundColor = UIColor(white: 0.0, alpha: 0.5)  // 50% transparent black background
+        closeButton.layer.cornerRadius = 20  // Make it round
+        
+        closeButton.addTarget(self, action: #selector(closeSettings), for: .touchUpInside)
+        
+        // Add the close button to the view
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(closeButton)
+        
+        // Constraints for the close button (top-right corner)
+        
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
+            closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            closeButton.widthAnchor.constraint(equalToConstant: 40),
+            closeButton.heightAnchor.constraint(equalToConstant: 40)
+        ])
+         
     }
     
-    @objc private func scaleChanged() {
-        // Handle scale change if needed
-        // This could be updated when the segmented control is changed.
-        print("Scale changed to: \(scales[scaleSegmentedControl.selectedSegmentIndex])")
-    }
+    private func configurePickersWithConductorSettings() {
+       // Ensure the conductor exists
+       guard let conductor = conductor else { return }
 
+       // Get the conductor's current key and scale
+       let currentKey = conductor.key.root
+       let currentScale = conductor.key.scale
+
+       // Find the indices of the current key and scale in the pickers
+       if let keyIndex = appSettings.keyOptions.firstIndex(where: { $0.value == currentKey }) {
+           keyPicker.selectRow(keyIndex, inComponent: 0, animated: false)
+       }
+       
+       if let scaleIndex = appSettings.scales.firstIndex(where: { $0.value == currentScale }) {
+           scalePicker.selectRow(scaleIndex, inComponent: 0, animated: false)
+       }
+   }
+   
+    
+    // MARK: - UIPickerViewDataSource Methods
+    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+        return 1
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        if pickerView == keyPicker {
+            return appSettings.keyOptions.count
+        } else if pickerView == scalePicker {
+            return appSettings.scales.count
+        }
+        return 0
+    }
+    
+    // MARK: - UIPickerViewDelegate Methods
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        if pickerView == keyPicker {
+            return appSettings.keyOptions[row].key // Display the key (e.g., "C", "D", etc.)
+        } else if pickerView == scalePicker {
+            return appSettings.scales[row].key // Display the scale name (e.g., "Major", "Minor", etc.)
+        }
+        return nil
+    }
+    
     @objc private func applyChanges() {
-        // Get the selected key and scale
-        let selectedKey = keyOptions[keyPicker.selectedRow(inComponent: 0)]
-        let selectedScale = scales[scaleSegmentedControl.selectedSegmentIndex]
+        // Get selected key and scale from the picker views
+        let selectedKey = appSettings.keyOptions[keyPicker.selectedRow(inComponent: 0)].value
+        let selectedScale = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].value
         
-        
-        
-        var selectedNoteClass: NoteClass
-        var newKey: Key
-        
-        switch selectedKey {
-            case "Cb":
-                selectedNoteClass = NoteClass.Cb
-            case "Gb":
-                selectedNoteClass = NoteClass.Gb
-            case "Ab":
-                selectedNoteClass = NoteClass.Ab
-            case "Eb":
-                selectedNoteClass = NoteClass.Eb
-            case "Bb":
-                selectedNoteClass = NoteClass.Bb
-            case "F":
-                selectedNoteClass = NoteClass.F
-            case "C":
-                selectedNoteClass = NoteClass.C
-            case "G":
-                selectedNoteClass = NoteClass.G
-            case "D":
-                selectedNoteClass = NoteClass.D
-            case "A":
-                selectedNoteClass = NoteClass.A
-            case "E":
-                selectedNoteClass = NoteClass.E
-            case "B":
-                selectedNoteClass = NoteClass.B
-            case "F#":
-                selectedNoteClass = NoteClass.Fs
-            case "C#":
-                selectedNoteClass = NoteClass.Cs
-            default:
-                selectedNoteClass = NoteClass.C
-        }
-        // RYAN - need this filled out
-        
-        switch selectedScale {
-        case "Major":
-            newKey = Key(root: selectedNoteClass, scale: .major)
-        case "Minor":
-            newKey = Key(root: selectedNoteClass, scale: .minor)
-        default:
-            newKey = Key(root: selectedNoteClass, scale: .major)
-        }
+        let newKey = Key(root: selectedKey, scale: selectedScale)
         
         print("Changing key to \(newKey.root) \(newKey.scale.description)")
-        // Update the conductor's key and scale
+        
         if let conductor = conductor {
-            conductor.refreshPitchSet(for: newKey)
+            conductor.key = newKey
         }
         
-        // Optionally, dismiss the settings view or show feedback to the user
+        // Optionally, dismiss the settings view
         self.dismiss(animated: true, completion: nil)
     }
     
-    
-    // MARK: - UIPickerViewDataSource Methods
-       
-       func numberOfComponents(in pickerView: UIPickerView) -> Int {
-           return 1  // We only have one column (the keys)
-       }
-
-       func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-           return keyOptions.count  // The number of keys available
-       }
-
-       // MARK: - UIPickerViewDelegate Methods
-       
-       func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-           return keyOptions[row]  // Return the key for the given row
-       }
+    @objc private func closeSettings() {
+        // Dismiss the settings view using SwiftEntryKit's dismiss method
+        SwiftEntryKit.dismiss()
+    }
 }

@@ -17,7 +17,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     var statsStackView: UIStackView!
     
     private var faceStatsManager: FaceStatsManager!
-    private var audioStatsManager: AudioStatsManager!
+    private var audioStatsManager: StatsWindowManager!
+    private var musicStatsManager: StatsWindowManager!
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
@@ -65,7 +66,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         // Initialize stat box for testing purposes
         faceStatsManager = FaceStatsManager(stackView: statsStackView, title: "Face Tracking")
-        audioStatsManager = AudioStatsManager(stackView: statsStackView, title: "Audio Debugging")
+        audioStatsManager = StatsWindowManager(stackView: statsStackView, title: "Audio Debugging")
+        musicStatsManager = StatsWindowManager(stackView: statsStackView, title: "Music Debugging")
         
         // Setup settings button
         createSettingsButton()
@@ -249,11 +251,14 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         
         // Update stats
         faceStatsManager.updateFaceStats(with: faceData)
-        
-        let audioData = "Frequency: \(String(describing: conductor.voc.frequency)) \nConnection Tree: \(String(describing: conductor.voc.parameters)) \nisPlaying: \(String(describing: conductor.isPlaying)) \n"
-        
-        audioStatsManager.updateAudioStats(with: audioData)
 
+        // update audio stats
+        audioStatsManager.updateStats(with: conductor.returnAudioStats())
+
+        // update music stats
+        //print("update music stats")
+        musicStatsManager.updateStats(with: conductor.returnMusicStats())
+        
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)
         // Update the content controller with new data.
     }

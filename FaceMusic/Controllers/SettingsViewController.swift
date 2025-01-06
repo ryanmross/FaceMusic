@@ -21,38 +21,50 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     private func setupUI() {
         // Set up the key picker
         keyPicker = UIPickerView()
-        keyPicker.frame = CGRect(x: 50, y: 100, width: 150, height: 150)
         keyPicker.delegate = self
         keyPicker.dataSource = self
         keyPicker.tag = 0  // Set tag for identifying the picker
         keyPicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5) // 50% transparent black
         
+        let keyPickerWidth: CGFloat = 80
+        keyPicker.frame = CGRect(x: 50, y: 100, width: keyPickerWidth, height: 150)
+        
         // Set up the scale picker
         scalePicker = UIPickerView()
-        scalePicker.frame = CGRect(x: 220, y: 100, width: 150, height: 150)
         scalePicker.delegate = self
         scalePicker.dataSource = self
         scalePicker.tag = 1  // Set tag for identifying the picker
         scalePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5) // 50% transparent black
-
+        
         // Create a horizontal stack view to layout the pickers side by side
         let stackView = UIStackView(arrangedSubviews: [keyPicker, scalePicker])
         stackView.axis = .horizontal
-        stackView.distribution = .fillEqually
         stackView.spacing = 10
+        stackView.alignment = .center
+        
 
         // Add the stack view to the view
         stackView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stackView)
+        
 
         // Constraints for the stack view
-        
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             stackView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -50), // Move up slightly
             stackView.heightAnchor.constraint(equalToConstant: 150),
-            stackView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9)  // Occupy 90% of the width
+            stackView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -40)  // Ensure it doesn’t overflow
         ])
+
+        // Now, set constraints for the pickers individually
+        keyPicker.translatesAutoresizingMaskIntoConstraints = false
+        scalePicker.translatesAutoresizingMaskIntoConstraints = false
+
+        NSLayoutConstraint.activate([
+            keyPicker.widthAnchor.constraint(equalToConstant: keyPickerWidth),  // Fixed width for the key picker
+            scalePicker.widthAnchor.constraint(equalTo: stackView.widthAnchor, multiplier: 0.7)  // Scale picker takes the remaining space
+        ])
+
          
         
         // Create and configure applyButton

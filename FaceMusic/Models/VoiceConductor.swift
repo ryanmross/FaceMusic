@@ -111,7 +111,10 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             interpolatedValues[parameter] = interpolatedValue
         }
         
-        let interpolatedPitch: Int8 = Int8(interpolatedValues[.pitch] ?? 0)
+        let interpolatedPitchValue = interpolatedValues[.pitch] ?? 0.0
+        let clampedInterpolatedPitch = min(max(interpolatedPitchValue, Float(Int8.min)), Float(Int8.max))
+        let interpolatedPitch: Int8 = Int8(clampedInterpolatedPitch)
+
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
         

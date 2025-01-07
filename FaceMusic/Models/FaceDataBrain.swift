@@ -4,34 +4,12 @@ enum VertDirection {
     case up
     case down
     case none
-    
-    func toString() -> String {
-            switch self {
-            case .none:
-                return "None"
-            case .up:
-                return "Up"
-            case .down:
-                return "Down"
-            }
-        }
 }
 
 enum HorizDirection {
     case left
     case right
     case none
-    
-    func toString() -> String {
-            switch self {
-            case .none:
-                return "None"
-            case .left:
-                return "Left"
-            case .right:
-                return "Right"
-            }
-        }
 }
 
 struct FaceData {
@@ -44,6 +22,8 @@ struct FaceData {
     var vertPosition: VertDirection
     var horizPosition: HorizDirection
 }
+
+
 
 class FaceDataBrain {
     func processFaceData(_ faceAnchor: ARFaceAnchor) -> FaceData {

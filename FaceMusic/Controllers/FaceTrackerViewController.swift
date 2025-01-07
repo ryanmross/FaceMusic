@@ -247,6 +247,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         
         let faceData = faceDataBrain.processFaceData(faceAnchor)
         
+        // Update Conductor with new face data
         conductor.updateWithNewData(with: faceData)
         
         // Update stats

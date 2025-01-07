@@ -26,28 +26,35 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     var currentPitch: Pitch?
     
+    var harmonyMaker: HarmonyMaker
+    
+    @Published var numOfVoices: Int8 = 1 {
+        didSet {
+            setupVoices()
+        }
+    }
+    
+    
     @Published var isPlaying: Bool = false {
         didSet {
             if isPlaying {
-                voc.start()    // Start voc
-                voc2.start()   // Start voc2
+                // Start all vocal tract objects in the voices array
+                voices.forEach { $0.start() }
             } else {
-                voc.stop()     // Stop voc
-                voc2.stop()    // Stop voc2
+                // Stop all vocal tract objects in the voices array
+                voices.forEach { $0.stop() }
             }
         }
     }
 
-    var voc = VocalTract()
+    private var voices: [VocalTract] = []
     
-    var voc2 = VocalTract()
-
-
     init() {
 
-        // Add voc to the mixer
-        mixer.addInput(voc)
-        mixer.addInput(voc2)
+        self.key = appSettings.defaultKey
+        self.harmonyMaker = HarmonyMaker()
+        refreshPitchSet()
+        setupVoices()
         
         // Set the mixer as the output of the audio engine
         engine.output = mixer
@@ -61,8 +68,29 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         
         // get default key from appSettings
         self.key = appSettings.defaultKey
+        self.harmonyMaker = HarmonyMaker()
+
         refreshPitchSet()
         self.currentPitch = nil
+    }
+    
+    private func setupVoices() {
+        
+        print("SETUP VOICES.  numOfVoices: \(numOfVoices)")
+        isPlaying = false
+        pauseAudio()
+        // Remove existing inputs from the mixer
+        voices.forEach { mixer.removeInput($0) }
+        voices.removeAll()
+        
+        // Create the new set of voices
+        for _ in 0..<numOfVoices {
+            let voc = VocalTract()
+            mixer.addInput(voc)
+            voices.append(voc)
+        }
+        resumeAudio()
+        isPlaying = true
     }
     
     func refreshPitchSet() {
@@ -118,16 +146,40 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
         
-
+        
+        
+        // our current pitch
         currentPitch = self.mapToNearestScaleTone(midiNote: interpolatedPitch)
         
-        let midiNoteToFrequency: Float = self.midiNoteToFrequency(currentPitch!.midiNoteNumber)
-
-        self.voc.frequency = midiNoteToFrequency
-        self.voc.tongueDiameter = interpolatedJawOpen
-        self.voc.tonguePosition = interpolatedMouthFunnel
-        self.voc.tenseness = 1.0
-        self.voc.nasality = 0.0
+        guard let currentPitch = currentPitch else { return }
+        let harmonies = harmonyMaker.voiceChord(key: key, chord: .Cm, currentPitch: currentPitch, numOfVoices: numOfVoices)
+        
+        for (index, harmony) in harmonies.enumerated() {
+            if index < voices.count {
+                let voice = voices[index]
+                voice.frequency = midiNoteToFrequency(harmony.midiNoteNumber)
+                voice.tongueDiameter = interpolatedValues[.jawOpen] ?? 0.5
+                voice.tonguePosition = interpolatedValues[.mouthFunnel] ?? 0.5
+                voice.tenseness = 1.0
+                voice.nasality = 0.0
+            }
+        }
+        /*
+        if faceData.horizPosition == .left {
+            // facing left
+            harmonyNotes = chordMaker(inputNote: scaledNote, key: 7, scaleQuality: "major", numberOfVoices: self.voices.count)
+        } else if faceData.horizPosition == .right {
+            // facing right
+            harmonyNotes = chordMaker(inputNote: scaledNote, key: 5, scaleQuality: "major", numberOfVoices: self.voices.count)
+        } else {
+            // facing center
+            harmonyNotes = chordMaker(inputNote: scaledNote, key: 0, scaleQuality: "major", numberOfVoices: self.voices.count)
+        }
+        */
+        
+        
+        
+        
         
     }
 
@@ -165,8 +217,8 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     }
   
     func returnAudioStats() -> String {
-        
-        return "Frequency: \(String(describing: voc.frequency)) \nisPlaying: \(String(describing: isPlaying)) \n"
+        print("Voices: \(voices)")
+        return "Frequency: \(String(describing: voices[0].frequency)) \nisPlaying: \(String(describing: isPlaying)) \n"
         
     }
     
@@ -186,7 +238,10 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         return String("Key: \(key.root) \(key.scale.description), Note: \(note.letter)\(note.accidental)\(note.octave)")
         
     }
-
+    
+    
    
 }
+
+
 

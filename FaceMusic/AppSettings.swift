@@ -7,20 +7,23 @@ class AppSettings {
 
     // MARK: - Settings
 
-    var defaultKey: Key = Key.C
+    let defaultKey: Key = Key.C
+    let defaultChordType: ChordType = .major
     
-    // Define keys as an array of tuples (key, value)
-    let keyOptions: [(key: String, value: NoteClass)] = [
+    
+    // Define keys as an array of tuples
+    let keyOptions: [(string: String, key: NoteClass)] = [
        ("Cb", .Cb), ("Gb", .Gb), ("Db", .Db), ("Ab", .Ab), ("Eb", .Eb),
        ("Bb", .Bb), ("F", .F), ("C", .C), ("G", .G), ("D", .D),
        ("A", .A), ("E", .E), ("B", .B), ("F#", .Fs), ("C#", .Cs)
     ]
 
-    // Define scales as an array of tuples (key, value)
-    let scales: [(key: String, value: Scale)] = [
-        ("Major", .major), ("Minor", .minor), ("Diminished", .wholeDiminished), ("Half-Diminished", .halfDiminished), ("Whole Tone", .leadingWholeTone)
+    // Define scales as an array of tuples
+    let scales: [(string: String, scale: Scale, chordType: ChordType)] = [
+        ("Major", .major, .major), ("Minor", .minor, .minor), ("Diminished", .wholeDiminished, .dim7), ("Half-Diminished", .halfDiminished, .halfDim7), ("Whole Tone", .leadingWholeTone, .aug)
     ]
     
+    let lowNoteThreshold: Int = 30 // Minimum MIDI note number to include non-root pitches
     
     // Define interpolation bounds for different parameters
     // Use the enum as the key

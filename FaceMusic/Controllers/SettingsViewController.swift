@@ -135,11 +135,11 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         let currentKey = conductor.key.root
         let currentScale = conductor.key.scale
 
-        if let keyIndex = appSettings.keyOptions.firstIndex(where: { $0.value == currentKey }) {
+        if let keyIndex = appSettings.keyOptions.firstIndex(where: { $0.key == currentKey }) {
             keyPicker.selectRow(keyIndex, inComponent: 0, animated: false)
         }
         
-        if let scaleIndex = appSettings.scales.firstIndex(where: { $0.value == currentScale }) {
+        if let scaleIndex = appSettings.scales.firstIndex(where: { $0.scale == currentScale }) {
             scalePicker.selectRow(scaleIndex, inComponent: 0, animated: false)
         }
         
@@ -167,9 +167,9 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     // MARK: - UIPickerViewDelegate Methods
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
         if pickerView.tag == 0 { // Key picker
-            return appSettings.keyOptions[row].key
+            return appSettings.keyOptions[row].string
         } else if pickerView.tag == 1 { // Scale picker
-            return appSettings.scales[row].key
+            return appSettings.scales[row].string
         } else if pickerView.tag == 2 { // Number of Voices picker
             return "\(row + 1)" // Return the numbers 1-8
         }
@@ -185,15 +185,18 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     
     @objc private func applyChanges() {
         // Get selected key and scale from the picker views
-        let selectedKey = appSettings.keyOptions[keyPicker.selectedRow(inComponent: 0)].value
-        let selectedScale = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].value
+        let selectedKey = appSettings.keyOptions[keyPicker.selectedRow(inComponent: 0)].key
+        let selectedScale = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].scale
+        
+        let chordType = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].chordType
         
         let newKey = Key(root: selectedKey, scale: selectedScale)
-        print("Changing key to \(newKey.root) \(newKey.scale.description)")
+        print("Changing key to \(newKey.root) \(newKey.scale.description) with chord: \(chordType)")
         
         if let conductor = conductor {
             conductor.key = newKey
             conductor.numOfVoices = Int8(selectedNumOfVoices) // Update the number of voices only on Apply
+            conductor.chordType = chordType
         }
         
         // Optionally, dismiss the settings view

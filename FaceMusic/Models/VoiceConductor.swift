@@ -21,6 +21,8 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
        }
    }
     
+    var chordType: ChordType
+    
     // pitchSet is a PitchSet of what pitches are available in the current key
     var pitchSet = PitchSet()
     
@@ -30,7 +32,9 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     @Published var numOfVoices: Int8 = 1 {
         didSet {
+            pauseAudio()
             setupVoices()
+            resumeAudio()
         }
     }
     
@@ -51,7 +55,11 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     init() {
 
+        // get default key from appSettings
         self.key = appSettings.defaultKey
+        self.chordType = appSettings.defaultChordType
+        
+        
         self.harmonyMaker = HarmonyMaker()
         refreshPitchSet()
         setupVoices()
@@ -66,8 +74,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             print("Audio engine failed to start with error: \(error.localizedDescription)")
         }
         
-        // get default key from appSettings
-        self.key = appSettings.defaultKey
+
         self.harmonyMaker = HarmonyMaker()
 
         refreshPitchSet()
@@ -77,8 +84,6 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     private func setupVoices() {
         
         print("SETUP VOICES.  numOfVoices: \(numOfVoices)")
-        isPlaying = false
-        pauseAudio()
         // Remove existing inputs from the mixer
         voices.forEach { mixer.removeInput($0) }
         voices.removeAll()
@@ -89,12 +94,10 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             mixer.addInput(voc)
             voices.append(voc)
         }
-        resumeAudio()
-        isPlaying = true
     }
     
     func refreshPitchSet() {
-        print("***********REFRESH PITCH SET")
+        print("**REFRESH PITCH SET")
         pitchSet = PitchSet() // Initialize the PitchSet here
         
         for midiNote in 0...127 { // MIDI note range
@@ -107,12 +110,16 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
 
     func pauseAudio() {
+        print("**pause audio")
+        isPlaying = false
         engine.stop()
     }
 
     func resumeAudio() {
         do {
+            print("**resume audio")
             try engine.start()
+            isPlaying = true
         } catch {
             print("Error resuming audio engine: \(error)")
         }
@@ -152,7 +159,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         currentPitch = self.mapToNearestScaleTone(midiNote: interpolatedPitch)
         
         guard let currentPitch = currentPitch else { return }
-        let harmonies = harmonyMaker.voiceChord(key: key, chord: .Cm, currentPitch: currentPitch, numOfVoices: numOfVoices)
+        let harmonies = harmonyMaker.voiceChord(key: key, chordType: chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
         
         for (index, harmony) in harmonies.enumerated() {
             if index < voices.count {

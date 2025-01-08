@@ -103,3 +103,19 @@ extension matrix_float4x4 {
         return (yaw, pitch, roll)
     }
 }
+
+func shiftArray<T>(_ array: [T], by positions: Int) -> [T] {
+    let count = array.count
+    guard count > 0 else {
+        return array // If the array is empty, return as is
+    }
+
+    // Normalize the shift to handle large shifts or negative values
+    let normalizedPositions = ((positions % count) + count) % count
+    
+    // Slice the array and shift
+    let firstPart = array.suffix(from: normalizedPositions)
+    let secondPart = array.prefix(normalizedPositions)
+
+    return Array(firstPart) + Array(secondPart)
+}

@@ -21,7 +21,7 @@ class HarmonyMaker {
         var chordPitches: [Pitch] = []
         
         for noteClass in chord.noteClasses {
-            print("noteClass: \(noteClass.description)")
+            //print("noteClass: \(noteClass.description)")
             // Map each NoteClass to every possible Pitch in MIDI range (0 to 127)
             chordPitches += (0...127).compactMap { midiValue in
                 let pitch = Pitch(intValue: midiValue)

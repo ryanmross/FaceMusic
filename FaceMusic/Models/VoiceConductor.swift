@@ -32,7 +32,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     var currentPitch: Pitch?
     
-    var harmonyMaker: HarmonyMaker
+    var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
     @Published var numOfVoices: Int8 = 1 {
         didSet {
@@ -125,33 +125,44 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         
         // Loop through each interval in the current scale
         for (index, interval) in intervals.enumerated() {
-            // Calculate the new root note for the scale by shifting
-            let newRoot = root.canonicalNote.shiftUp(interval)
             
-            
-            
-            
-            let newInterval = shiftArray(intervals, by: index)
-            let newScale = Scale(intervals: intervals, description: "Scale shifted by \(index)")
-            
-            var newChordType: ChordType
-            
-            // Assuming appSettings.scales is an array of tuples: [(key: String, value: Scale)]
-            if let foundScale = appSettings.scales.first(where: { $0.scale == newScale }) {
-                newChordType = foundScale.chordType
-                // Now newChordType has the ChordType corresponding to the newScale
-                print("Found ChordType for \(newScale.description): \(newChordType)")
+            // Only process intervals at indices 0, 3, and 4
+            // RYAN -- we need to update this functionality as this is a hack to make it work faster at the moment
+            if [0, 3, 4].contains(index) {
+                
+                // Calculate the new root note for the scale by shifting
+                let newRoot = root.canonicalNote.shiftUp(interval)
+                
+                
+                
+                
+                let newInterval = shiftArray(intervals, by: index)
+                let newScale = Scale(intervals: intervals, description: "Scale shifted by \(index)")
+                
+                var newChordType: ChordType
+                
+                // Assuming appSettings.scales is an array of tuples: [(key: String, value: Scale)]
+                if let foundScale = appSettings.scales.first(where: { $0.scale == newScale }) {
+                    newChordType = foundScale.chordType
+                    // Now newChordType has the ChordType corresponding to the newScale
+                    print("Found ChordType for \(newScale.description): \(newChordType)")
+                } else {
+                    newChordType = ChordType.major
+                    print("Scale \(newScale.description) not found in appSettings.scales.")
+                }
+                
+                
+                let newKey = Key(root: newRoot!.noteClass, scale: newScale)
+                
+                
+                // Store the new key and its chordType in the intervalChordTypes array
+                intervalChordTypes.append((key: newKey, chordType: newChordType))
+                
             } else {
-                newChordType = ChordType.major
-                print("Scale \(newScale.description) not found in appSettings.scales.")
+                // HACK
+                intervalChordTypes.append((key: Key(root: .C, scale: .major), chordType: .major))
             }
-            
-            
-            let newKey = Key(root: newRoot!.noteClass, scale: newScale)
-        
-            
-            // Store the new key and its chordType in the intervalChordTypes array
-            intervalChordTypes.append((key: newKey, chordType: newChordType))
+                
         }
         
         // Debug print
@@ -221,7 +232,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             // facing left
             
             let newKeyAndChordType = intervalChordTypes[4]
-            print("**Facing Left: Setting up harmonies with key: (")
+            print("**Facing Left: Setting up harmonies with key: \(key.root) and chordType \(chordType.description)")
             harmonies = harmonyMaker.voiceChord(key: newKeyAndChordType.key, chordType: newKeyAndChordType.chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
 
             //harmonies = chordMaker(inputNote: scaledNote, key: 7, scaleQuality: "major", numberOfVoices: self.voices.count)
@@ -230,7 +241,10 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
 
             
 
-            let newKeyAndChordType = intervalChordTypes[5]
+            let newKeyAndChordType = intervalChordTypes[3]
+            
+            print("**Facing Right: Setting up harmonies with key: \(key.root) and chordType \(chordType.description)")
+
             
             harmonies = harmonyMaker.voiceChord(key: newKeyAndChordType.key, chordType: newKeyAndChordType.chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
 

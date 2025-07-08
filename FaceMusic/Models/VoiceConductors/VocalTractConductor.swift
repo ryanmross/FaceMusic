@@ -3,7 +3,14 @@ import AudioToolbox
 import SoundpipeAudioKit
 import Tonic
 
-class VoiceConductor: ObservableObject, HasAudioEngine {
+class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
+    //var scale: Tonic.Scale
+    
+
+    static var id: String = "vocaltract"
+    static var displayName: String = "Vocal Tract"
+    
+    private var voices: [VocalTract] = []
     
     var faceData: FaceData?
     let engine = AudioEngine()
@@ -11,18 +18,16 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     let appSettings = AppSettings()
     
-    // need to let user pick these
     
-    
-    // key is a Tonic key that we keep updated with the user's current key
     var key: Key {
        didSet {
            refreshPitchSet()
            updateIntervalChordTypes()
        }
-   }
-    
+    }
+
     var chordType: ChordType
+    
     
     var intervalChordTypes: [(key: Key, chordType: ChordType)] = []
     
@@ -36,9 +41,9 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     
     @Published var numOfVoices: Int8 = 1 {
         didSet {
-            pauseAudio()
+            stopEngine()
             setupVoices()
-            resumeAudio()
+            startEngine()
         }
     }
     
@@ -53,16 +58,14 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
         }
     }
 
-    private var voices: [VocalTract] = []
+    
     private var isReadyToPlay = false  // Flag to track when data is ready
 
     
-    init() {
-
+    required init() {
         // get default key from appSettings
         self.key = appSettings.defaultKey
         self.chordType = appSettings.defaultChordType
-        
         
         self.harmonyMaker = HarmonyMaker()
         setupVoices()
@@ -77,9 +80,6 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             print("Audio engine failed to start with error: \(error.localizedDescription)")
         }
         
-
-        self.harmonyMaker = HarmonyMaker()
-
         refreshPitchSet()
         
         updateIntervalChordTypes()  // Update intervals and chord types at startup
@@ -130,6 +130,8 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             // RYAN -- we need to update this functionality as this is a hack to make it work faster at the moment
             if [0, 3, 4].contains(index) {
                 
+                
+                /*  EDITED THIS OUT FOR NOW
                 // Calculate the new root note for the scale by shifting
                 let newRoot = root.canonicalNote.shiftUp(interval)
                 
@@ -157,7 +159,7 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
                 
                 // Store the new key and its chordType in the intervalChordTypes array
                 intervalChordTypes.append((key: newKey, chordType: newChordType))
-                
+                */
             } else {
                 // HACK
                 intervalChordTypes.append((key: Key(root: .C, scale: .major), chordType: .major))
@@ -170,23 +172,23 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
     }
     
 
-    func pauseAudio() {
-        print("**pause audio")
+    func stopEngine() {
+        print("**stop engine")
         isPlaying = false
         engine.stop()
     }
 
-    func resumeAudio() {
+    func startEngine() {
         do {
-            print("**resume audio")
+            print("**start engine")
             try engine.start()
             isPlaying = true
         } catch {
-            print("Error resuming audio engine: \(error)")
+            print("Error starting audio engine: \(error)")
         }
     }
     
-    func updateWithNewData(with faceData: FaceData) {
+    func updateWithFaceData(_ faceData: FaceData) {
         
         self.faceData = faceData
         
@@ -215,8 +217,9 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
+        let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
         
-        
+        //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
         
         // our current pitch
         currentPitch = self.mapToNearestScaleTone(midiNote: interpolatedPitch)
@@ -264,9 +267,11 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             if index < voices.count {
                 let voice = voices[index]
                 voice.frequency = midiNoteToFrequency(harmony.midiNoteNumber)
-                voice.tongueDiameter = interpolatedValues[.jawOpen] ?? 0.5
-                voice.tonguePosition = interpolatedValues[.mouthFunnel] ?? 0.5
-                voice.tenseness = 1.0
+                voice.jawOpen = interpolatedJawOpen
+                voice.lipShape = interpolatedMouthClose
+                voice.tongueDiameter = 0.5
+                voice.tonguePosition = 0.5
+                voice.tenseness = 0.6
                 voice.nasality = 0.0
             }
         }
@@ -283,9 +288,12 @@ class VoiceConductor: ObservableObject, HasAudioEngine {
             isPlaying = true  // This will trigger the didSet for isPlaying
         }
         
-        
-        
-        
+    
+
+}
+    
+    func applySettings(_ settings: PatchSettings) {
+        // TODO: Implement applying settings to this conductor
     }
 
     func mapToNearestScaleTone(midiNote: Int8) -> Pitch {

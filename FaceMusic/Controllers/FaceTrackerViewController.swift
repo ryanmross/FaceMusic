@@ -30,9 +30,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     var selectedVirtualContent: VirtualContentType! = .texture
     
     
-    
-    private var conductor = VoiceConductor()
-    
+    // loads the default VocalTractConductor(), but will be overwritten later with loadPatchByID()
+    private var conductor: VoiceConductorProtocol = VocalTractConductor()
     
     
     override func viewDidLoad() {
@@ -70,20 +69,82 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         musicStatsManager = StatsWindowManager(stackView: statsStackView, title: "Music Debugging")
         
         // Setup settings button
-        createSettingsButton()
+        createButtons()
     }
   
     
-    private func createSettingsButton() {
+    private func createButtons() {
+        // Create buttons with SF Symbols and consistent tint
         let gearButton = UIButton(type: .system)
-        gearButton.setTitle("⚙️", for: .normal)
-        gearButton.frame = CGRect(x: view.frame.width - 60, y: view.frame.height - 60, width: 40, height: 40)
+        gearButton.setImage(UIImage(systemName: "gearshape.fill"), for: .normal)
+        gearButton.tintColor = .white
+        gearButton.translatesAutoresizingMaskIntoConstraints = false
         gearButton.addTarget(self, action: #selector(settingsButtonTapped), for: .touchUpInside)
-        view.addSubview(gearButton)
+
+        let folderButton = UIButton(type: .system)
+        folderButton.setImage(UIImage(systemName: "folder.fill"), for: .normal)
+        folderButton.tintColor = .white
+        folderButton.translatesAutoresizingMaskIntoConstraints = false
+        folderButton.addTarget(self, action: #selector(openPatchTapped), for: .touchUpInside)
+
+        let plusButton = UIButton(type: .system)
+        plusButton.setImage(UIImage(systemName: "plus.circle.fill"), for: .normal)
+        plusButton.tintColor = .white
+        plusButton.translatesAutoresizingMaskIntoConstraints = false
+        plusButton.addTarget(self, action: #selector(newPatchTapped), for: .touchUpInside)
+
+        // Stack the buttons vertically, plus at top, then folder, then gear at bottom
+        let buttonStack = UIStackView(arrangedSubviews: [plusButton, folderButton, gearButton])
+        buttonStack.axis = .vertical
+        buttonStack.alignment = .center
+        buttonStack.spacing = 10
+        buttonStack.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(buttonStack)
+
+        // Constraints: align to lower right (safe area), plus at top, gear at bottom
+        NSLayoutConstraint.activate([
+            buttonStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            buttonStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+        ])
+        // Set fixed size for all buttons
+        [gearButton, folderButton, plusButton].forEach { btn in
+            btn.widthAnchor.constraint(equalToConstant: 40).isActive = true
+            btn.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        }
     }
     
     @objc private func settingsButtonTapped() {
         displaySettingsPopup()
+    }
+    
+    @objc private func newPatchTapped() {
+        // Implementation for newPatch action
+    }
+    
+    @objc private func openPatchTapped() {
+        let patchListVC = PatchListViewController()
+        patchListVC.onPatchSelected = { [weak self] patchID in
+            self?.loadPatchByID(patchID)
+        }
+        let nav = UINavigationController(rootViewController: patchListVC)
+        present(nav, animated: true)
+    }
+    
+    // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
+    // initializes it, applies the settings, and assigns it to self.conductor.
+    func loadPatchByID(_ id: Int) {
+        guard let settings = PatchManager.shared.load(forID: id) else {
+            print("Patch with ID \(id) not found.")
+            return
+        }
+
+        let selectedID = settings.activeVoiceID
+        let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
+
+        let newConductor = conductorType.init()
+        newConductor.applySettings(settings)
+
+        self.conductor = newConductor
     }
     
     private func displaySettingsPopup() {
@@ -129,7 +190,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         resetTracking()
         // Disable the idle timer and reset AR tracking.
         
-        conductor.resumeAudio()
+        conductor.startEngine()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -139,7 +200,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.session.pause()
         
         print("viewWillDisappear")
-        conductor.pauseAudio()
+        conductor.stopEngine()
     }
     
     
@@ -176,13 +237,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
         print("SessionWasInterrupted")
-        conductor.pauseAudio()
+        conductor.stopEngine()
     }
     
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         print("SessionInterruptionEnded")
-        conductor.resumeAudio()
+        conductor.startEngine()
         //resetTracking()
     }
     
@@ -219,11 +280,12 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         
         // Conductor Start
         
-        conductor.start()
+        conductor.startEngine()
         print("Conductor: Start")
         
-        conductor.isPlaying = true
-        print("Conductor: isPlaying = true")
+        // removed this, not sure if we need it
+        //conductor.isPlaying = true
+        //print("Conductor: isPlaying = true")
         
         
         // If this is the first time with this anchor, get the controller to create content.
@@ -248,7 +310,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         let faceData = faceDataBrain.processFaceData(faceAnchor)
         
         // Update Conductor with new face data
-        conductor.updateWithNewData(with: faceData)
+        conductor.updateWithFaceData(faceData)
         
         // Update stats
         faceStatsManager.updateFaceStats(with: faceData)

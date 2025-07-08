@@ -25,11 +25,11 @@ enum AudioGenerationParameter: String, CaseIterable {
     var metadata: AudioGenerationParameterMetadata {
         switch self {
         case .pitch:
-            return AudioGenerationParameterMetadata(fromLower: -1.0, fromUpper: 0.4, toLower: 35.0, toUpper: 100.0)
+            return AudioGenerationParameterMetadata(fromLower: -1.0, fromUpper: 0.4, toLower: 30.0, toUpper: 70.0)
         case .jawOpen:
-            return AudioGenerationParameterMetadata(fromLower: 0.0, fromUpper: 1.0, toLower: 1.0, toUpper: 0.0)
-        case .mouthClose:
             return AudioGenerationParameterMetadata(fromLower: 0.0, fromUpper: 1.0, toLower: 0.0, toUpper: 1.0)
+        case .mouthClose:
+            return AudioGenerationParameterMetadata(fromLower: 0.0, fromUpper: 1.0, toLower: 1.0, toUpper: 0.0)
         case .mouthFunnel:
             return AudioGenerationParameterMetadata(fromLower: 0.0, fromUpper: 1.0, toLower: 0.0, toUpper: 1.0)
         }

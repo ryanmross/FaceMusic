@@ -1,5 +1,5 @@
 {
-  "originHash" : "b1c7edb50cc2ca383dc0fcd8be60d3b64081878174f7d45df888ffd23e760192",
+  "originHash" : "1c88c15f1585b8095879ad898caf6e693e861690415e8a107951e00da9a8ee28",
   "pins" : [
     {
       "identity" : "audiokit",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AudioKit/AudioKitEX",
       "state" : {
-        "revision" : "cb1a1276978ffc08e00d4774c0617aa8a58a17c4",
-        "version" : "5.6.1"
+        "revision" : "23e8e3bffd9fbc1dffa72f1d47c7f714dd777288",
+        "version" : "5.6.2"
       }
     },
     {
@@ -35,15 +35,6 @@
       "state" : {
         "revision" : "ce9ecb92eb5c6b47583c58ce4de20ce6fe9aae5d",
         "version" : "1.6.0"
-      }
-    },
-    {
-      "identity" : "soundpipeaudiokit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AudioKit/SoundpipeAudioKit.git",
-      "state" : {
-        "revision" : "ee7d9542078ae48b24744a67c0350a12f9de354b",
-        "version" : "5.6.1"
       }
     },
     {

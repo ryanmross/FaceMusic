@@ -4,7 +4,7 @@ import SwiftEntryKit
 
 class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     
-    var conductor: VoiceConductor?
+    var conductor: VoiceConductorProtocol?
     let appSettings = AppSettings()
     
     var keyPicker: UIPickerView!

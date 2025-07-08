@@ -1,0 +1,44 @@
+//
+//  VoiceConductorProtocol.swift
+//  FaceMusic
+//
+//  Created by Ryan Ross on 7/8/25.
+//
+
+
+import Foundation
+import Tonic
+
+protocol VoiceConductorProtocol: AnyObject {
+    /// A unique identifier for this voice conductor
+    static var id: String { get }
+
+    /// A display name for UI
+    static var displayName: String { get }
+
+    var key: Key { get set }
+    //var scale: Scale { get set }
+    var numOfVoices: Int8 { get set }
+    var chordType: ChordType { get set }
+    
+    /// Required initializer
+    init()
+
+    /// Apply settings from a patch
+    func applySettings(_ settings: PatchSettings)
+
+    /// Start the audio engine or playback
+    func startEngine()
+
+    /// Stop the audio engine or playback
+    func stopEngine()
+
+    /// Update the conductor with face data
+    func updateWithFaceData(_ data: FaceData)
+
+    /// Return audio stats string
+    func returnAudioStats() -> String
+
+    /// Return music stats string
+    func returnMusicStats() -> String
+}

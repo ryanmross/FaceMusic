@@ -10,7 +10,7 @@ class HarmonyMaker {
         // Ensure at least one voice is requested
         guard numOfVoices > 0 else { return [] }
         
-        print("voiceChord called, with key: \(key.root) chordType: \(chordType.description) currentPitch: \(currentPitch.midiNoteNumber) numOfVoices: \(numOfVoices)")
+        //print("voiceChord called, with key: \(key.root) chordType: \(chordType.description) currentPitch: \(currentPitch.midiNoteNumber) numOfVoices: \(numOfVoices)")
         
         let chord = Chord(key.root, type: chordType)
         

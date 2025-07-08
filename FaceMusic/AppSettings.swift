@@ -22,6 +22,7 @@ class AppSettings {
     let scales: [(string: String, scale: Scale, chordType: ChordType)] = [
         ("Major", .major, .major), ("Minor", .minor, .minor), ("Diminished", .wholeDiminished, .dim7), ("Half-Diminished", .halfDiminished, .halfDim7), ("Whole Tone", .leadingWholeTone, .aug)
     ]
+     
     
     let lowNoteThreshold: Int = 30 // Minimum MIDI note number to include non-root pitches
     
@@ -29,7 +30,7 @@ class AppSettings {
     // Use the enum as the key
     var interpolationBounds: [ParametersForAudioGeneration: (fromLower: Float, fromUpper: Float, toLower: Float, toUpper: Float)] = [
         .pitch: (-1.0, 0.4, 35.0, 90.0),
-        .jawOpen: (0.0, 1.0, 1.0, 0.0),
+        .jawOpen: (0.0, 1.0, 0.0, 1.0),
         .mouthClose: (0.0, 1.0, 0.0, 1.0),
         .mouthFunnel: (0.0, 1.0, 0.0, 1.0)
     ]

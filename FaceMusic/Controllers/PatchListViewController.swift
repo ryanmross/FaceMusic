@@ -20,7 +20,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     
     private let tableView = UITableView()
     
-    var onPatchSelected: ((Int) -> Void)?
+    var onPatchSelected: ((Int, PatchSettings?) -> Void)?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -63,7 +63,11 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let id = patchIDs[indexPath.row]
         let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "PatchCell")
-        cell.textLabel?.text = "Patch \(id)"
+        if let settings = patchManager.load(forID: id) {
+            cell.textLabel?.text = settings.name
+        } else {
+            cell.textLabel?.text = "Patch \(id)"
+        }
         cell.detailTextLabel?.text = "Tap to load"
         return cell
     }
@@ -72,17 +76,46 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let id = patchIDs[indexPath.row]
+        let settings = patchManager.load(forID: id)
         dismiss(animated: true) {
-            self.onPatchSelected?(id)
+            self.onPatchSelected?(id, settings)
         }
     }
     
-    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            let id = patchIDs[indexPath.row]
-            patchManager.deletePatch(forID: id)
-            patchIDs.remove(at: indexPath.row)
+    // Support swipe actions: Delete and Rename
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let id = patchIDs[indexPath.row]
+
+        let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { (_, _, completionHandler) in
+            self.patchManager.deletePatch(forID: id)
+            self.patchIDs.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .automatic)
+            completionHandler(true)
         }
+
+        let renameAction = UIContextualAction(style: .normal, title: "Rename") { (_, _, completionHandler) in
+            let alert = UIAlertController(title: "Rename Patch", message: "Enter a new name.", preferredStyle: .alert)
+            alert.addTextField { textField in
+                textField.placeholder = "Patch Name"
+                if let settings = self.patchManager.load(forID: id) {
+                    textField.text = settings.name
+                }
+            }
+            alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+                if var settings = self.patchManager.load(forID: id) {
+                    settings.name = alert.textFields?.first?.text ?? "Untitled Patch"
+                    self.patchManager.save(settings: settings, forID: id)
+                    tableView.reloadRows(at: [indexPath], with: .automatic)
+                }
+            })
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+            self.present(alert, animated: true)
+            completionHandler(true)
+        }
+
+        renameAction.backgroundColor = .systemBlue
+
+        let configuration = UISwipeActionsConfiguration(actions: [deleteAction, renameAction])
+        return configuration
     }
 }

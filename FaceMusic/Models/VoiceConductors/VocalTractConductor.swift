@@ -1,16 +1,16 @@
 import AudioKit
+import AudioKitEX
+import CAudioKitEX
 import AudioToolbox
 import SoundpipeAudioKit
-import Tonic
 
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
-    //var scale: Tonic.Scale
     
 
     static var id: String = "vocaltract"
     static var displayName: String = "Vocal Tract"
     
-    private var voices: [VocalTract] = []
+    private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []
     
     var faceData: FaceData?
     let engine = AudioEngine()
@@ -18,49 +18,36 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     let appSettings = AppSettings()
     
+    enum AudioState {
+        case stopped
+        case waitingForFaceData
+        case playing
+    }
     
-    var key: Key {
+    var audioState: AudioState = .stopped
+    
+    var key: MusicBrain.NoteName {
        didSet {
-           refreshPitchSet()
-           updateIntervalChordTypes()
+           // No intervalChordTypes update needed
        }
     }
 
-    var chordType: ChordType
+    var chordType: MusicBrain.ChordType
     
-    
-    var intervalChordTypes: [(key: Key, chordType: ChordType)] = []
-    
-    
-    // pitchSet is a PitchSet of what pitches are available in the current key
-    var pitchSet = PitchSet()
-    
-    var currentPitch: Pitch?
+    var currentPitch: Int?
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    @Published var numOfVoices: Int8 = 1 {
+    @Published var numOfVoices: Int = 1 {
         didSet {
-            stopEngine()
-            setupVoices()
-            startEngine()
+            updateVoiceCount()
         }
     }
     
     
-    @Published var isPlaying: Bool = false {
-        didSet {
-            if isPlaying && isReadyToPlay {  // Only start voices when data is ready
-                voices.forEach { $0.start() }
-            } else {
-                voices.forEach { $0.stop() }
-            }
-        }
-    }
+    private var hasFaceData = false  // Flag to track when data is ready
 
-    
-    private var isReadyToPlay = false  // Flag to track when data is ready
-
+    private var latestHarmonies: [Int]? = nil
     
     required init() {
         // get default key from appSettings
@@ -68,131 +55,102 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.chordType = appSettings.defaultChordType
         
         self.harmonyMaker = HarmonyMaker()
-        setupVoices()
+        
         
         // Set the mixer as the output of the audio engine
         engine.output = mixer
         
-        do {
-            try engine.start()
-            print("Audio engine started successfully.")
-        } catch let error as NSError {
-            print("Audio engine failed to start with error: \(error.localizedDescription)")
-        }
-        
-        refreshPitchSet()
-        
-        updateIntervalChordTypes()  // Update intervals and chord types at startup
+
         self.currentPitch = nil
+        
+        updateVoiceCount()
     }
     
-    private func setupVoices() {
-        
-        print("SETUP VOICES.  numOfVoices: \(numOfVoices)")
-        // Remove existing inputs from the mixer
-        voices.forEach { mixer.removeInput($0) }
-        voices.removeAll()
-        
-        // Create the new set of voices
-        for _ in 0..<numOfVoices {
-            let voc = VocalTract()
-            mixer.addInput(voc)
-            voices.append(voc)
-        }
-    }
-    
-    func refreshPitchSet() {
-        print("**REFRESH PITCH SET")
-        pitchSet = PitchSet() // Initialize the PitchSet here
-        
-        for midiNote in 0...127 { // MIDI note range
-            let pitch = Pitch(intValue: midiNote)
-            if pitch.existsNaturally(in: self.key) {
-                pitchSet.add(pitch)
+    private func updateVoiceCount() {
+        print("Update voice count with numOfVoices: \(numOfVoices)")
+        let currentCount = voiceBundles.count
+        let desiredCount = numOfVoices
+
+        if currentCount < desiredCount {
+            for _ in currentCount..<desiredCount {
+                let voc = VocalTract()
+                let fader = Fader(voc, gain: 0.0)
+                mixer.addInput(fader)
+                voiceBundles.append((voice: voc, fader: fader))
+                if audioState == .playing {
+                    startVoice(fader, voice: voc)
+                }
+                
+            }
+        } else if currentCount > desiredCount {
+            for _ in desiredCount..<currentCount {
+                if let last = voiceBundles.popLast() {
+                    stopVoice(last.fader, voice: last.voice)
+                    mixer.removeInput(last.fader)
+                }
             }
         }
+    }
+
+    private func startVoice(_ fader: Fader, voice: VocalTract) {
+        fader.gain = 0.0
+        print("startVoice...")
+        voice.start()
+        let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
+        fader.automateGain(events: [fadeEvent])
+    }
+
+    private func stopVoice(_ fader: Fader, voice: VocalTract) {
+        print("stopVoice...")
+        let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
+        fader.automateGain(events: [fadeEvent])
+        voice.stop()
+        
     }
     
     func updateIntervalChordTypes() {
-        
-        // Extract root and intervals from the current scale
-        let root = key.root
-        let scale = key.scale
-        let intervals = scale.intervals
-        
-        // Clear the existing data
-        intervalChordTypes.removeAll()
-        
-        // Loop through each interval in the current scale
-        for (index, interval) in intervals.enumerated() {
-            
-            // Only process intervals at indices 0, 3, and 4
-            // RYAN -- we need to update this functionality as this is a hack to make it work faster at the moment
-            if [0, 3, 4].contains(index) {
-                
-                
-                /*  EDITED THIS OUT FOR NOW
-                // Calculate the new root note for the scale by shifting
-                let newRoot = root.canonicalNote.shiftUp(interval)
-                
-                
-                
-                
-                let newInterval = shiftArray(intervals, by: index)
-                let newScale = Scale(intervals: intervals, description: "Scale shifted by \(index)")
-                
-                var newChordType: ChordType
-                
-                // Assuming appSettings.scales is an array of tuples: [(key: String, value: Scale)]
-                if let foundScale = appSettings.scales.first(where: { $0.scale == newScale }) {
-                    newChordType = foundScale.chordType
-                    // Now newChordType has the ChordType corresponding to the newScale
-                    print("Found ChordType for \(newScale.description): \(newChordType)")
-                } else {
-                    newChordType = ChordType.major
-                    print("Scale \(newScale.description) not found in appSettings.scales.")
-                }
-                
-                
-                let newKey = Key(root: newRoot!.noteClass, scale: newScale)
-                
-                
-                // Store the new key and its chordType in the intervalChordTypes array
-                intervalChordTypes.append((key: newKey, chordType: newChordType))
-                */
-            } else {
-                // HACK
-                intervalChordTypes.append((key: Key(root: .C, scale: .major), chordType: .major))
-            }
-                
-        }
-        
-        // Debug print
-        print("Updated Interval Chord Types: \(intervalChordTypes.map { "\($0.key.root.letter): \($0.chordType)" })")
+        // Removed: No longer used with MusicBrain types
     }
     
 
-    func stopEngine() {
-        print("**stop engine")
-        isPlaying = false
-        engine.stop()
+    func stopEngine(immediate: Bool = false) {
+
+        audioState = .stopped
+
+        if immediate {
+            
+            // Immediately stop voices and engine, no fade
+            print("**stop engine immediately")
+            voiceBundles.forEach { voiceBundle in
+                voiceBundle.voice.stop()
+            }
+            engine.stop()
+        } else {
+            // Fade out voices first
+            print("**stop engine with fadeout")
+            voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.engine.stop()
+            }
+        }
     }
 
     func startEngine() {
         do {
             print("**start engine")
             try engine.start()
-            isPlaying = true
+            audioState = .waitingForFaceData
         } catch {
             print("Error starting audio engine: \(error)")
         }
     }
     
     func updateWithFaceData(_ faceData: FaceData) {
+        // this gets called when we get new AR data from the face
         
         self.faceData = faceData
         
-        var harmonies: [Pitch]
+        var harmonies: [Int]
         
         // grab AudioGenerationParameters from its file along with the interpolation bounds (tweak in AudioGenerationParameterMetadata file to adjust)
         var interpolatedValues: [AudioGenerationParameter: Float] = [:]
@@ -212,8 +170,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         }
         
         let interpolatedPitchValue = interpolatedValues[.pitch] ?? 0.0
-        let clampedInterpolatedPitch = min(max(interpolatedPitchValue, Float(Int8.min)), Float(Int8.max))
-        let interpolatedPitch: Int8 = Int8(clampedInterpolatedPitch)
+        let clampedInterpolatedPitch = min(max(interpolatedPitchValue, Float(Int.min)), Float(Int.max))
+        let interpolatedPitch: Int = Int(clampedInterpolatedPitch)
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
@@ -222,51 +180,34 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
         
         // our current pitch
-        currentPitch = self.mapToNearestScaleTone(midiNote: interpolatedPitch)
+        let (quantizedMidiNote, offset) = MusicBrain.shared.nearestQuantizedNote(for: interpolatedPitch)
+        currentPitch = quantizedMidiNote // or store separately
         
         guard let currentPitch = currentPitch else { return }
 
-        /*
-         harmonies = harmonyMaker.voiceChord(key: key, chordType: chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
-        
-         */
-         
-        if faceData.horizPosition == .left {
-            // facing left
-            
-            let newKeyAndChordType = intervalChordTypes[4]
-            print("**Facing Left: Setting up harmonies with key: \(key.root) and chordType \(chordType.description)")
-            harmonies = harmonyMaker.voiceChord(key: newKeyAndChordType.key, chordType: newKeyAndChordType.chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
+        // Use harmonyMaker with current key, no chordType argument
+        harmonies = harmonyMaker.voiceChord(currentPitch: currentPitch, numOfVoices: numOfVoices)
 
-            //harmonies = chordMaker(inputNote: scaledNote, key: 7, scaleQuality: "major", numberOfVoices: self.voices.count)
-        } else if faceData.horizPosition == .right {
-            // facing right
-
-            
-
-            let newKeyAndChordType = intervalChordTypes[3]
-            
-            print("**Facing Right: Setting up harmonies with key: \(key.root) and chordType \(chordType.description)")
-
-            
-            harmonies = harmonyMaker.voiceChord(key: newKeyAndChordType.key, chordType: newKeyAndChordType.chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
-
-            //harmonies = chordMaker(inputNote: scaledNote, key: 5, scaleQuality: "major", numberOfVoices: self.voices.count)
-        } else {
-            // facing center
-            //harmonies = chordMaker(inputNote: scaledNote, key: 0, scaleQuality: "major", numberOfVoices: self.voices.count)
-            harmonies = harmonyMaker.voiceChord(key: key, chordType: chordType, currentPitch: currentPitch, numOfVoices: numOfVoices)
-
+        // Ensure lead note is first
+        if let index = harmonies.firstIndex(of: currentPitch) {
+            harmonies.remove(at: index)
         }
+        harmonies.insert(currentPitch, at: 0)
+
+        // Store harmonies for later use in returnMusicStats()
+        latestHarmonies = harmonies
+
+        // if faceData.horizPosition == .left {
+        
         
         while harmonies.count < numOfVoices {
             harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
         }
         
         for (index, harmony) in harmonies.enumerated() {
-            if index < voices.count {
-                let voice = voices[index]
-                voice.frequency = midiNoteToFrequency(harmony.midiNoteNumber)
+            if index < voiceBundles.count {
+                let voice = voiceBundles[index].voice
+                voice.frequency = midiNoteToFrequency(harmony)
                 voice.jawOpen = interpolatedJawOpen
                 voice.lipShape = interpolatedMouthClose
                 voice.tongueDiameter = 0.5
@@ -276,16 +217,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             }
         }
         
-
-        
-
-        
-        
-        // Ensure the voices are ready to start only when we receive the first pitch
-        if !isReadyToPlay {
-            isReadyToPlay = true
-            // Start the audio playback once data is ready
-            isPlaying = true  // This will trigger the didSet for isPlaying
+        if audioState == .waitingForFaceData {
+            audioState = .playing
+            voiceBundles.forEach { voiceBundle in
+                startVoice(voiceBundle.fader, voice: voiceBundle.voice)
+            }
         }
         
     
@@ -293,98 +229,55 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 }
     
     func applySettings(_ settings: PatchSettings) {
-        // TODO: Implement applying settings to this conductor
-    }
-
-    func mapToNearestScaleTone(midiNote: Int8) -> Pitch {
-        //print("midiNote: \(midiNote)")
-        
-        let inputPitch = Pitch(intValue: Int(midiNote))
-        var closestPitch: Pitch? = nil
-        var smallestDifference = Int.max
-
-        // Use BitSetAdapter's forEach to iterate only over the active pitches in the pitchSet
-        pitchSet.forEach { pitch in
-            let difference: Int = Int(abs(pitch.midiNoteNumber - inputPitch.midiNoteNumber))
-            
-            // Update the closest pitch if a smaller difference is found
-            if difference < smallestDifference {
-                smallestDifference = difference
-                closestPitch = pitch
-            }
-        }
-        
-        guard let validClosestPitch = closestPitch else {
-            print("No matching pitch found in pitchSet.")
-            return inputPitch  // Return the original midiNote if no closest pitch was found
-        }
-        
-        //print("Closest Pitch: \(validClosestPitch.midiNoteNumber)")
-       
-        return validClosestPitch
+        // Implement applying settings to this conductor
+        self.key = settings.key
+        self.chordType = settings.chordType
     }
 
     
-    func midiNoteToFrequency(_ midiNote: Int8) -> Float {
+    func midiNoteToFrequency(_ midiNote: Int) -> Float {
         return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
     }
   
     func returnAudioStats() -> String {
-        //print("Voices: \(voices)")
-        return "Frequency: \(String(describing: voices[0].frequency)) \nisPlaying: \(String(describing: isPlaying)) \n"
-        
+        var result = "audioState: \(audioState)"
+
+        for (index, bundle) in voiceBundles.enumerated() {
+            result += "\nVoice \(index + 1): Frequency: \(bundle.voice.frequency)"
+        }
+
+        return result
     }
     
     func returnMusicStats() -> String {
+        guard let harmonies = latestHarmonies, !harmonies.isEmpty else {
+            return "Pitch data is unavailable."
+        }
         
-        // Safely unwrap the optional currentPitch
         guard let unwrappedPitch = currentPitch else {
             return "Pitch data is unavailable."
         }
 
-        // Create a Note instance with the unwrapped pitch
-        let note = Note(pitch: unwrappedPitch, key: key)
+        let noteInOctave = unwrappedPitch % 12
+        let octave = unwrappedPitch / 12 - 1 // Middle C = C4
 
-        // Print debug information
-        //print("Key: \(key.root), Note: \(note.letter)\(note.accidental)\(note.octave)")
-        
-        return String("Key: \(key.root) \(key.scale.description), Note: \(note.letter)\(note.accidental)\(note.octave)")
-        
+        let noteName = MusicBrain.NoteName.allCases[noteInOctave].displayName
+
+        var result = "\(noteName)\(octave) (MIDI \(unwrappedPitch))"
+
+        let harmonyNotesOnly = harmonies.dropFirst()
+        if numOfVoices > 1 && !harmonyNotesOnly.isEmpty {
+            for harmonyNote in harmonyNotesOnly {
+                let harmonyNoteInOctave = harmonyNote % 12
+                let harmonyOctave = harmonyNote / 12 - 1
+                let harmonyNoteName = MusicBrain.NoteName.allCases[harmonyNoteInOctave].displayName
+                result += "\n\(harmonyNoteName)\(harmonyOctave) (MIDI \(harmonyNote))"
+            }
+        }
+
+        return result
     }
     
     
    
 }
-
-
-
-/*  CODE FOR FINDING NEW KEY
- //index of what inverval we want to shift by
- let scaleNumber = 4
- 
- let root = key.root
- let scale = key.scale
- let intervals = scale.intervals
- 
- // choose new note and account for arrays starting at 0
- let newRoot = root.canonicalNote.shiftUp(intervals[scaleNumber + 1])
- 
- let newIntervals = shiftArray(intervals, by: scaleNumber)
- let newScale = Scale(intervals: intervals, description: "Scale shifted by \(scaleNumber)")
- 
- var newChordType: ChordType
- 
- // Assuming appSettings.scales is an array of tuples: [(key: String, value: Scale)]
- if let foundScale = appSettings.scales.first(where: { $0.scale == newScale }) {
- newChordType = foundScale.chordType
- // Now newChordType has the ChordType corresponding to the newScale
- print("Found ChordType for \(newScale): \(newChordType)")
- } else {
- newChordType = ChordType.major
- print("Scale \(newScale) not found in appSettings.scales.")
- }
- 
- 
- let newKey = Key(root: newRoot!.noteClass, scale: newScale)
- 
- */

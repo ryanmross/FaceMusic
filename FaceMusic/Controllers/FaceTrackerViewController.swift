@@ -118,14 +118,52 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     }
     
     @objc private func newPatchTapped() {
-        // Implementation for newPatch action
+        AlertHelper.promptToSavePatch(
+            presenter: self,
+            saveHandler: { [weak self] patchName in
+                guard let self = self else { return }
+                let currentSettings = PatchSettings(
+                    name: patchName ?? "Untitled Patch",
+                    key: self.conductor.key,
+                    chordType: self.conductor.chordType,
+                    numVoices: self.conductor.numOfVoices,
+                    activeVoiceID: type(of: self.conductor).id
+                )
+                let newID = PatchManager.shared.generateNewPatchID()
+                PatchManager.shared.save(settings: currentSettings, forID: newID)
+                self.createAndLoadNewPatch()
+            },
+            skipHandler: { [weak self] in
+                self?.createAndLoadNewPatch()
+            }
+        )
+    }
+
+    private func createAndLoadNewPatch() {
+        let defaultSettings = PatchSettings.default()
+        let newConductor = VocalTractConductor()
+        newConductor.applySettings(defaultSettings)
+        self.conductor = newConductor
     }
     
     @objc private func openPatchTapped() {
         let patchListVC = PatchListViewController()
-        patchListVC.onPatchSelected = { [weak self] patchID in
-            self?.loadPatchByID(patchID)
+        patchListVC.onPatchSelected = { [weak self] patchID, settings in
+            guard let self = self else { return }
+
+            guard let settings = settings else {
+                print("Could not load settings for patch ID \(patchID)")
+                return
+            }
+
+            let selectedID = settings.activeVoiceID
+            let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
+            let newConductor = conductorType.init()
+            newConductor.applySettings(settings)
+
+            self.conductor = newConductor
         }
+
         let nav = UINavigationController(rootViewController: patchListVC)
         present(nav, animated: true)
     }
@@ -200,7 +238,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.session.pause()
         
         print("viewWillDisappear")
-        conductor.stopEngine()
+        conductor.stopEngine(immediate: false)
     }
     
     
@@ -237,9 +275,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
         print("SessionWasInterrupted")
-        conductor.stopEngine()
+        conductor.stopEngine(immediate: true)
     }
-    
+        
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         print("SessionInterruptionEnded")
@@ -277,17 +315,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
     func renderer(_ renderer: any SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
         guard let faceAnchor = anchor as? ARFaceAnchor else { return }
         
-        
-        // Conductor Start
-        
-        conductor.startEngine()
-        print("Conductor: Start")
-        
-        // removed this, not sure if we need it
-        //conductor.isPlaying = true
-        //print("Conductor: isPlaying = true")
-        
-        
+
         // If this is the first time with this anchor, get the controller to create content.
         // Otherwise (switching content), will change content when setting `selectedVirtualContent`.
         DispatchQueue.main.async {

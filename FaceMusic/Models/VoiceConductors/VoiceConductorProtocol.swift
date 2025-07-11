@@ -7,7 +7,6 @@
 
 
 import Foundation
-import Tonic
 
 protocol VoiceConductorProtocol: AnyObject {
     /// A unique identifier for this voice conductor
@@ -16,10 +15,10 @@ protocol VoiceConductorProtocol: AnyObject {
     /// A display name for UI
     static var displayName: String { get }
 
-    var key: Key { get set }
+    var key: MusicBrain.NoteName { get set }
     //var scale: Scale { get set }
-    var numOfVoices: Int8 { get set }
-    var chordType: ChordType { get set }
+    var numOfVoices: Int { get set }
+    var chordType: MusicBrain.ChordType { get set }
     
     /// Required initializer
     init()
@@ -31,7 +30,7 @@ protocol VoiceConductorProtocol: AnyObject {
     func startEngine()
 
     /// Stop the audio engine or playback
-    func stopEngine()
+    func stopEngine(immediate: Bool)
 
     /// Update the conductor with face data
     func updateWithFaceData(_ data: FaceData)

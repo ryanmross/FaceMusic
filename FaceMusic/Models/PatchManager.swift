@@ -10,17 +10,21 @@ import Foundation
 /// Simple PatchSettings model to store user settings for each patch.
 /// Make sure this matches your actual PatchSettings definition.
 struct PatchSettings: Codable {
-    var lockChromatic: Bool
-    var basePitch: Float
-    var pitchRange: Int
-    var key: String
-    var scale: String
+    
+    var name: String?
+    
+//    var lockChromatic: Bool
+//    var basePitch: Float
+//    var pitchRange: Int
+    
+    var key: MusicBrain.NoteName
+    var chordType: MusicBrain.ChordType
+    
     var numVoices: Int
-    var vibrato: Bool
-    var alternateChords: [String]
-    var brightness: Float
-    var lowPass: Float
-    var glissandoSpeed: Float
+    //var vibrato: Bool
+    //var alternateChords: [String]
+
+    //var glissandoSpeed: Float
     var activeVoiceID: String
 }
 
@@ -76,5 +80,18 @@ class PatchManager {
     // Generate a new unique ID (increments highest existing ID)
     func generateNewPatchID() -> Int {
         return (patches.keys.max() ?? 0) + 1
+    }
+    
+}
+
+extension PatchSettings {
+    static func `default`() -> PatchSettings {
+        return PatchSettings(
+            name: "Untitled Patch",
+            key: .C,
+            chordType: .major,
+            numVoices: 1,
+            activeVoiceID: "VocalTractConductor"
+        )
     }
 }

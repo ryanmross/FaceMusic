@@ -1,5 +1,4 @@
 import UIKit
-import Tonic
 import SwiftEntryKit
 
 class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
@@ -8,12 +7,13 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     let appSettings = AppSettings()
     
     var keyPicker: UIPickerView!
-    var scalePicker: UIPickerView!
+    var chordTypePicker: UIPickerView!
     var voicesPicker: UIPickerView!
     var applyButton: UIButton!
     var closeButton: UIButton!
     
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
+    let chordTypes = MusicBrain.ChordType.allCases
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,18 +28,18 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         keyPicker.dataSource = self
         keyPicker.tag = 0
         keyPicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-        let keyPickerWidth: CGFloat = 80
+        let keyPickerWidth: CGFloat = 110
         keyPicker.frame = CGRect(x: 50, y: 100, width: keyPickerWidth, height: 150)
         
-        // Set up the scale picker
-        scalePicker = UIPickerView()
-        scalePicker.delegate = self
-        scalePicker.dataSource = self
-        scalePicker.tag = 1
-        scalePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+        // Set up the chord type picker
+        chordTypePicker = UIPickerView()
+        chordTypePicker.delegate = self
+        chordTypePicker.dataSource = self
+        chordTypePicker.tag = 1
+        chordTypePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
         
-        // Create a horizontal stack view for key and scale pickers
-        let stackView = UIStackView(arrangedSubviews: [keyPicker, scalePicker])
+        // Create a horizontal stack view for key and chord type pickers
+        let stackView = UIStackView(arrangedSubviews: [keyPicker, chordTypePicker])
         stackView.axis = .horizontal
         stackView.spacing = 10
         stackView.alignment = .center
@@ -54,12 +54,12 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
             stackView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -40)
         ])
         
-        // Set constraints for key and scale pickers
+        // Set constraints for key and chord type pickers
         keyPicker.translatesAutoresizingMaskIntoConstraints = false
-        scalePicker.translatesAutoresizingMaskIntoConstraints = false
+        chordTypePicker.translatesAutoresizingMaskIntoConstraints = false
+        
         NSLayoutConstraint.activate([
-            keyPicker.widthAnchor.constraint(equalToConstant: keyPickerWidth),
-            scalePicker.widthAnchor.constraint(equalTo: stackView.widthAnchor, multiplier: 0.7)
+            keyPicker.widthAnchor.constraint(equalToConstant: keyPickerWidth)
         ])
         
         // Set up the voices picker and label
@@ -129,23 +129,24 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     }
     
     private func configurePickersWithConductorSettings() {
-        guard let conductor = conductor else { return }
+        // Use the current key from MusicBrain
+        let currentKey = MusicBrain.shared.currentKey
 
-        // Set the default key and scale
-        let currentKey = conductor.key.root
-        let currentScale = conductor.key.scale
-
-        if let keyIndex = appSettings.keyOptions.firstIndex(where: { $0.key == currentKey }) {
+        if let keyIndex = MusicBrain.NoteName.allCases.firstIndex(of: currentKey) {
             keyPicker.selectRow(keyIndex, inComponent: 0, animated: false)
         }
         
-        if let scaleIndex = appSettings.scales.firstIndex(where: { $0.scale == currentScale }) {
-            scalePicker.selectRow(scaleIndex, inComponent: 0, animated: false)
+        // Use the current chord type from MusicBrain
+        let currentChordType = MusicBrain.shared.currentChordType
+        if let chordIndex = chordTypes.firstIndex(of: currentChordType) {
+            chordTypePicker.selectRow(chordIndex, inComponent: 0, animated: false)
         }
-        
-        // Set the default number of voices
-        selectedNumOfVoices = Int(conductor.numOfVoices)
-        voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false) // Adjust for 0-indexing
+
+        // Number of voices from conductor if you want:
+        if let conductor = conductor {
+            selectedNumOfVoices = Int(conductor.numOfVoices)
+            voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
+        }
     }
     
     // MARK: - UIPickerViewDataSource Methods
@@ -155,9 +156,9 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
 
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
         if pickerView.tag == 0 { // Key picker
-            return appSettings.keyOptions.count
-        } else if pickerView.tag == 1 { // Scale picker
-            return appSettings.scales.count
+            return MusicBrain.NoteName.allCases.count
+        } else if pickerView.tag == 1 { // Chord Type picker
+            return chordTypes.count
         } else if pickerView.tag == 2 { // Number of Voices picker
             return 8 // Number of voices options (1-8)
         }
@@ -167,9 +168,9 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     // MARK: - UIPickerViewDelegate Methods
     func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
         if pickerView.tag == 0 { // Key picker
-            return appSettings.keyOptions[row].string
-        } else if pickerView.tag == 1 { // Scale picker
-            return appSettings.scales[row].string
+            return MusicBrain.NoteName.allCases[row].displayName
+        } else if pickerView.tag == 1 { // Chord Type picker
+            return chordTypes[row].rawValue
         } else if pickerView.tag == 2 { // Number of Voices picker
             return "\(row + 1)" // Return the numbers 1-8
         }
@@ -184,22 +185,19 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     }
     
     @objc private func applyChanges() {
-        // Get selected key and scale from the picker views
-        let selectedKey = appSettings.keyOptions[keyPicker.selectedRow(inComponent: 0)].key
-        let selectedScale = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].scale
-        
-        let chordType = appSettings.scales[scalePicker.selectedRow(inComponent: 0)].chordType
-        
-        let newKey = Key(root: selectedKey, scale: selectedScale)
-        print("Changing key to \(newKey.root) \(newKey.scale.description) with chord: \(chordType)")
-        
+        let selectedKey = MusicBrain.NoteName.allCases[keyPicker.selectedRow(inComponent: 0)]
+        let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
+
+        print("Changing key to \(selectedKey.displayName) with chord type: \(selectedChordType)")
+
         if let conductor = conductor {
-            conductor.key = newKey
-            conductor.numOfVoices = Int8(selectedNumOfVoices) // Update the number of voices only on Apply
-            conductor.chordType = chordType
+            conductor.numOfVoices = Int(selectedNumOfVoices)
         }
+
+        MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+
+        print("Selected chord type from picker: \(selectedChordType)")
         
-        // Optionally, dismiss the settings view
         self.dismiss(animated: true, completion: nil)
     }
     

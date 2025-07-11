@@ -1,35 +1,34 @@
-
 import Foundation
-import Tonic
 
 
 class AppSettings {
 
     // MARK: - Settings
 
-    let defaultKey: Key = Key.C
-    let defaultChordType: ChordType = .major
+    let defaultKey: MusicBrain.NoteName = .C
+    let defaultChordType: MusicBrain.ChordType = .major
     
     
     // Define keys as an array of tuples
-    let keyOptions: [(string: String, key: NoteClass)] = [
-       ("Cb", .Cb), ("Gb", .Gb), ("Db", .Db), ("Ab", .Ab), ("Eb", .Eb),
-       ("Bb", .Bb), ("F", .F), ("C", .C), ("G", .G), ("D", .D),
-       ("A", .A), ("E", .E), ("B", .B), ("F#", .Fs), ("C#", .Cs)
+    let keyOptions: [(string: String, key: MusicBrain.NoteName)] = [
+        ("C", .C), ("C#", .CSharp), ("D", .D), ("D#", .DSharp),
+        ("E", .E), ("F", .F), ("F#", .FSharp), ("G", .G),
+        ("G#", .GSharp), ("A", .A), ("A#", .ASharp), ("B", .B)
     ]
 
     // Define scales as an array of tuples
+    /*
     let scales: [(string: String, scale: Scale, chordType: ChordType)] = [
         ("Major", .major, .major), ("Minor", .minor, .minor), ("Diminished", .wholeDiminished, .dim7), ("Half-Diminished", .halfDiminished, .halfDim7), ("Whole Tone", .leadingWholeTone, .aug)
     ]
-     
+    */
     
     let lowNoteThreshold: Int = 30 // Minimum MIDI note number to include non-root pitches
     
     // Define interpolation bounds for different parameters
     // Use the enum as the key
     var interpolationBounds: [ParametersForAudioGeneration: (fromLower: Float, fromUpper: Float, toLower: Float, toUpper: Float)] = [
-        .pitch: (-1.0, 0.4, 35.0, 90.0),
+        .pitch: (-1.0, 0.4, 39.0, 120.0),
         .jawOpen: (0.0, 1.0, 0.0, 1.0),
         .mouthClose: (0.0, 1.0, 0.0, 1.0),
         .mouthFunnel: (0.0, 1.0, 0.0, 1.0)

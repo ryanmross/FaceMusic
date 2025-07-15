@@ -286,8 +286,7 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
 
         print("Changing key to \(selectedKey.displayName) with chord type: \(selectedChordType)")
-        
-        
+
         let lowestNote = lowestNotePicker.selectedRow(inComponent: 0)
         let highestNote = highestNotePicker.selectedRow(inComponent: 0)
 
@@ -297,6 +296,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
             conductor.numOfVoices = Int(selectedNumOfVoices)
             conductor.lowestNote = lowestNote
             conductor.highestNote = highestNote
+
+            conductor.updateVoiceCount()
         }
 
         MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)

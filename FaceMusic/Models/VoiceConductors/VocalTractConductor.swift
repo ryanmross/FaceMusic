@@ -63,12 +63,20 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         updateVoiceCount()
     }
     
-    private func updateVoiceCount() {
+    internal func updateVoiceCount() {
         print("Update voice count with numOfVoices: \(numOfVoices)")
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
 
-        if currentCount < desiredCount {
+        if currentCount == desiredCount {
+            print("Voice count unchanged—refreshing voices")
+            voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
+            for (fader, voice) in voiceBundles.map({ ($0.fader, $0.voice) }) {
+                if audioState == .playing {
+                    startVoice(fader, voice: voice)
+                }
+            }
+        } else if currentCount < desiredCount {
             for _ in currentCount..<desiredCount {
                 let voc = VocalTract()
                 let fader = Fader(voc, gain: 0.0)
@@ -77,9 +85,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 if audioState == .playing {
                     startVoice(fader, voice: voc)
                 }
-                
             }
-        } else if currentCount > desiredCount {
+        } else {
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     stopVoice(last.fader, voice: last.voice)
@@ -228,10 +235,12 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 }
     
     func applySettings(_ settings: PatchSettings) {
+        self.numOfVoices = settings.numOfVoices
         self.chordType = settings.chordType
         self.lowestNote = settings.lowestNote
         self.highestNote = settings.highestNote
         self.currentSettings = settings
+        
     }
 
     

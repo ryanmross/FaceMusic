@@ -16,7 +16,7 @@ protocol VoiceConductorProtocol: AnyObject {
 
     var lowestNote: Int { get set }
     var highestNote: Int { get set }
-    //var scale: Scale { get set }
+
     var numOfVoices: Int { get set }
     var chordType: MusicBrain.ChordType { get set }
     
@@ -34,6 +34,9 @@ protocol VoiceConductorProtocol: AnyObject {
 
     /// Update the conductor with face data
     func updateWithFaceData(_ data: FaceData)
+    
+    /// Update the voice count
+    func updateVoiceCount()
 
     /// Return audio stats string
     func returnAudioStats() -> String

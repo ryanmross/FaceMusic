@@ -6,6 +6,8 @@ import SoundpipeAudioKit
 
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
+    
+    
 
     static var id: String = "vocaltract"
     static var displayName: String = "Vocal Tract"
@@ -37,6 +39,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var lowestNote: Int
     var highestNote: Int
+    var glissandoSpeed: Float
     
     @Published var numOfVoices: Int {
         didSet {
@@ -55,6 +58,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.chordType = defaultSettings.chordType
         self.lowestNote = defaultSettings.lowestNote
         self.highestNote = defaultSettings.highestNote
+        self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
 
@@ -70,12 +74,14 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
         if currentCount == desiredCount {
             print("Voice count unchanged—refreshing voices")
+            /*
             voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
             for (fader, voice) in voiceBundles.map({ ($0.fader, $0.voice) }) {
                 if audioState == .playing {
                     startVoice(fader, voice: voice)
                 }
             }
+             */
         } else if currentCount < desiredCount {
             for _ in currentCount..<desiredCount {
                 let voc = VocalTract()
@@ -213,7 +219,17 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         for (index, harmony) in harmonies.enumerated() {
             if index < voiceBundles.count {
                 let voice = voiceBundles[index].voice
-                voice.frequency = midiNoteToFrequency(harmony)
+                //voice.frequency = midiNoteToFrequency(harmony)
+                
+                let targetFreq = midiNoteToFrequency(harmony)
+                if glissandoSpeed > 0 {
+                    //print ("ramping to \(targetFreq)")
+                    voice.$frequency.ramp(to: targetFreq, duration: Float(glissandoSpeed) / 1000.0)
+                } else {
+                    voice.frequency = targetFreq
+                }
+                
+                
                 voice.jawOpen = interpolatedJawOpen
                 voice.lipShape = interpolatedMouthClose
                 voice.tongueDiameter = 0.5
@@ -239,8 +255,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.chordType = settings.chordType
         self.lowestNote = settings.lowestNote
         self.highestNote = settings.highestNote
+        self.glissandoSpeed = settings.glissandoSpeed
         self.currentSettings = settings
         
+        updateVoiceCount()
     }
 
     

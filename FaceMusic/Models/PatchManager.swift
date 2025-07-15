@@ -10,7 +10,7 @@ import Foundation
 /// Simple PatchSettings model to store user settings for each patch.
 /// Make sure this matches your actual PatchSettings definition.
 struct PatchSettings: Codable {
-    
+    var id: Int
     var name: String?
     
 //    var lockChromatic: Bool
@@ -22,7 +22,7 @@ struct PatchSettings: Codable {
     //var vibrato: Bool
     //var alternateChords: [String]
 
-    //var glissandoSpeed: Float
+    var glissandoSpeed: Float
     
     var lowestNote: Int
     var highestNote: Int
@@ -50,6 +50,7 @@ class PatchManager {
     func save(settings: PatchSettings, forID id: Int) {
         patches[id] = settings
         saveToStorage()
+        lastUsedPatchID = id
     }
     
     // Load a patch by ID
@@ -101,13 +102,30 @@ class PatchManager {
 extension PatchSettings {
     static func `default`() -> PatchSettings {
         return PatchSettings(
+            id: 0,
             name: "Untitled Patch",
             key: .C,
             chordType: .major,
             numOfVoices: 1,
+            glissandoSpeed: 50,
             lowestNote: 30,
             highestNote: 100,
             activeVoiceID: "VocalTractConductor"
         )
     }
 }
+
+    /// Tracks the last used patch ID in UserDefaults.
+    private let lastUsedPatchIDKey = "LastUsedPatchID"
+    var lastUsedPatchID: Int? {
+        get {
+            let val = UserDefaults.standard.object(forKey: lastUsedPatchIDKey)
+            if let intVal = val as? Int {
+                return intVal
+            }
+            return nil
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: lastUsedPatchIDKey)
+        }
+    }

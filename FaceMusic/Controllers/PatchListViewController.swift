@@ -5,7 +5,6 @@
 //  Created by Ryan Ross on 7/8/25.
 //
 
-
 //
 //  PatchListViewController.swift
 //  FaceMusic
@@ -104,7 +103,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
             alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
                 let newName = alert.textFields?.first?.text ?? "Untitled Patch"
                 self.patchManager.renamePatch(id: id, newName: newName)
-                tableView.reloadRows(at: [indexPath], with: .automatic)
+                self.loadPatches()
             })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
             self.present(alert, animated: true)

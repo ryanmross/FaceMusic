@@ -7,6 +7,7 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     
     var conductor: VoiceConductorProtocol?
     let appSettings = AppSettings()
+    var patchSettings: PatchSettings!
     
     var keyPicker: UIPickerView!
     var chordTypePicker: UIPickerView!
@@ -19,8 +20,16 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
     let chordTypes = MusicBrain.ChordType.allCases
     
+    var glissandoSlider: UISlider!
+    var glissandoValueLabel: UILabel!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        if let refreshedSettings = PatchManager.shared.load(forID: patchSettings.id) {
+            patchSettings = refreshedSettings
+            print("PatchSettings: \(patchSettings)")
+        }
         setupUI()
         configurePickersWithConductorSettings()
     }
@@ -177,6 +186,44 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
             applyButton.heightAnchor.constraint(equalToConstant: 44)
         ])
         
+        // Glissando Speed Label
+        let glissandoLabel = UILabel()
+        glissandoLabel.text = "Glissando Speed (ms)"
+        glissandoLabel.textColor = .white
+        glissandoLabel.textAlignment = .center
+        glissandoLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(glissandoLabel)
+
+        // Glissando Value Label
+        glissandoValueLabel = UILabel()
+        glissandoValueLabel.text = "\(Int(patchSettings.glissandoSpeed))"
+        glissandoValueLabel.textColor = .white
+        glissandoValueLabel.textAlignment = .center
+        glissandoValueLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(glissandoValueLabel)
+
+        // Glissando Slider
+        glissandoSlider = UISlider()
+        glissandoSlider.minimumValue = 0
+        glissandoSlider.maximumValue = 500 // 500 ms max
+        glissandoSlider.value = patchSettings.glissandoSpeed
+        glissandoSlider.translatesAutoresizingMaskIntoConstraints = false
+        glissandoSlider.addTarget(self, action: #selector(glissandoSliderChanged), for: .valueChanged)
+        view.addSubview(glissandoSlider)
+
+        // Constraints
+        NSLayoutConstraint.activate([
+            glissandoLabel.topAnchor.constraint(equalTo: applyButton.bottomAnchor, constant: 20),
+            glissandoLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
+            glissandoValueLabel.topAnchor.constraint(equalTo: glissandoLabel.bottomAnchor, constant: 4),
+            glissandoValueLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
+            glissandoSlider.topAnchor.constraint(equalTo: glissandoValueLabel.bottomAnchor, constant: 8),
+            glissandoSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            glissandoSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
+        ])
+        
         // Create and configure the close button (X)
         closeButton = UIButton(type: .system)
         closeButton.setTitle("X", for: .normal)
@@ -292,23 +339,38 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
 
         print("Note range set to \(lowestNote) - \(highestNote)")
 
-        if let conductor = conductor {
-            conductor.numOfVoices = Int(selectedNumOfVoices)
-            conductor.lowestNote = lowestNote
-            conductor.highestNote = highestNote
+        patchSettings.lowestNote = lowestNote
+        patchSettings.highestNote = highestNote
+        patchSettings.numOfVoices = selectedNumOfVoices
+        patchSettings.glissandoSpeed = glissandoSlider.value
+        
+        print("Glissando Speed set to \(patchSettings.glissandoSpeed)")
+        
+        patchSettings.key = selectedKey
+        patchSettings.chordType = selectedChordType
 
-            conductor.updateVoiceCount()
-        }
+        // Save the updated settings
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        
+        // Apply to the conductor in one call
+        conductor?.applySettings(patchSettings)
 
         MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
 
         print("Selected chord type from picker: \(selectedChordType)")
-
+        
+        
+        
         self.dismiss(animated: true, completion: nil)
     }
     
     @objc private func closeSettings() {
         // Dismiss the settings view using SwiftEntryKit's dismiss method
         SwiftEntryKit.dismiss()
+    }
+    
+    @objc private func glissandoSliderChanged() {
+        let intValue = Int(glissandoSlider.value)
+        glissandoValueLabel.text = "\(intValue)"
     }
 }

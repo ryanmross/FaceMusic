@@ -20,6 +20,8 @@ protocol VoiceConductorProtocol: AnyObject {
     var numOfVoices: Int { get set }
     var chordType: MusicBrain.ChordType { get set }
     
+    var glissandoSpeed: Float { get set }
+    
     /// Required initializer
     init()
 

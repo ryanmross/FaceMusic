@@ -125,16 +125,18 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             saveHandler: { [weak self] patchName in
                 guard let self = self else { return }
                 let defaults = PatchSettings.default()
+                let newID = PatchManager.shared.generateNewPatchID()
                 let currentSettings = PatchSettings(
+                    id: newID,
                     name: patchName ?? "Untitled Patch",
                     key: MusicBrain.shared.currentKey,
                     chordType: self.conductor?.chordType ?? defaults.chordType,
                     numOfVoices: self.conductor?.numOfVoices ?? defaults.numOfVoices,
+                    glissandoSpeed: self.conductor?.glissandoSpeed ?? defaults.glissandoSpeed,
                     lowestNote: self.conductor?.lowestNote ?? defaults.lowestNote,
                     highestNote: self.conductor?.highestNote ?? defaults.highestNote,
-                    activeVoiceID: type(of: self.conductor ?? VocalTractConductor()).id,
+                    activeVoiceID: type(of: self.conductor ?? VocalTractConductor()).id
                 )
-                let newID = PatchManager.shared.generateNewPatchID()
                 PatchManager.shared.save(settings: currentSettings, forID: newID)
                 self.createAndLoadNewPatch()
             },
@@ -188,10 +190,15 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         newConductor.applySettings(settings)
 
         self.conductor = newConductor
+        
+        // Save this as the last used patch
+        UserDefaults.standard.set(id, forKey: "LastPatchID")
     }
     
     private func displaySettingsPopup() {
         let settingsViewController = SettingsViewController()
+        
+        settingsViewController.patchSettings = PatchManager.shared.defaultPatchSettings
         
         // Pass the conductor instance to SettingsViewController
         settingsViewController.conductor = self.conductor
@@ -233,9 +240,27 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         resetTracking()
         // Disable the idle timer and reset AR tracking.
         
-        if conductor == nil {
-            createAndLoadNewPatch()
+        let patchManager = PatchManager.shared
+
+        // Check if patches exist
+        if !PatchManager.shared.listPatches().isEmpty {
+            // There are saved patches
+            
+            // Load last-used patch ID from UserDefaults
+            let lastID = UserDefaults.standard.integer(forKey: "LastPatchID")
+            print("Loading last patch ID: \(lastID)")
+            loadPatchByID(lastID)
+        } else {
+            // No patches exist, create a new default patch
+            let defaultSettings = patchManager.defaultPatchSettings
+            let newID = patchManager.generateNewPatchID()
+            patchManager.save(settings: defaultSettings, forID: newID)
+
+            // Save this as the last used patch
+            UserDefaults.standard.set(newID, forKey: "LastPatchID")
+            loadPatchByID(newID)
         }
+
         conductor?.startEngine()
     }
     

@@ -1,5 +1,7 @@
 import UIKit
 import SwiftEntryKit
+import AudioKitEX
+import AudioKitUI
 
 class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     
@@ -11,6 +13,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     var voicesPicker: UIPickerView!
     var applyButton: UIButton!
     var closeButton: UIButton!
+    var lowestNotePicker: UIPickerView!
+    var highestNotePicker: UIPickerView!
     
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
     let chordTypes = MusicBrain.ChordType.allCases
@@ -22,6 +26,71 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
     }
     
     private func setupUI() {
+        // Lowest Note Label
+        let lowestNoteLabel = UILabel()
+        lowestNoteLabel.text = "Lowest Note"
+        lowestNoteLabel.textColor = .white
+        lowestNoteLabel.textAlignment = .center
+        lowestNoteLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Highest Note Label
+        let highestNoteLabel = UILabel()
+        highestNoteLabel.text = "Highest Note"
+        highestNoteLabel.textColor = .white
+        highestNoteLabel.textAlignment = .center
+        highestNoteLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Lowest Note Picker
+        lowestNotePicker = UIPickerView()
+        lowestNotePicker.delegate = self
+        lowestNotePicker.dataSource = self
+        lowestNotePicker.tag = 3
+        lowestNotePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+        lowestNotePicker.translatesAutoresizingMaskIntoConstraints = false
+
+        // Highest Note Picker
+        highestNotePicker = UIPickerView()
+        highestNotePicker.delegate = self
+        highestNotePicker.dataSource = self
+        highestNotePicker.tag = 4
+        highestNotePicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+        highestNotePicker.translatesAutoresizingMaskIntoConstraints = false
+
+        // Stack view containing labels and pickers
+        let lowHighStack = UIStackView()
+        lowHighStack.axis = .horizontal
+        lowHighStack.spacing = 20
+        lowHighStack.alignment = .center
+        lowHighStack.distribution = .fillEqually
+        lowHighStack.translatesAutoresizingMaskIntoConstraints = false
+
+        // Column for lowest note
+        let lowestColumn = UIStackView(arrangedSubviews: [lowestNoteLabel, lowestNotePicker])
+        lowestColumn.axis = .vertical
+        lowestColumn.spacing = 4
+        lowestColumn.alignment = .center
+
+        // Column for highest note
+        let highestColumn = UIStackView(arrangedSubviews: [highestNoteLabel, highestNotePicker])
+        highestColumn.axis = .vertical
+        highestColumn.spacing = 4
+        highestColumn.alignment = .center
+
+        lowHighStack.addArrangedSubview(lowestColumn)
+        lowHighStack.addArrangedSubview(highestColumn)
+
+        view.addSubview(lowHighStack)
+
+        // Constraints for the low-high stack
+        NSLayoutConstraint.activate([
+            lowHighStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            lowHighStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            lowHighStack.heightAnchor.constraint(equalToConstant: 180)
+        ])
+        NSLayoutConstraint.activate([
+            lowHighStack.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, multiplier: 0.9)
+        ])
+
         // Set up the key picker
         keyPicker = UIPickerView()
         keyPicker.delegate = self
@@ -49,7 +118,7 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         // Stack view constraints
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stackView.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: -50),
+            stackView.topAnchor.constraint(equalTo: lowHighStack.bottomAnchor, constant: 10),
             stackView.heightAnchor.constraint(equalToConstant: 150),
             stackView.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -40)
         ])
@@ -146,6 +215,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         if let conductor = conductor {
             selectedNumOfVoices = Int(conductor.numOfVoices)
             voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
+            lowestNotePicker.selectRow(conductor.lowestNote, inComponent: 0, animated: false)
+            highestNotePicker.selectRow(conductor.highestNote, inComponent: 0, animated: false)
         }
     }
     
@@ -161,6 +232,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
             return chordTypes.count
         } else if pickerView.tag == 2 { // Number of Voices picker
             return 8 // Number of voices options (1-8)
+        } else if pickerView.tag == 3 || pickerView.tag == 4 {
+            return 128 // MIDI notes 0–127
         }
         return 0
     }
@@ -173,6 +246,8 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
             return chordTypes[row].rawValue
         } else if pickerView.tag == 2 { // Number of Voices picker
             return "\(row + 1)" // Return the numbers 1-8
+        } else if pickerView.tag == 3 || pickerView.tag == 4 {
+            return MusicBrain.NoteName.nameWithOctave(forMIDINote: row)
         }
         return nil
     }
@@ -181,6 +256,28 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         if pickerView.tag == 2 { // Number of Voices picker
             selectedNumOfVoices = row + 1 // Picker rows are 0-indexed
             print("Selected number of voices: \(selectedNumOfVoices)")
+        } else if pickerView.tag == 3 { // Lowest Note picker
+            let highestSelected = highestNotePicker.selectedRow(inComponent: 0)
+            if row > highestSelected {
+                highestNotePicker.selectRow(row, inComponent: 0, animated: true)
+                flashPicker(highestNotePicker)
+            }
+        } else if pickerView.tag == 4 { // Highest Note picker
+            let lowestSelected = lowestNotePicker.selectedRow(inComponent: 0)
+            if row < lowestSelected {
+                lowestNotePicker.selectRow(row, inComponent: 0, animated: true)
+                flashPicker(lowestNotePicker)
+            }
+        }
+    }
+    
+    private func flashPicker(_ picker: UIPickerView) {
+        UIView.animate(withDuration: 0.2, animations: {
+            picker.backgroundColor = UIColor.systemYellow.withAlphaComponent(0.6)
+        }) { _ in
+            UIView.animate(withDuration: 0.2) {
+                picker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+            }
         }
     }
     
@@ -189,15 +286,23 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
 
         print("Changing key to \(selectedKey.displayName) with chord type: \(selectedChordType)")
+        
+        
+        let lowestNote = lowestNotePicker.selectedRow(inComponent: 0)
+        let highestNote = highestNotePicker.selectedRow(inComponent: 0)
+
+        print("Note range set to \(lowestNote) - \(highestNote)")
 
         if let conductor = conductor {
             conductor.numOfVoices = Int(selectedNumOfVoices)
+            conductor.lowestNote = lowestNote
+            conductor.highestNote = highestNote
         }
 
         MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
 
         print("Selected chord type from picker: \(selectedChordType)")
-        
+
         self.dismiss(animated: true, completion: nil)
     }
     

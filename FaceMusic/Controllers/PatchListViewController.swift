@@ -102,11 +102,9 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
                 }
             }
             alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-                if var settings = self.patchManager.load(forID: id) {
-                    settings.name = alert.textFields?.first?.text ?? "Untitled Patch"
-                    self.patchManager.save(settings: settings, forID: id)
-                    tableView.reloadRows(at: [indexPath], with: .automatic)
-                }
+                let newName = alert.textFields?.first?.text ?? "Untitled Patch"
+                self.patchManager.renamePatch(id: id, newName: newName)
+                tableView.reloadRows(at: [indexPath], with: .automatic)
             })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
             self.present(alert, animated: true)

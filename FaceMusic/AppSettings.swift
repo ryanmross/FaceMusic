@@ -28,7 +28,7 @@ class AppSettings {
     // Define interpolation bounds for different parameters
     // Use the enum as the key
     var interpolationBounds: [ParametersForAudioGeneration: (fromLower: Float, fromUpper: Float, toLower: Float, toUpper: Float)] = [
-        .pitch: (-1.0, 0.4, 39.0, 120.0),
+        //.pitch: (-1.0, 0.4, 39.0, 120.0),
         .jawOpen: (0.0, 1.0, 0.0, 1.0),
         .mouthClose: (0.0, 1.0, 0.0, 1.0),
         .mouthFunnel: (0.0, 1.0, 0.0, 1.0)

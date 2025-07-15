@@ -12,7 +12,7 @@ class HarmonyMaker {
 
         let intervals = MusicBrain.shared.chordIntervals(for: MusicBrain.shared.currentChordType).sorted()
         
-        print("Intervals: \(intervals)")
+        //print("Intervals: \(intervals)")
         
         // Always include the lead note on top
         var harmony: [Int] = [currentPitch]
@@ -21,12 +21,12 @@ class HarmonyMaker {
             return harmony
         }
 
-        print("key.rawValue: \(key.rawValue) key: \(key)")
+        //print("key.rawValue: \(key.rawValue) key: \(key)")
         
         // Compute the root pitch around octave 4
         let rootPitch = key.rawValue + 12 * 4
         
-        print("rootPitch: \(rootPitch)")
+        //print("rootPitch: \(rootPitch)")
 
         var harmoniesBelow: [Int] = []
         var octaveOffset = 0
@@ -53,7 +53,7 @@ class HarmonyMaker {
         harmony.append(lowestRoot)
         harmony.append(contentsOf: harmoniesBelow)
 
-        print("Harmony MIDI notes: \(harmony.sorted(by: >))")
+        //print("Harmony MIDI notes: \(harmony.sorted(by: >))")
         
         return harmony.sorted(by: >)
     }

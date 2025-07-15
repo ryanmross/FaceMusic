@@ -20,6 +20,8 @@
 		8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC213E2C19372B00225D5F /* VirtualContent.swift */; };
 		8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC21402C19373C00225D5F /* TexturedFace.swift */; };
 		8DCEDA602E1DBCD300565677 /* PatchListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCEDA5F2E1DBCD300565677 /* PatchListViewController.swift */; };
+		8DCEDA8C2E25D1A100565677 /* AudioKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8DCEDA8B2E25D1A100565677 /* AudioKitUI */; };
+		8DCEDA8F2E25D23200565677 /* Keyboard in Frameworks */ = {isa = PBXBuildFile; productRef = 8DCEDA8E2E25D23200565677 /* Keyboard */; };
 		8DD9D14E2D29DC3E008C418E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD9D14C2D29DC3B008C418E /* AppSettings.swift */; };
 		8DEBE57A2D2367AE004F4EDD /* MusicTheory in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5792D2367AE004F4EDD /* MusicTheory */; };
 		8DEBE5822D25E23D004F4EDD /* Tonic in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5812D25E23D004F4EDD /* Tonic */; };
@@ -78,6 +80,8 @@
 				8DF0276D2E170D3C00B1CD6A /* SoundpipeAudioKit in Frameworks */,
 				8D199ACA2C190FD500BD63A8 /* AudioKit in Frameworks */,
 				8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */,
+				8DCEDA8C2E25D1A100565677 /* AudioKitUI in Frameworks */,
+				8DCEDA8F2E25D23200565677 /* Keyboard in Frameworks */,
 				8DEBE57A2D2367AE004F4EDD /* MusicTheory in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -204,6 +208,8 @@
 				8DEBE5812D25E23D004F4EDD /* Tonic */,
 				8DEBE5922D262C40004F4EDD /* SwiftEntryKit */,
 				8DF0276C2E170D3C00B1CD6A /* SoundpipeAudioKit */,
+				8DCEDA8B2E25D1A100565677 /* AudioKitUI */,
+				8DCEDA8E2E25D23200565677 /* Keyboard */,
 			);
 			productName = FaceMusic;
 			productReference = 8D199A962C190F6300BD63A8 /* FaceMusic.app */;
@@ -283,6 +289,8 @@
 				8DEBE5802D25E23D004F4EDD /* XCRemoteSwiftPackageReference "Tonic" */,
 				8DEBE5912D262C40004F4EDD /* XCRemoteSwiftPackageReference "SwiftEntryKit" */,
 				8DF0276B2E170D3C00B1CD6A /* XCLocalSwiftPackageReference "../../SoundpipeAudioKit/SoundpipeAudioKit" */,
+				8DCEDA8A2E25D1A100565677 /* XCRemoteSwiftPackageReference "AudioKitUI" */,
+				8DCEDA8D2E25D23200565677 /* XCRemoteSwiftPackageReference "Keyboard" */,
 			);
 			productRefGroup = 8D199A972C190F6300BD63A8 /* Products */;
 			projectDirPath = "";
@@ -700,6 +708,22 @@
 				minimumVersion = 5.6.4;
 			};
 		};
+		8DCEDA8A2E25D1A100565677 /* XCRemoteSwiftPackageReference "AudioKitUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/AudioKitUI.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.7;
+			};
+		};
+		8DCEDA8D2E25D23200565677 /* XCRemoteSwiftPackageReference "Keyboard" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/AudioKit/Keyboard.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.4.1;
+			};
+		};
 		8DEBE5782D2367AE004F4EDD /* XCRemoteSwiftPackageReference "MusicTheory" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/cemolcay/MusicTheory.git";
@@ -731,6 +755,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D199AC82C190FD500BD63A8 /* XCRemoteSwiftPackageReference "AudioKit" */;
 			productName = AudioKit;
+		};
+		8DCEDA8B2E25D1A100565677 /* AudioKitUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8DCEDA8A2E25D1A100565677 /* XCRemoteSwiftPackageReference "AudioKitUI" */;
+			productName = AudioKitUI;
+		};
+		8DCEDA8E2E25D23200565677 /* Keyboard */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8DCEDA8D2E25D23200565677 /* XCRemoteSwiftPackageReference "Keyboard" */;
+			productName = Keyboard;
 		};
 		8DEBE5792D2367AE004F4EDD /* MusicTheory */ = {
 			isa = XCSwiftPackageProductDependency;

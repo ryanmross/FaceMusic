@@ -14,17 +14,19 @@ struct PatchSettings: Codable {
     var name: String?
     
 //    var lockChromatic: Bool
-//    var basePitch: Float
-//    var pitchRange: Int
     
     var key: MusicBrain.NoteName
     var chordType: MusicBrain.ChordType
     
-    var numVoices: Int
+    var numOfVoices: Int
     //var vibrato: Bool
     //var alternateChords: [String]
 
     //var glissandoSpeed: Float
+    
+    var lowestNote: Int
+    var highestNote: Int
+    
     var activeVoiceID: String
 }
 
@@ -32,6 +34,10 @@ class PatchManager {
     
     static let shared = PatchManager()
     private let patchesKey = "SavedPatches"
+    
+    var defaultPatchSettings: PatchSettings {
+        return PatchSettings.default()
+    }
     
     /// Dictionary [ID: PatchSettings]
     private var patches: [Int: PatchSettings] = [:]
@@ -59,6 +65,14 @@ class PatchManager {
     // Delete a patch
     func deletePatch(forID id: Int) {
         patches.removeValue(forKey: id)
+        saveToStorage()
+    }
+    
+    /// Rename a patch by its ID
+    func renamePatch(id: Int, newName: String) {
+        guard var settings = patches[id] else { return }
+        settings.name = newName
+        patches[id] = settings
         saveToStorage()
     }
     
@@ -90,7 +104,9 @@ extension PatchSettings {
             name: "Untitled Patch",
             key: .C,
             chordType: .major,
-            numVoices: 1,
+            numOfVoices: 1,
+            lowestNote: 30,
+            highestNote: 100,
             activeVoiceID: "VocalTractConductor"
         )
     }

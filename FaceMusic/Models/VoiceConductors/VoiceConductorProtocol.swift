@@ -5,7 +5,6 @@
 //  Created by Ryan Ross on 7/8/25.
 //
 
-
 import Foundation
 
 protocol VoiceConductorProtocol: AnyObject {
@@ -15,7 +14,8 @@ protocol VoiceConductorProtocol: AnyObject {
     /// A display name for UI
     static var displayName: String { get }
 
-    var key: MusicBrain.NoteName { get set }
+    var lowestNote: Int { get set }
+    var highestNote: Int { get set }
     //var scale: Scale { get set }
     var numOfVoices: Int { get set }
     var chordType: MusicBrain.ChordType { get set }

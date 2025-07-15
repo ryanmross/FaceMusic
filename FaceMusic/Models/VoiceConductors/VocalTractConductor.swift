@@ -16,7 +16,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     let engine = AudioEngine()
     let mixer = Mixer()
     
-    let appSettings = AppSettings()
+
+    static let defaultSettings = PatchSettings.default()
     
     enum AudioState {
         case stopped
@@ -26,11 +27,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var audioState: AudioState = .stopped
     
-    var key: MusicBrain.NoteName {
-       didSet {
-           // No intervalChordTypes update needed
-       }
-    }
+    var currentSettings: PatchSettings?
 
     var chordType: MusicBrain.ChordType
     
@@ -38,7 +35,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    @Published var numOfVoices: Int = 1 {
+    var lowestNote: Int
+    var highestNote: Int
+    
+    @Published var numOfVoices: Int {
         didSet {
             updateVoiceCount()
         }
@@ -50,19 +50,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     private var latestHarmonies: [Int]? = nil
     
     required init() {
-        // get default key from appSettings
-        self.key = appSettings.defaultKey
-        self.chordType = appSettings.defaultChordType
-        
-        self.harmonyMaker = HarmonyMaker()
-        
-        
-        // Set the mixer as the output of the audio engine
-        engine.output = mixer
-        
+        // get default key from defaultSettings
+        let defaultSettings = PatchManager.shared.defaultPatchSettings
+        self.chordType = defaultSettings.chordType
+        self.lowestNote = defaultSettings.lowestNote
+        self.highestNote = defaultSettings.highestNote
+        self.numOfVoices = defaultSettings.numOfVoices
+        self.currentSettings = defaultSettings
 
-        self.currentPitch = nil
-        
+        engine.output = mixer
+
         updateVoiceCount()
     }
     
@@ -169,9 +166,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             interpolatedValues[parameter] = interpolatedValue
         }
         
-        let interpolatedPitchValue = interpolatedValues[.pitch] ?? 0.0
-        let clampedInterpolatedPitch = min(max(interpolatedPitchValue, Float(Int.min)), Float(Int.max))
-        let interpolatedPitch: Int = Int(clampedInterpolatedPitch)
+        // we are interpolating pitch here instead of above.
+
+        let mappedPitch = FaceDataBrain().mapPitch(rawPitch: faceData.pitch, lowRange: self.lowestNote, highRange: self.highestNote)
+        
+        //print("mappedPitch: \(mappedPitch)")
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
@@ -180,7 +179,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
         
         // our current pitch
-        let (quantizedMidiNote, offset) = MusicBrain.shared.nearestQuantizedNote(for: interpolatedPitch)
+        let (quantizedMidiNote, offset) = MusicBrain.shared.nearestQuantizedNote(for: mappedPitch)
         currentPitch = quantizedMidiNote // or store separately
         
         guard let currentPitch = currentPitch else { return }
@@ -229,9 +228,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 }
     
     func applySettings(_ settings: PatchSettings) {
-        // Implement applying settings to this conductor
-        self.key = settings.key
         self.chordType = settings.chordType
+        self.lowestNote = settings.lowestNote
+        self.highestNote = settings.highestNote
+        self.currentSettings = settings
     }
 
     

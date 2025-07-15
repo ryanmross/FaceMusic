@@ -26,6 +26,12 @@ struct FaceData {
 
 
 class FaceDataBrain {
+    private enum ARDataPitchRange {
+        // the range of the data coming in from ARKit from the head that we will convert to pitch.
+        static let min: Float = -1.0
+        static let max: Float = 0.45
+    }
+
     func processFaceData(_ faceAnchor: ARFaceAnchor) -> FaceData {
         // Extract yaw, pitch, roll
         let (yaw, pitch, roll) = faceAnchor.transform.extractYawPitchRoll()
@@ -67,4 +73,15 @@ class FaceDataBrain {
             horizPosition: horizPosition
         )
     }
+    
+    func mapPitch(rawPitch: Float, lowRange: Int, highRange: Int) -> Int {
+        let clampedRaw = min(max(rawPitch, ARDataPitchRange.min), ARDataPitchRange.max)
+        return Int(clampedRaw.interpolated(
+            fromLowerBound: ARDataPitchRange.min,
+            fromUpperBound: ARDataPitchRange.max,
+            toLowerBound: Float(lowRange),
+            toUpperBound: Float(highRange)
+        ))
+    }
+    
 }

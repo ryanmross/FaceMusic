@@ -22,6 +22,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
+    private var lastStatsUpdate: TimeInterval = 0
+    
    
     
     private let faceDataBrain = FaceDataBrain()
@@ -31,7 +33,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     
     // loads the default VocalTractConductor(), but will be overwritten later with loadPatchByID()
-    private var conductor: VoiceConductorProtocol = VocalTractConductor()
+    private var conductor: VoiceConductorProtocol?
     
     
     override func viewDidLoad() {
@@ -122,12 +124,15 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             presenter: self,
             saveHandler: { [weak self] patchName in
                 guard let self = self else { return }
+                let defaults = PatchSettings.default()
                 let currentSettings = PatchSettings(
                     name: patchName ?? "Untitled Patch",
-                    key: self.conductor.key,
-                    chordType: self.conductor.chordType,
-                    numVoices: self.conductor.numOfVoices,
-                    activeVoiceID: type(of: self.conductor).id
+                    key: MusicBrain.shared.currentKey,
+                    chordType: self.conductor?.chordType ?? defaults.chordType,
+                    numOfVoices: self.conductor?.numOfVoices ?? defaults.numOfVoices,
+                    lowestNote: self.conductor?.lowestNote ?? defaults.lowestNote,
+                    highestNote: self.conductor?.highestNote ?? defaults.highestNote,
+                    activeVoiceID: type(of: self.conductor ?? VocalTractConductor()).id,
                 )
                 let newID = PatchManager.shared.generateNewPatchID()
                 PatchManager.shared.save(settings: currentSettings, forID: newID)
@@ -228,7 +233,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         resetTracking()
         // Disable the idle timer and reset AR tracking.
         
-        conductor.startEngine()
+        if conductor == nil {
+            createAndLoadNewPatch()
+        }
+        conductor?.startEngine()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -238,7 +246,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.session.pause()
         
         print("viewWillDisappear")
-        conductor.stopEngine(immediate: false)
+        conductor?.stopEngine(immediate: false)
     }
     
     
@@ -275,13 +283,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
         print("SessionWasInterrupted")
-        conductor.stopEngine(immediate: true)
+        conductor?.stopEngine(immediate: true)
     }
         
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         print("SessionInterruptionEnded")
-        conductor.startEngine()
+        conductor?.startEngine()
         //resetTracking()
     }
     
@@ -338,17 +346,18 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         let faceData = faceDataBrain.processFaceData(faceAnchor)
         
         // Update Conductor with new face data
-        conductor.updateWithFaceData(faceData)
+        conductor?.updateWithFaceData(faceData)
         
-        // Update stats
-        faceStatsManager.updateFaceStats(with: faceData)
-
-        // update audio stats
-        audioStatsManager.updateStats(with: conductor.returnAudioStats())
-
-        // update music stats
-        //print("update music stats")
-        musicStatsManager.updateStats(with: conductor.returnMusicStats())
+        // Throttle stats updates to 4 times per second
+        let now = CACurrentMediaTime()
+        if now - lastStatsUpdate > 0.25 {
+            faceStatsManager.updateFaceStats(with: faceData)
+            if let conductor = conductor {
+                audioStatsManager.updateStats(with: conductor.returnAudioStats())
+                musicStatsManager.updateStats(with: conductor.returnMusicStats())
+            }
+            lastStatsUpdate = now
+        }
         
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)
         // Update the content controller with new data.

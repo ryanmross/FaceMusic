@@ -47,6 +47,17 @@ class MusicBrain {
             case .B: return "B"
             }
         }
+        
+        static func noteAndOctave(for midiNote: Int) -> (NoteName, Int) {
+            let note = NoteName(rawValue: midiNote % 12) ?? .C
+            let octave = midiNote / 12 - 1
+            return (note, octave)
+        }
+        
+        static func nameWithOctave(forMIDINote midiNote: Int) -> String {
+            let (note, octave) = noteAndOctave(for: midiNote)
+            return "\(note.displayName)\(octave)"
+        }
     }
 
     // Enum for scale types
@@ -182,3 +193,4 @@ class MusicBrain {
         }
     }
 }
+

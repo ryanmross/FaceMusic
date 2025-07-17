@@ -39,12 +39,59 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
         }
         do {
-            Settings.bufferLength = .huge
+            // detect device and do a rough and dirty buffer length change based on device age
+            let model = UIDevice.current.modelIdentifier
+            print("Detected device: \(model)")
+
+            // Default to medium buffer
+            var chosenBufferLength: Settings.BufferLength = .medium
+
+            if model.hasPrefix("iPhone") {
+                let parts = model
+                    .replacingOccurrences(of: "iPhone", with: "")
+                    .split(separator: ",")
+
+                if let majorString = parts.first,
+                   let major = Int(majorString) {
+
+                    if major >= 16 {
+                        // iPhone 16 and newer
+                        chosenBufferLength = .short
+                    } else if major >= 13 {
+                        // iPhone 13–15
+                        chosenBufferLength = .medium
+                    } else {
+                        // Older iPhones
+                        chosenBufferLength = .long
+                    }
+                }
+            }
+
+            Settings.bufferLength = chosenBufferLength
+            print("Selected buffer length: \(Settings.bufferLength)")
+            
+            
+            
+            //Settings.bufferLength = .veryShort
+            
+            
+            
             Settings.enableLogging = true
+            
+            Settings.sampleRate = 48000
+            
+            
             try AVAudioSession.sharedInstance().setPreferredIOBufferDuration(Settings.bufferLength.duration)
             try AVAudioSession.sharedInstance().setCategory(.playAndRecord,
                                                             options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothA2DP])
+            try AVAudioSession.sharedInstance().setPreferredSampleRate(48000)
             try AVAudioSession.sharedInstance().setActive(true)
+            
+            
+            let hwRate = AVAudioSession.sharedInstance().sampleRate
+            print("Hardware sample rate: \(hwRate)")
+            
+            
         } catch let err {
             print(err)
         }
@@ -73,3 +120,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
+extension UIDevice {
+    var modelIdentifier: String {
+        var systemInfo = utsname()
+        uname(&systemInfo)
+        let mirror = Mirror(reflecting: systemInfo.machine)
+        let identifier = mirror.children.reduce("") { identifier, element in
+            guard let value = element.value as? Int8, value != 0 else { return identifier }
+            return identifier + String(UnicodeScalar(UInt8(value)))
+        }
+        return identifier
+    }
+}

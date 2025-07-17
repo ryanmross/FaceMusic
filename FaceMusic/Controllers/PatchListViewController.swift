@@ -15,6 +15,8 @@ import UIKit
 class PatchListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
     private let patchManager = PatchManager.shared
+    
+    
     private var patchIDs: [Int] = []
     
     private let tableView = UITableView()
@@ -61,13 +63,19 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let id = patchIDs[indexPath.row]
-        let cell = UITableViewCell(style: .subtitle, reuseIdentifier: "PatchCell")
+        let cell = tableView.dequeueReusableCell(withIdentifier: "PatchCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "PatchCell")
         if let settings = patchManager.load(forID: id) {
             cell.textLabel?.text = settings.name
         } else {
             cell.textLabel?.text = "Patch \(id)"
         }
         cell.detailTextLabel?.text = "Tap to load"
+        if id == patchManager.currentPatchID {
+            //print("current cell: \(id), patchManager.currentPatchID: \(patchManager.currentPatchID)")
+            cell.backgroundColor = UIColor.white.withAlphaComponent(0.2)
+        } else {
+            cell.backgroundColor = .clear
+        }
         return cell
     }
     
@@ -75,7 +83,10 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let id = patchIDs[indexPath.row]
+        
         let settings = patchManager.load(forID: id)
+        print("loaded patch \(id): \(settings?.name ?? "nil")")
+        patchManager.currentPatchID = id
         dismiss(animated: true) {
             self.onPatchSelected?(id, settings)
         }
@@ -87,8 +98,14 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
 
         let deleteAction = UIContextualAction(style: .destructive, title: "Delete") { (_, _, completionHandler) in
             self.patchManager.deletePatch(forID: id)
-            self.patchIDs.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .automatic)
+            self.loadPatches()
+
+            // Optionally notify that a new current patch is selected
+            if let newCurrentID = self.patchManager.currentPatchID,
+               let newSettings = self.patchManager.load(forID: newCurrentID) {
+                self.onPatchSelected?(newCurrentID, newSettings)
+            }
+
             completionHandler(true)
         }
 
@@ -114,5 +131,10 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
 
         let configuration = UISwipeActionsConfiguration(actions: [deleteAction, renameAction])
         return configuration
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        loadPatches()
     }
 }

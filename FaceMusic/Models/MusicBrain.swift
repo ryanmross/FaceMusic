@@ -10,9 +10,11 @@ class MusicBrain {
     enum ChordType: String, CaseIterable, Codable {
         case major
         case minor
+        case dominant7
         case diminished
         case augmented
-        case dominant7
+        
+        
         // Add other chord types as needed
     }
 
@@ -96,12 +98,12 @@ class MusicBrain {
                 return .major
             case .minor:
                 return .minor
+            case .dominant7:
+                return .mixolydian
             case .diminished:
                 return .diminished
             case .augmented:
                 return .wholeTone
-            case .dominant7:
-                return .mixolydian
             }
         }
     }
@@ -184,12 +186,13 @@ class MusicBrain {
             return [0, 4, 7] // root, major third, perfect fifth
         case .minor:
             return [0, 3, 7] // root, minor third, perfect fifth
+        case .dominant7:
+            return [0, 4, 7, 10] // root, major third, perfect fifth, minor seventh
         case .diminished:
             return [0, 3, 6] // root, minor third, diminished fifth
         case .augmented:
             return [0, 4, 8] // root, major third, augmented fifth
-        case .dominant7:
-            return [0, 4, 7, 10] // root, major third, perfect fifth, minor seventh
+        
         }
     }
 }

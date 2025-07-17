@@ -8,7 +8,6 @@
 import Foundation
 
 /// Simple PatchSettings model to store user settings for each patch.
-/// Make sure this matches your actual PatchSettings definition.
 struct PatchSettings: Codable {
     var id: Int
     var name: String?
@@ -39,6 +38,20 @@ class PatchManager {
         return PatchSettings.default()
     }
     
+    // Computed property for current patch ID, stored in UserDefaults
+    var currentPatchID: Int? {
+        get {
+            let val = UserDefaults.standard.object(forKey: "CurrentPatchID")
+            if let intVal = val as? Int {
+                return intVal
+            }
+            return nil
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "CurrentPatchID")
+        }
+    }
+    
     /// Dictionary [ID: PatchSettings]
     private var patches: [Int: PatchSettings] = [:]
     
@@ -50,16 +63,21 @@ class PatchManager {
     func save(settings: PatchSettings, forID id: Int) {
         patches[id] = settings
         saveToStorage()
-        lastUsedPatchID = id
+        currentPatchID = id
     }
     
     // Load a patch by ID
     func load(forID id: Int) -> PatchSettings? {
-        return patches[id]
+        print("PatchManager load \(id)")
+        if let patch = patches[id] {
+            return patch
+        }
+        return nil
     }
     
     // List all saved IDs
     func listPatches() -> [Int] {
+        print("PatchManager listPatches.  currentPatchID is: \(currentPatchID as Any)")
         return Array(patches.keys).sorted()
     }
     
@@ -67,6 +85,14 @@ class PatchManager {
     func deletePatch(forID id: Int) {
         patches.removeValue(forKey: id)
         saveToStorage()
+        if patches.isEmpty {
+            currentPatchID = nil
+        } else {
+            if let nextID = patches.keys.sorted().first {
+                currentPatchID = nextID
+                _ = load(forID: nextID)
+            }
+        }
     }
     
     /// Rename a patch by its ID
@@ -97,6 +123,7 @@ class PatchManager {
         return (patches.keys.max() ?? 0) + 1
     }
     
+    
 }
 
 extension PatchSettings {
@@ -114,18 +141,3 @@ extension PatchSettings {
         )
     }
 }
-
-    /// Tracks the last used patch ID in UserDefaults.
-    private let lastUsedPatchIDKey = "LastUsedPatchID"
-    var lastUsedPatchID: Int? {
-        get {
-            let val = UserDefaults.standard.object(forKey: lastUsedPatchIDKey)
-            if let intVal = val as? Int {
-                return intVal
-            }
-            return nil
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: lastUsedPatchIDKey)
-        }
-    }

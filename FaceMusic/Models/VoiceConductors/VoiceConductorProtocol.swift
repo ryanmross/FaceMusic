@@ -27,6 +27,8 @@ protocol VoiceConductorProtocol: AnyObject {
 
     /// Apply settings from a patch
     func applySettings(_ settings: PatchSettings)
+    
+    func exportCurrentSettings() -> PatchSettings
 
     /// Start the audio engine or playback
     func startEngine()

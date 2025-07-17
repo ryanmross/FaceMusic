@@ -4,11 +4,7 @@ import Foundation
 class AppSettings {
 
     // MARK: - Settings
-
-    let defaultKey: MusicBrain.NoteName = .C
-    let defaultChordType: MusicBrain.ChordType = .major
-    
-    
+  
     // Define keys as an array of tuples
     let keyOptions: [(string: String, key: MusicBrain.NoteName)] = [
         ("C", .C), ("C#", .CSharp), ("D", .D), ("D#", .DSharp),

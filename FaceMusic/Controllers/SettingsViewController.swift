@@ -148,7 +148,7 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         voicesPicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
         voicesPicker.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(voicesPicker)
-        
+
         let voicesLabel = UILabel()
         voicesLabel.text = "Number of Voices"
         voicesLabel.textColor = .white
@@ -156,36 +156,6 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         voicesLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(voicesLabel)
 
-        // Constraints for the label and voices picker
-        NSLayoutConstraint.activate([
-            voicesLabel.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 20),
-            voicesLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            voicesLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
-            
-            voicesPicker.topAnchor.constraint(equalTo: voicesLabel.bottomAnchor, constant: 10),
-            voicesPicker.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            voicesPicker.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
-            voicesPicker.heightAnchor.constraint(equalToConstant: 150)
-        ])
-        
-        // Create and configure the apply button
-        applyButton = UIButton(type: .system)
-        applyButton.setTitle("Apply", for: .normal)
-        applyButton.addTarget(self, action: #selector(applyChanges), for: .touchUpInside)
-        applyButton.backgroundColor = .systemBlue
-        applyButton.tintColor = .white
-        applyButton.layer.cornerRadius = 10
-        applyButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(applyButton)
-        
-        // Apply button constraints
-        NSLayoutConstraint.activate([
-            applyButton.topAnchor.constraint(equalTo: voicesPicker.bottomAnchor, constant: 20),
-            applyButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            applyButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
-            applyButton.heightAnchor.constraint(equalToConstant: 44)
-        ])
-        
         // Glissando Speed Label
         let glissandoLabel = UILabel()
         glissandoLabel.text = "Glissando Speed (ms)"
@@ -211,17 +181,41 @@ class SettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerVi
         glissandoSlider.addTarget(self, action: #selector(glissandoSliderChanged), for: .valueChanged)
         view.addSubview(glissandoSlider)
 
-        // Constraints
+        // Create and configure the apply button
+        applyButton = UIButton(type: .system)
+        applyButton.setTitle("Apply", for: .normal)
+        applyButton.addTarget(self, action: #selector(applyChanges), for: .touchUpInside)
+        applyButton.backgroundColor = .systemBlue
+        applyButton.tintColor = .white
+        applyButton.layer.cornerRadius = 10
+        applyButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(applyButton)
+
+        // Constraints for the label and voices picker, glissando controls, and apply button
         NSLayoutConstraint.activate([
-            glissandoLabel.topAnchor.constraint(equalTo: applyButton.bottomAnchor, constant: 20),
+            voicesLabel.topAnchor.constraint(equalTo: stackView.bottomAnchor, constant: 20),
+            voicesLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            voicesLabel.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+
+            voicesPicker.topAnchor.constraint(equalTo: voicesLabel.bottomAnchor, constant: 10),
+            voicesPicker.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            voicesPicker.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
+            voicesPicker.heightAnchor.constraint(equalToConstant: 150),
+
+            glissandoLabel.topAnchor.constraint(equalTo: voicesPicker.bottomAnchor, constant: 20),
             glissandoLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            
+
             glissandoValueLabel.topAnchor.constraint(equalTo: glissandoLabel.bottomAnchor, constant: 4),
             glissandoValueLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            
+
             glissandoSlider.topAnchor.constraint(equalTo: glissandoValueLabel.bottomAnchor, constant: 8),
             glissandoSlider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            glissandoSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
+            glissandoSlider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40),
+
+            applyButton.topAnchor.constraint(equalTo: glissandoSlider.bottomAnchor, constant: 20),
+            applyButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            applyButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
+            applyButton.heightAnchor.constraint(equalToConstant: 44)
         ])
         
         // Create and configure the close button (X)

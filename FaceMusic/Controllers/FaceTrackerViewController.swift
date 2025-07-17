@@ -120,37 +120,49 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     }
     
     @objc private func newPatchTapped() {
-        AlertHelper.promptToSavePatch(
-            presenter: self,
-            saveHandler: { [weak self] patchName in
-                guard let self = self else { return }
-                let defaults = PatchSettings.default()
-                let newID = PatchManager.shared.generateNewPatchID()
-                let currentSettings = PatchSettings(
-                    id: newID,
-                    name: patchName ?? "Untitled Patch",
-                    key: MusicBrain.shared.currentKey,
-                    chordType: self.conductor?.chordType ?? defaults.chordType,
-                    numOfVoices: self.conductor?.numOfVoices ?? defaults.numOfVoices,
-                    glissandoSpeed: self.conductor?.glissandoSpeed ?? defaults.glissandoSpeed,
-                    lowestNote: self.conductor?.lowestNote ?? defaults.lowestNote,
-                    highestNote: self.conductor?.highestNote ?? defaults.highestNote,
-                    activeVoiceID: type(of: self.conductor ?? VocalTractConductor()).id
-                )
-                PatchManager.shared.save(settings: currentSettings, forID: newID)
-                self.createAndLoadNewPatch()
-            },
-            skipHandler: { [weak self] in
-                self?.createAndLoadNewPatch()
-            }
-        )
+        let defaults = PatchSettings.default()
+        // If the current patch has no name or is untitled, prompt to save
+        if let conductor = self.conductor, (conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch") {
+            AlertHelper.promptToSavePatch(
+                presenter: self,
+                saveHandler: { [weak self] patchName in
+                    guard let self = self else { return }
+                    let newID = PatchManager.shared.generateNewPatchID()
+                    let currentSettings = PatchSettings(
+                        id: newID,
+                        name: patchName ?? "Untitled Patch",
+                        key: MusicBrain.shared.currentKey,
+                        chordType: conductor.chordType,
+                        numOfVoices: conductor.numOfVoices,
+                        glissandoSpeed: conductor.glissandoSpeed,
+                        lowestNote: conductor.lowestNote,
+                        highestNote: conductor.highestNote,
+                        activeVoiceID: type(of: conductor).id
+                    )
+                    PatchManager.shared.save(settings: currentSettings, forID: newID)
+                    self.createAndLoadNewPatch()
+                },
+                skipHandler: { [weak self] in
+                    self?.createAndLoadNewPatch()
+                }
+            )
+        } else {
+            // Otherwise, create and load a new patch immediately
+            self.createAndLoadNewPatch()
+        }
     }
 
     private func createAndLoadNewPatch() {
         let defaultSettings = PatchSettings.default()
+        
+        // Stop the old conductor
+        self.conductor?.stopEngine(immediate: false)
+
         let newConductor = VocalTractConductor()
         newConductor.applySettings(defaultSettings)
+
         self.conductor = newConductor
+        self.conductor?.startEngine()
     }
     
     @objc private func openPatchTapped() {
@@ -165,8 +177,16 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
             let selectedID = settings.activeVoiceID
             let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
+            
+            
+            self.conductor?.stopEngine(immediate: false)
+
             let newConductor = conductorType.init()
             newConductor.applySettings(settings)
+
+            self.conductor = newConductor
+            self.conductor?.startEngine()
+            
 
             self.conductor = newConductor
         }
@@ -186,10 +206,17 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let selectedID = settings.activeVoiceID
         let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
 
+        // Stop the old conductor
+        self.conductor?.stopEngine(immediate: true)
+
         let newConductor = conductorType.init()
         newConductor.applySettings(settings)
 
         self.conductor = newConductor
+
+        // Start the new conductor
+        self.conductor?.startEngine()
+
         
         // Save this as the last used patch
         UserDefaults.standard.set(id, forKey: "LastPatchID")
@@ -198,7 +225,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     private func displaySettingsPopup() {
         let settingsViewController = SettingsViewController()
         
-        settingsViewController.patchSettings = PatchManager.shared.defaultPatchSettings
+        if let conductor = conductor {
+            settingsViewController.patchSettings = conductor.exportCurrentSettings()
+        }
         
         // Pass the conductor instance to SettingsViewController
         settingsViewController.conductor = self.conductor
@@ -241,15 +270,22 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Disable the idle timer and reset AR tracking.
         
         let patchManager = PatchManager.shared
+        
+        print("patchManager.currentPatchID is: \(patchManager.currentPatchID!)")
 
         // Check if patches exist
         if !PatchManager.shared.listPatches().isEmpty {
             // There are saved patches
-            
-            // Load last-used patch ID from UserDefaults
-            let lastID = UserDefaults.standard.integer(forKey: "LastPatchID")
-            print("Loading last patch ID: \(lastID)")
-            loadPatchByID(lastID)
+            if let lastID = patchManager.currentPatchID {
+                print("Loading current patch ID: \(lastID)")
+                loadPatchByID(lastID)
+            } else {
+                // No ID saved, load the first available patch
+                if let firstID = patchManager.listPatches().first {
+                    print("No last patch ID saved, loading first patch ID: \(firstID)")
+                    loadPatchByID(firstID)
+                }
+            }
         } else {
             // No patches exist, create a new default patch
             let defaultSettings = patchManager.defaultPatchSettings
@@ -261,6 +297,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             loadPatchByID(newID)
         }
 
+        if conductor == nil {
+            // As a fallback, create a default conductor
+            print("No conductor assigned, creating default")
+            let newConductor = VocalTractConductor()
+            newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
+            conductor = newConductor
+        }
         conductor?.startEngine()
     }
     

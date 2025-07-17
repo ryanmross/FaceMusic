@@ -63,8 +63,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.currentSettings = defaultSettings
 
         engine.output = mixer
+        
 
         updateVoiceCount()
+        voiceBundles.forEach { $0.voice.start(); $0.voice.stop() }
+        
     }
     
     internal func updateVoiceCount() {
@@ -147,9 +150,17 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     func startEngine() {
         do {
-            print("**start engine")
+            //print("**start engine")
             try engine.start()
             audioState = .waitingForFaceData
+            
+            // Wait a moment before enabling voices
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                print("Engine warmed up, ready for face data.")
+            }
+
+            print("Engine started with sample rate: \(engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate)")
+
         } catch {
             print("Error starting audio engine: \(error)")
         }
@@ -259,6 +270,20 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.currentSettings = settings
         
         updateVoiceCount()
+    }
+    
+    func exportCurrentSettings() -> PatchSettings {
+        return PatchSettings(
+            id: currentSettings?.id ?? -1,
+            name: currentSettings?.name ?? "Untitled Patch",
+            key: MusicBrain.shared.currentKey,
+            chordType: self.chordType,
+            numOfVoices: self.numOfVoices,
+            glissandoSpeed: self.glissandoSpeed,
+            lowestNote: self.lowestNote,
+            highestNote: self.highestNote,
+            activeVoiceID: type(of: self).id
+        )
     }
 
     

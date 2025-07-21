@@ -26,6 +26,8 @@ struct PatchSettings: Codable {
     var lowestNote: Int
     var highestNote: Int
     
+    var scaleMask: UInt16? // nil -> derive from chordType; non-nil -> custom scale membership
+    
     var activeVoiceID: String
 }
 
@@ -137,6 +139,7 @@ extension PatchSettings {
             glissandoSpeed: 50,
             lowestNote: 30,
             highestNote: 100,
+            scaleMask: nil,
             activeVoiceID: "VocalTractConductor"
         )
     }

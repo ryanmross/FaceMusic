@@ -4,6 +4,7 @@
 //
 //  Created by Ryan Ross on 7/8/25.
 //
+import Foundation
 
 class MusicBrain {
     // Enum for chord types
@@ -107,15 +108,32 @@ class MusicBrain {
             }
         }
     }
+    
+    private enum ARDataPitchRange {
+        // the range of the data coming in from ARKit from the head that we will convert to pitch.
+        static let min: Float = -1.0
+        static let max: Float = 0.45
+    }
+    
 
     // Current key and scale state
     private(set) var currentKey: NoteName
     private(set) var currentScale: ScaleType
     private(set) var currentChordType: ChordType = .major
+    
+    private(set) var customScaleMask: UInt16? // nil = no override
+    
+    var currentScalePitchClasses: [Int] {
+        if let mask = customScaleMask {
+            return Self.pitchClasses(fromMask: mask)
+        } else {
+            return currentScale.intervals
+        }
+    }
 
     // Precomputed nearest note lookup table for MIDI notes 0-127.
-    // Each entry is a tuple: (nearest quantized note, offset from original note)
-    private var nearestNoteTable: [(note: Int, offset: Int)]
+    // Each entry is a nearest quantized note
+    private var nearestNoteTable: [Int]
     
     static let shared = MusicBrain()
 
@@ -123,8 +141,8 @@ class MusicBrain {
     init(key: NoteName = .C, scale: ScaleType = .major) {
         self.currentKey = key
         self.currentScale = scale
-        self.nearestNoteTable = Array(repeating: (note: 0, offset: 0), count: 128)
-        updateKeyAndScale(key: key, scale: scale)
+        self.nearestNoteTable = []
+        updateKeyAndScale(key: key, chordType: .major)
     }
 
     
@@ -135,48 +153,37 @@ class MusicBrain {
         self.currentChordType = chordType
 
         let scale = ScaleType.scaleForChordType(chordType)
-        updateKeyAndScale(key: key, scale: scale)
+        updateKeyAndScale(key: key, chordType: chordType)
     }
     
     
-    // Update the current key and scale, and recompute the nearest note lookup table
-    func updateKeyAndScale(key: NoteName, scale: ScaleType) {
+    func updateKeyAndScale(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
         self.currentKey = key
-        self.currentScale = scale
+        self.currentChordType = chordType
+        self.customScaleMask = scaleMask
 
-        let keyOffset = NoteName.allCases.firstIndex(of: key) ?? 0
-        let scaleNotes = scale.intervals.map { ($0 + keyOffset) % 12 }
-
-        // Precompute nearest quantized notes for all MIDI notes 0-127
-        for midiNote in 0..<128 {
-            let octave = midiNote / 12
-            let noteInOctave = midiNote % 12
-
-            // Find the closest scale note in the octave
-            var minDistance = 12
-            var closestNoteInOctave = noteInOctave
-            for scaleNote in scaleNotes {
-                let distance = abs(scaleNote - noteInOctave)
-                if distance < minDistance {
-                    minDistance = distance
-                    closestNoteInOctave = scaleNote
-                }
-            }
-
-            let quantizedNote = octave * 12 + closestNoteInOctave
-            let offset = quantizedNote - midiNote
-            nearestNoteTable[midiNote] = (note: quantizedNote, offset: offset)
+        if let mask = scaleMask {
+            let scaleNotes = Self.pitchClasses(fromMask: mask)
+            rebuildQuantization(withScaleClasses: scaleNotes)
+        } else {
+            let scale = ScaleType.scaleForChordType(chordType)
+            self.currentScale = scale
+            rebuildQuantization(withScaleClasses: scale.intervals.map { ($0 + key.rawValue) % 12 })
         }
     }
 
-    // Return the nearest quantized note and offset for a given MIDI note
-    func nearestQuantizedNote(for midiNote: Int) -> (note: Int, offset: Int) {
-        guard midiNote >= 0 && midiNote < 128 else {
-            // If out of range, clamp to nearest valid MIDI note
-            let clampedNote = min(max(midiNote, 0), 127)
-            return nearestNoteTable[clampedNote]
-        }
-        return nearestNoteTable[midiNote]
+    // Return the nearest quantized note for a given raw pitch float
+    func nearestQuantizedNote(
+        rawPitch: Float,
+        lowestNote: Int,
+        highestNote: Int
+    ) -> Int {
+        let clampedRaw = min(max(rawPitch, ARDataPitchRange.min), ARDataPitchRange.max)
+        let normalized = (clampedRaw - ARDataPitchRange.min) / (ARDataPitchRange.max - ARDataPitchRange.min)
+        let validNotes = nearestNoteTable.filter { $0 >= lowestNote && $0 <= highestNote }
+        guard !validNotes.isEmpty else { return lowestNote }
+        let index = Int(round(normalized * Float(validNotes.count - 1)))
+        return validNotes[index]
     }
     
     
@@ -195,5 +202,38 @@ class MusicBrain {
         
         }
     }
+    
+    private func rebuildQuantization(withScaleClasses scaleClasses: [Int], lowNote: Int = 0, highNote: Int = 127) {
+        var result: [Int] = []
+        for midiNote in lowNote...highNote {
+            let pitchClass = midiNote % 12
+            if scaleClasses.contains(pitchClass) {
+                result.append(midiNote)
+            }
+        }
+        self.nearestNoteTable = result
+    }
+    
+    
 }
 
+
+    
+
+extension MusicBrain {
+    static func mask(fromPitchClasses classes: Set<Int>) -> UInt16 {
+        return classes.reduce(0) { $0 | (1 << $1) }
+    }
+}
+
+extension MusicBrain {
+    static func pitchClasses(fromMask mask: UInt16) -> [Int] {
+        var result: [Int] = []
+        for i in 0..<12 {
+            if (mask & (1 << i)) != 0 {
+                result.append(i)
+            }
+        }
+        return result
+    }
+}

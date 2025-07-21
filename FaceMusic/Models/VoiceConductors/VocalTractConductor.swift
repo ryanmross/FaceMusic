@@ -190,11 +190,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             interpolatedValues[parameter] = interpolatedValue
         }
         
-        // we are interpolating pitch here instead of above.
 
-        let mappedPitch = FaceDataBrain().mapPitch(rawPitch: faceData.pitch, lowRange: self.lowestNote, highRange: self.highestNote)
-        
-        //print("mappedPitch: \(mappedPitch)")
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
@@ -202,10 +198,15 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         
         //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
         
-        // our current pitch
-        let (quantizedMidiNote, offset) = MusicBrain.shared.nearestQuantizedNote(for: mappedPitch)
-        currentPitch = quantizedMidiNote // or store separately
         
+        // Map raw face pitch directly to nearest quantized note using MusicBrain
+        let quantizedNote = MusicBrain.shared.nearestQuantizedNote(
+            rawPitch: faceData.pitch,
+            lowestNote: self.lowestNote,
+            highestNote: self.highestNote
+        )
+
+        currentPitch = quantizedNote
         guard let currentPitch = currentPitch else { return }
 
         let keyIndex = currentPitch % 12

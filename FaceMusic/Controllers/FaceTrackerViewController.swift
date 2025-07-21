@@ -180,6 +180,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
             let newConductor = conductorType.init()
             newConductor.applySettings(settings)
+            
+            MusicBrain.shared.updateKeyAndScale(
+                key: settings.key,
+                chordType: settings.chordType,
+                scaleMask: settings.scaleMask
+            )
+            
 
             self.conductor = newConductor
             self.conductor?.startEngine()
@@ -206,6 +213,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
         let newConductor = conductorType.init()
         newConductor.applySettings(settings)
+        
+        MusicBrain.shared.updateKeyAndScale(
+            key: settings.key,
+            chordType: settings.chordType,
+            scaleMask: settings.scaleMask
+        )
 
         self.conductor = newConductor
 

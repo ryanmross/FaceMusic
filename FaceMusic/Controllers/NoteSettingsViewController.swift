@@ -6,6 +6,9 @@ import PianoKeyboard
 
 class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     
+    // Track the last highlighted note for piano key highlighting
+    private var lastHighlightedNote: Int?
+    
     var conductor: VoiceConductorProtocol?
     let appSettings = AppSettings()
     var patchSettings: PatchSettings!
@@ -13,7 +16,6 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     var keyPicker: UIPickerView!
     var chordTypePicker: UIPickerView!
     var voicesPicker: UIPickerView!
-    var applyButton: UIButton!
     var closeButton: UIButton!
     
     // Pickers for voice pitch and note range
@@ -235,6 +237,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         glissandoSlider.value = patchSettings.glissandoSpeed
         glissandoSlider.translatesAutoresizingMaskIntoConstraints = false
         glissandoSlider.addTarget(self, action: #selector(glissandoSliderChanged), for: .valueChanged)
+        glissandoSlider.addTarget(self, action: #selector(glissandoSliderDidEndSliding), for: [.touchUpInside, .touchUpOutside])
 
         // Glissando Value Label
         glissandoValueLabel = UILabel.settingsLabel(text: "\(Int(patchSettings.glissandoSpeed)) ms", fontSize: 13, bold: false)
@@ -253,32 +256,15 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         voicesAndGlissStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(voicesAndGlissStack)
 
-        // Create and configure the apply button
-        applyButton = UIButton(type: .system)
-        applyButton.setTitle("Apply", for: .normal)
-        applyButton.addTarget(self, action: #selector(applyChanges), for: .touchUpInside)
-        applyButton.backgroundColor = .systemBlue
-        applyButton.tintColor = .white
-        applyButton.layer.cornerRadius = 10
-        applyButton.translatesAutoresizingMaskIntoConstraints = false
-                
-        view.addSubview(applyButton)
 
-        // Constraints for voicesAndGlissStack, containers, and apply button
+        // Constraints for voicesAndGlissStack, containers
         NSLayoutConstraint.activate([
-
             voicesAndGlissStack.topAnchor.constraint(equalTo: keyboard.bottomAnchor, constant: 20),
             voicesAndGlissStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             voicesAndGlissStack.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
             voicesAndGlissStack.heightAnchor.constraint(equalToConstant: 130),
-
             voicesContainer.heightAnchor.constraint(equalToConstant: 130),
-            glissandoContainer.heightAnchor.constraint(equalToConstant: 130),
-
-            applyButton.topAnchor.constraint(equalTo: voicesAndGlissStack.bottomAnchor, constant: 20),
-            applyButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            applyButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
-            applyButton.heightAnchor.constraint(equalToConstant: 44)
+            glissandoContainer.heightAnchor.constraint(equalToConstant: 130)
         ])
         
         // Create and configure the close button (X)
@@ -418,47 +404,27 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
             updatePianoHighlighting(forKey: selectedKey, chordType: selectedChordType)
         }
+        // Patch settings update and apply on any picker change
+        let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
+        let selectedKey = reversedNotes[keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
+        let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
+        let center = voicePitchOptions[selectedVoicePitchIndex].centerMIDINote
+        let halfRange = noteRangeOptions[selectedNoteRangeIndex].rangeSize / 2
+        let lowestNote = max(0, center - halfRange)
+        let highestNote = min(127, center + halfRange)
+
+        patchSettings.lowestNote = lowestNote
+        patchSettings.highestNote = highestNote
+        patchSettings.numOfVoices = selectedNumOfVoices
+        patchSettings.key = selectedKey
+        patchSettings.chordType = selectedChordType
+        patchSettings.glissandoSpeed = glissandoSlider.value
+
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        conductor?.applySettings(patchSettings)
+        MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
     }
         
-    @objc private func applyChanges() {
-        print("Apply changes clicked.")
-        view.endEditing(true)
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-            guard let self = self else { return }
-
-            let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
-            let selectedKey = reversedNotes[self.keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
-            let selectedChordType = self.chordTypes[self.chordTypePicker.selectedRow(inComponent: 0)]
-
-            print("Changing key to \(selectedKey.displayName) with chord type: \(selectedChordType)")
-
-            let center = self.voicePitchOptions[self.selectedVoicePitchIndex].centerMIDINote
-            let halfRange = self.noteRangeOptions[self.selectedNoteRangeIndex].rangeSize / 2
-            let lowestNote = max(0, center - halfRange)
-            let highestNote = min(127, center + halfRange)
-
-            print("Note range set to \(lowestNote) - \(highestNote)")
-
-            self.patchSettings.lowestNote = lowestNote
-            self.patchSettings.highestNote = highestNote
-            self.patchSettings.numOfVoices = self.selectedNumOfVoices
-            self.patchSettings.glissandoSpeed = self.glissandoSlider.value
-
-            print("Glissando Speed set to \(self.patchSettings.glissandoSpeed)")
-
-            self.patchSettings.key = selectedKey
-            self.patchSettings.chordType = selectedChordType
-
-            PatchManager.shared.save(settings: self.patchSettings, forID: self.patchSettings.id)
-            self.conductor?.applySettings(self.patchSettings)
-            MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
-
-            print("Selected chord type from picker: \(selectedChordType)")
-
-            self.dismiss(animated: true, completion: nil)
-        }
-    }
     
     
     
@@ -470,6 +436,12 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     @objc private func glissandoSliderChanged() {
         let intValue = Int(glissandoSlider.value)
         glissandoValueLabel.text = "\(intValue) ms"
+    }
+
+    @objc private func glissandoSliderDidEndSliding() {
+        patchSettings.glissandoSpeed = glissandoSlider.value
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        conductor?.applySettings(patchSettings)
     }
     
     // MARK: - Piano Keyboard Setup
@@ -519,9 +491,17 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     @objc private func handlePianoKeyCurrentNoteHighlight(_ notification: Notification) {
         guard let userInfo = notification.userInfo,
               let midiNote = userInfo["midiNote"] as? Int else { return }
+
         let displayedOctaveStart = 60 // MIDI note for C4
         let displayedNote = displayedOctaveStart + (midiNote % 12)
-        //print("piano key current note highlight : \(displayedNote)")
+
+        // Check if the note has changed
+        if lastHighlightedNote == displayedNote {
+            return
+        }
+
+        lastHighlightedNote = displayedNote
+
         updatePianoHighlighting(forKey: MusicBrain.shared.currentKey, chordType: MusicBrain.shared.currentChordType, highlightNote: displayedNote)
     }
     

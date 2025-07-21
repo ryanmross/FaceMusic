@@ -78,10 +78,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     private func createButtons() {
         // Create buttons with SF Symbols and consistent tint
         let gearButton = UIButton(type: .system)
-        gearButton.setImage(UIImage(systemName: "gearshape.fill"), for: .normal)
+        gearButton.setImage(UIImage(systemName: "pianokeys"), for: .normal)
         gearButton.tintColor = .white
         gearButton.translatesAutoresizingMaskIntoConstraints = false
-        gearButton.addTarget(self, action: #selector(settingsButtonTapped), for: .touchUpInside)
+        gearButton.addTarget(self, action: #selector(noteSettingsButtonTapped), for: .touchUpInside)
 
         let folderButton = UIButton(type: .system)
         folderButton.setImage(UIImage(systemName: "folder.fill"), for: .normal)
@@ -95,30 +95,40 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         plusButton.translatesAutoresizingMaskIntoConstraints = false
         plusButton.addTarget(self, action: #selector(newPatchTapped), for: .touchUpInside)
 
-        // Stack the buttons vertically, plus at top, then folder, then gear at bottom
-        let buttonStack = UIStackView(arrangedSubviews: [plusButton, folderButton, gearButton])
+        let voiceSettingsButton = UIButton(type: .system)
+        voiceSettingsButton.setImage(UIImage(systemName: "waveform.path.ecg.rectangle.fill"), for: .normal)
+        voiceSettingsButton.tintColor = .white
+        voiceSettingsButton.translatesAutoresizingMaskIntoConstraints = false
+        voiceSettingsButton.addTarget(self, action: #selector(voiceSettingsButtonTapped), for: .touchUpInside)
+
+        let resetButton = UIButton(type: .system)
+        resetButton.setImage(UIImage(systemName: "person.fill.viewfinder"), for: .normal)
+        resetButton.tintColor = .white
+        resetButton.translatesAutoresizingMaskIntoConstraints = false
+        resetButton.addTarget(self, action: #selector(resetTrackingTapped), for: .touchUpInside)
+
+        // Stack the buttons vertically: plus at top, then folder, then voiceSettings, then gear, then reset at bottom
+        let buttonStack = UIStackView(arrangedSubviews: [plusButton, folderButton, voiceSettingsButton, gearButton, resetButton])
         buttonStack.axis = .vertical
         buttonStack.alignment = .center
         buttonStack.spacing = 10
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(buttonStack)
 
-        // Constraints: align to lower right (safe area), plus at top, gear at bottom
+        // Constraints: align to lower right (safe area), plus at top, reset at bottom
         NSLayoutConstraint.activate([
             buttonStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
             buttonStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
         ])
         // Set fixed size for all buttons
-        [gearButton, folderButton, plusButton].forEach { btn in
+        [gearButton, folderButton, plusButton, voiceSettingsButton, resetButton].forEach { btn in
             btn.widthAnchor.constraint(equalToConstant: 40).isActive = true
             btn.heightAnchor.constraint(equalToConstant: 40).isActive = true
         }
     }
     
-    @objc private func settingsButtonTapped() {
-        displaySettingsPopup()
-    }
     
+    // MARK: - Plus Button / New Patch
     @objc private func newPatchTapped() {
         let defaults = PatchSettings.default()
         // If the current patch has no name or is untitled, prompt to save
@@ -152,19 +162,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         }
     }
 
-    private func createAndLoadNewPatch() {
-        let defaultSettings = PatchSettings.default()
-        
-        // Stop the old conductor
-        self.conductor?.stopEngine(immediate: false)
-
-        let newConductor = VocalTractConductor()
-        newConductor.applySettings(defaultSettings)
-
-        self.conductor = newConductor
-        self.conductor?.startEngine()
-    }
-    
+    // MARK: - Folder Button / Load Patch
     @objc private func openPatchTapped() {
         let patchListVC = PatchListViewController()
         patchListVC.onPatchSelected = { [weak self] patchID, settings in
@@ -177,8 +175,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
             let selectedID = settings.activeVoiceID
             let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
-            
-            
+
             self.conductor?.stopEngine(immediate: false)
 
             let newConductor = conductorType.init()
@@ -186,15 +183,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
             self.conductor = newConductor
             self.conductor?.startEngine()
-            
-
             self.conductor = newConductor
         }
 
         let nav = UINavigationController(rootViewController: patchListVC)
         present(nav, animated: true)
     }
-    
+
     // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
     // initializes it, applies the settings, and assigns it to self.conductor.
     func loadPatchByID(_ id: Int) {
@@ -217,25 +212,23 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Start the new conductor
         self.conductor?.startEngine()
 
-        
         // Save this as the last used patch
         UserDefaults.standard.set(id, forKey: "LastPatchID")
     }
-    
-    private func displaySettingsPopup() {
-        let settingsViewController = SettingsViewController()
+
+    // MARK: - Voice Settings Button
+    @objc private func voiceSettingsButtonTapped() {
+        let voiceSettingsViewController = VoiceSettingsViewController()
         
         if let conductor = conductor {
-            settingsViewController.patchSettings = conductor.exportCurrentSettings()
+            voiceSettingsViewController.patchSettings = conductor.exportCurrentSettings()
         }
         
-        // Pass the conductor instance to SettingsViewController
-        settingsViewController.conductor = self.conductor
-        
-        
+        voiceSettingsViewController.conductor = self.conductor
+
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
-        attributes.name = "Top Note"
+        attributes.name = "Voice Settings"
         attributes.windowLevel = .normal
         attributes.position = .center
         attributes.entryInteraction = .absorbTouches
@@ -245,7 +238,51 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         attributes.screenBackground = .color(color: EKColor(UIColor.black.withAlphaComponent(0.3)))
         attributes.entryBackground = .clear
 
-        SwiftEntryKit.display(entry: settingsViewController, using: attributes)
+        SwiftEntryKit.display(entry: voiceSettingsViewController, using: attributes)
+    }
+
+    // MARK: - Note Settings Button
+    @objc private func noteSettingsButtonTapped() {
+        let noteSettingsViewController = NoteSettingsViewController()
+
+        if let conductor = conductor {
+            noteSettingsViewController.patchSettings = conductor.exportCurrentSettings()
+        }
+
+        // Pass the conductor instance to SettingsViewController
+        noteSettingsViewController.conductor = self.conductor
+
+        var attributes = EKAttributes()
+        attributes.displayDuration = .infinity
+        attributes.name = "Note Settings"
+        attributes.windowLevel = .normal
+        attributes.position = .center
+        attributes.entryInteraction = .absorbTouches
+        attributes.screenInteraction = .dismiss
+        attributes.scroll = .enabled(swipeable: true, pullbackAnimation: .easeOut)
+        attributes.positionConstraints = .fullScreen
+        attributes.screenBackground = .color(color: EKColor(UIColor.black.withAlphaComponent(0.3)))
+        attributes.entryBackground = .clear
+
+        SwiftEntryKit.display(entry: noteSettingsViewController, using: attributes)
+    }
+    
+    // MARK: - Reset Tracking Button
+    @objc private func resetTrackingTapped() {
+        resetTracking()
+    }
+
+    private func createAndLoadNewPatch() {
+        let defaultSettings = PatchSettings.default()
+
+        // Stop the old conductor
+        self.conductor?.stopEngine(immediate: false)
+
+        let newConductor = VocalTractConductor()
+        newConductor.applySettings(defaultSettings)
+
+        self.conductor = newConductor
+        self.conductor?.startEngine()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -443,3 +480,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
     
     
 }
+
+
+
+

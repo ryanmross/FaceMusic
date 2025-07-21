@@ -1,5 +1,5 @@
 {
-  "originHash" : "49a0b6894ce6d05651b7dae29978f303905806207bb392d932410050fcf37b0a",
+  "originHash" : "645b7d277fadcd3973018c2fd5ffa2b7e0f6dc266be2ae99b671ef6874eb37e4",
   "pins" : [
     {
       "identity" : "audiokit",
@@ -38,15 +38,6 @@
       }
     },
     {
-      "identity" : "keyboard",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AudioKit/Keyboard.git",
-      "state" : {
-        "revision" : "c0752677c602eec2f97ec50825581608bc56dac6",
-        "version" : "1.4.1"
-      }
-    },
-    {
       "identity" : "kissfft",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/AudioKit/KissFFT",
@@ -62,6 +53,15 @@
       "state" : {
         "revision" : "ce9ecb92eb5c6b47583c58ce4de20ce6fe9aae5d",
         "version" : "1.6.0"
+      }
+    },
+    {
+      "identity" : "pianokeyboard",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/garynewby/PianoKeyboard.git",
+      "state" : {
+        "branch" : "uikit",
+        "revision" : "bc1065579eb9c40b647d5f5ab5598e5015e36e17"
       }
     },
     {

@@ -8,7 +8,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     
     
-
+    
     static var id: String = "vocaltract"
     static var displayName: String = "Vocal Tract"
     
@@ -208,6 +208,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         
         guard let currentPitch = currentPitch else { return }
 
+        let keyIndex = currentPitch % 12
+        let displayNote = 60 + keyIndex // force note into C4–B4 range
+        //print("🔔 Posting HighlightPianoKey for note \(displayNote)")
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: Notification.Name("HighlightPianoKey"), object: nil, userInfo: ["midiNote": displayNote])
+        }
+
         // Use harmonyMaker with current key, no chordType argument
         harmonies = harmonyMaker.voiceChord(currentPitch: currentPitch, numOfVoices: numOfVoices)
 
@@ -257,8 +264,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             }
         }
         
-    
 
+        
+        
+        
 }
     
     func applySettings(_ settings: PatchSettings) {

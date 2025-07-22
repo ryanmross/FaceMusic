@@ -53,7 +53,7 @@ class HarmonyMaker {
         harmony.append(lowestRoot)
         harmony.append(contentsOf: harmoniesBelow)
 
-        //print("Harmony MIDI notes: \(harmony.sorted(by: >))")
+        print("Harmony MIDI notes: \(harmony.sorted(by: >))")
         
         return harmony.sorted(by: >)
     }

@@ -13,6 +13,7 @@ class MusicBrain {
         case minor
         case dominant7
         case diminished
+        case halfDiminished
         case augmented
         
         
@@ -72,6 +73,7 @@ class MusicBrain {
         case mixolydian
         case diminished
         case wholeTone
+        case locrian
 
         // Return intervals for each scale
         var intervals: [Int] {
@@ -90,6 +92,8 @@ class MusicBrain {
                 return [0, 2, 3, 5, 6, 8, 9, 11]
             case .wholeTone:
                 return [0, 2, 4, 6, 8, 10]
+            case .locrian:
+                return [0, 2, 3, 5, 6, 8, 10]
             }
         }
 
@@ -103,6 +107,8 @@ class MusicBrain {
                 return .mixolydian
             case .diminished:
                 return .diminished
+            case .halfDiminished:
+                return .locrian
             case .augmented:
                 return .wholeTone
             }
@@ -127,7 +133,7 @@ class MusicBrain {
         if let mask = customScaleMask {
             return Self.pitchClasses(fromMask: mask)
         } else {
-            return currentScale.intervals
+            return currentScale.intervals.map { ($0 + currentKey.rawValue) % 12 }
         }
     }
 
@@ -146,13 +152,12 @@ class MusicBrain {
     }
 
     
-    func updateKeyAndChordType(key: NoteName, chordType: ChordType) {
-        
-        //print("updateKeyAndChordType() received chordType: \(chordType)")
-        
+    func setKeyAndChordType(key: NoteName, chordType: ChordType) {
+        print("setKeyAndChordType() received key:\(key), chordType: \(chordType)")
         self.currentChordType = chordType
-
-        let scale = ScaleType.scaleForChordType(chordType)
+        // Clear custom scale mask if user changed key/chord
+        self.customScaleMask = nil
+        // Delegate to updateKeyAndScale
         updateKeyAndScale(key: key, chordType: chordType)
     }
     
@@ -197,23 +202,50 @@ class MusicBrain {
             return [0, 4, 7, 10] // root, major third, perfect fifth, minor seventh
         case .diminished:
             return [0, 3, 6] // root, minor third, diminished fifth
+        case .halfDiminished:
+            return [0, 3, 6, 10] // root, minor third, diminished fifth, minor seventh
         case .augmented:
             return [0, 4, 8] // root, major third, augmented fifth
         
         }
     }
     
-    private func rebuildQuantization(withScaleClasses scaleClasses: [Int], lowNote: Int = 0, highNote: Int = 127) {
+    func rebuildQuantization(withScaleClasses scaleClasses: [Int]) {
+        print("rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
         var result: [Int] = []
-        for midiNote in lowNote...highNote {
-            let pitchClass = midiNote % 12
-            if scaleClasses.contains(pitchClass) {
-                result.append(midiNote)
-            }
+        for midiNote in 0...127 where scaleClasses.contains(midiNote % 12) {
+            result.append(midiNote)
         }
         self.nearestNoteTable = result
     }
     
+    /// Toggle the presence of a pitch class in the custom scale mask.
+    func togglePitchClass(_ pitchClass: Int) {
+        var current = Set(currentScalePitchClasses)
+        if current.contains(pitchClass) {
+            current.remove(pitchClass)
+        } else {
+            current.insert(pitchClass)
+        }
+        let mask = MusicBrain.mask(fromPitchClasses: current)
+        self.customScaleMask = mask
+        rebuildQuantization(withScaleClasses: Array(current))
+    }
+
+    /// Clear any custom scale mask and revert to the current key and scale.
+    func clearCustomScale() {
+        self.customScaleMask = nil
+        updateKeyAndScale(key: currentKey, chordType: currentChordType)
+    }
+    
+    /// Call this when only the voice pitch or range changes,
+    /// and you want to rebuild quantization without resetting key/scale/mask.
+    func updateVoicePitchOrRangeOnly() {
+        // This is a placeholder for logic that reacts to voice pitch/range changes
+        // without resetting the customScaleMask or currentKey/Scale
+        rebuildQuantization(withScaleClasses: currentScalePitchClasses)
+    }
+
     
 }
 
@@ -237,3 +269,11 @@ extension MusicBrain {
         return result
     }
 }
+
+    
+extension MusicBrain {
+    func scaleMaskFromCurrentPitchClasses() -> UInt16 {
+        return UInt16(currentScalePitchClasses.reduce(0) { $0 | (1 << ($1 % 12)) })
+    }
+}
+

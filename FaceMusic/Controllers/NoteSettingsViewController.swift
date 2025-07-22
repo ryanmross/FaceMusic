@@ -72,34 +72,10 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         NotificationCenter.default.removeObserver(self)
     }
     private func setupUI() {
-        func createSettingsContainer(with stack: UIStackView, cornerRadius: CGFloat = 16) -> UIView {
-            let container = UIView()
-            container.translatesAutoresizingMaskIntoConstraints = false
-            container.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-            container.layer.cornerRadius = cornerRadius
-            container.addSubview(stack)
-            NSLayoutConstraint.activate([
-                stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-                stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
-                stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-                stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8)
-            ])
-            return container
-        }
-        
-        func createSettingsStack(with views: [UIView], spacing: CGFloat = 2) -> UIStackView {
-            let stack = UIStackView(arrangedSubviews: views)
-            stack.axis = .vertical
-            stack.alignment = .fill
-            stack.spacing = spacing
-            stack.translatesAutoresizingMaskIntoConstraints = false
-            return stack
-        }
-        
         
         // --- Voice Pitch Container ---
 
-        let voicePitchTitleLabel = UILabel.settingsLabel(text: "Voice Pitch", fontSize: 15, bold: true)
+        let voicePitchTitleLabel = createTitleLabel("Voice Pitch")
         
 
 
@@ -116,7 +92,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         // --- Note Range Container ---
 
-        let noteRangeTitleLabel = UILabel.settingsLabel(text: "Note Range", fontSize: 15, bold: true)
+        let noteRangeTitleLabel = createTitleLabel("Note Range")
 
         
         noteRangePicker = UIPickerView()
@@ -154,7 +130,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         keyPicker.backgroundColor = .clear
         keyPicker.translatesAutoresizingMaskIntoConstraints = false
 
-        let keyLabel = UILabel.settingsLabel(text: "Key", fontSize: 15, bold: true)
+        let keyLabel = createTitleLabel("Key")
         
         let keyStack = createSettingsStack(with: [keyLabel, keyPicker])
         
@@ -168,7 +144,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         chordTypePicker.backgroundColor = .clear
         chordTypePicker.translatesAutoresizingMaskIntoConstraints = false
         
-        let chordLabel = UILabel.settingsLabel(text: "Chord", fontSize: 15, bold: true)
+        let chordLabel = createTitleLabel("Chord")
 
         let chordStack = createSettingsStack(with: [chordLabel, chordTypePicker])
         
@@ -197,7 +173,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         
         // --- Voices Container ---
 
-        let voicesLabel = UILabel.settingsLabel(text: "Number of Voices", fontSize: 15, bold: true)
+        let voicesLabel = createTitleLabel("Number of Voices")
 
         voicesPicker = UIPickerView()
         voicesPicker.delegate = self
@@ -214,7 +190,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
 
         // Glissando Speed Label
-        let glissandoLabel = UILabel.settingsLabel(text: "Note Glide Speed", fontSize: 15, bold: true)
+        let glissandoLabel = createTitleLabel("Note Glide Speed")
 
         // Glissando Instant/Slow Labels Stack
         
@@ -334,11 +310,11 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
-        MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+        MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType)
         print("updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
         
         DispatchQueue.main.async {
-            self.updatePianoHighlighting(forKey: selectedKey, chordType: selectedChordType)
+            self.updatePianoHighlighting()
         }
     }
     
@@ -397,14 +373,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         } else if pickerView.tag == 11 {
             selectedNoteRangeIndex = row
         }
-        // Update piano highlighting if key or chord type picker changed
-        if pickerView.tag == 0 || pickerView.tag == 1 {
-            let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
-            let selectedKey = reversedNotes[keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
-            let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
-            updatePianoHighlighting(forKey: selectedKey, chordType: selectedChordType)
-        }
-        // Patch settings update and apply on any picker change
+
         let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
         let selectedKey = reversedNotes[keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
@@ -420,9 +389,18 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         patchSettings.chordType = selectedChordType
         patchSettings.glissandoSpeed = glissandoSlider.value
 
+        if pickerView.tag == 0 || pickerView.tag == 1 {
+            patchSettings.scaleMask = nil
+        }
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
         conductor?.applySettings(patchSettings)
-        MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+
+        if pickerView.tag == 0 || pickerView.tag == 1 {
+            MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+            updatePianoHighlighting()
+        } else if pickerView.tag == 10 || pickerView.tag == 11 {
+            MusicBrain.shared.updateVoicePitchOrRangeOnly()
+        }
     }
         
     
@@ -448,32 +426,35 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     private func setupPianoKeyboard(below anchorView: UIView){
         keyboard.delegate = self
         keyboard.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(keyboard)
+
+        // Label for the piano keyboard
+        let melodyLabel = createTitleLabel("Melody Scale")
+
+        // Create stack for label and keyboard
+        let pianoStack = createSettingsStack(with: [melodyLabel, keyboard])
+        let pianoContainer = createSettingsContainer(with: pianoStack)
+
+        view.addSubview(pianoContainer)
 
         NSLayoutConstraint.activate([
-            keyboard.topAnchor.constraint(equalTo: anchorView.bottomAnchor, constant: 10),
-            keyboard.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            keyboard.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
+            pianoContainer.topAnchor.constraint(equalTo: anchorView.bottomAnchor, constant: 10),
+            pianoContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            pianoContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.9),
             keyboard.heightAnchor.constraint(equalToConstant: 130)
         ])
 
         keyboard.setNeedsLayout()
         keyboard.layoutIfNeeded()
         keyboard.numberOfKeys = 12
-        //keyboard.setLabel(for: 60, text: "A")
-
     }
 
     // MARK: - Piano Highlighting
-    private func updatePianoHighlighting(forKey key: MusicBrain.NoteName, chordType: MusicBrain.ChordType, highlightNote: Int? = nil) {
-        print("updatePianoHighlighting forKey:\(key), chordType:\(chordType), highlightNote: \(String(describing: highlightNote))")
-        //print("updatePianoHighlighting CALLED FROM: \(Thread.callStackSymbols.joined(separator: "\n"))")
+    private func updatePianoHighlighting(highlightNote: Int? = nil) {
+        //print("updatePianoHighlighting with highlightNote: \(String(describing: highlightNote)), currentScalePitchClasses: \(MusicBrain.shared.currentScalePitchClasses)")
 
-        let scaleType = MusicBrain.ScaleType.scaleForChordType(chordType)
-        let intervals = scaleType.intervals
-        let rootMIDINote = key.rawValue
-        let scaleNotes = intervals.map { (rootMIDINote + $0) % 12 }
-
+        // Use MusicBrain's currentPitchClasses for highlighting instead of computed intervals
+        let scaleNotes = MusicBrain.shared.currentScalePitchClasses
+        
         let allNotesInOctave = 60..<72
         for note in allNotesInOctave {
             if let highlightNote = highlightNote, note == highlightNote {
@@ -502,7 +483,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         lastHighlightedNote = displayedNote
 
-        updatePianoHighlighting(forKey: MusicBrain.shared.currentKey, chordType: MusicBrain.shared.currentChordType, highlightNote: displayedNote)
+        updatePianoHighlighting(highlightNote: displayedNote)
     }
     
 }
@@ -543,13 +524,73 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
     func pianoKeyDown(_ keyNumber: Int) {
         print("Key down: \(keyNumber)")
     }
-    
-    func pianoKeyUp(_ keyNumber: Int) {
-        print("Key up: \(keyNumber)")
-    }
 
+    func pianoKeyUp(_ keyNumber: Int) {
+        let pitchClass = keyNumber % 12
+        MusicBrain.shared.togglePitchClass(pitchClass)
+
+        // Update patch settings
+        patchSettings.scaleMask = MusicBrain.shared.scaleMaskFromCurrentPitchClasses()
+        
+        // Save the updated patch
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+
+        // Apply to conductor
+        conductor?.applySettings(patchSettings)
+        
+        // Rebuild quantization with current lowest/highest notes
+        MusicBrain.shared.rebuildQuantization(
+            withScaleClasses: MusicBrain.shared.currentScalePitchClasses
+        )
+        
+        // Refresh keyboard
+        updatePianoHighlighting()
+    }
 }
 
-    
 
 
+
+
+// Helper for creating settings container views
+func createSettingsContainer(with stack: UIStackView, cornerRadius: CGFloat = 16) -> UIView {
+    let container = UIView()
+    container.translatesAutoresizingMaskIntoConstraints = false
+    container.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
+    container.layer.cornerRadius = cornerRadius
+    container.addSubview(stack)
+    NSLayoutConstraint.activate([
+        stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
+        stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
+        stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
+        stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8)
+    ])
+    return container
+}
+
+// Helper for creating settings stack views
+func createSettingsStack(with views: [UIView], spacing: CGFloat = 2) -> UIStackView {
+    let stack = UIStackView(arrangedSubviews: views)
+    stack.axis = .vertical
+    stack.alignment = .fill
+    stack.spacing = spacing
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    return stack
+}
+
+// Helper for creating title labels for settings
+func createTitleLabel(_ text: String) -> UILabel {
+    let label = UILabel()
+    label.text = text
+    label.textColor = .white
+    label.textAlignment = .center
+    label.backgroundColor = .clear
+    label.translatesAutoresizingMaskIntoConstraints = false
+    label.setContentHuggingPriority(.required, for: .vertical)
+    label.setContentCompressionResistancePriority(.required, for: .vertical)
+    label.numberOfLines = 1
+    label.adjustsFontSizeToFitWidth = true
+    label.baselineAdjustment = .alignCenters
+    label.font = UIFont.boldSystemFont(ofSize: 15)
+    return label
+}

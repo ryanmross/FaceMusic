@@ -471,7 +471,10 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         if now - lastStatsUpdate > 0.25 {
             faceStatsManager.updateFaceStats(with: faceData)
             if let conductor = conductor {
-                audioStatsManager.updateStats(with: conductor.returnAudioStats())
+                let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
+                var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
+                audioStatsString += conductor.returnAudioStats()
+                audioStatsManager.updateStats(with: audioStatsString)
                 musicStatsManager.updateStats(with: conductor.returnMusicStats())
             }
             lastStatsUpdate = now

@@ -6,17 +6,14 @@ import SoundpipeAudioKit
 
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
-    
-    
-    
+
     static var id: String = "vocaltract"
     static var displayName: String = "Vocal Tract"
     
     private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []
     
     var faceData: FaceData?
-    let engine = AudioEngine()
-    let mixer = Mixer()
+    let engine = AudioEngineManager.shared.engine
     
 
     static let defaultSettings = PatchSettings.default()
@@ -62,7 +59,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
 
-        engine.output = mixer
+        AudioEngineManager.shared.engine.output = AudioEngineManager.shared.mixer
         
 
         updateVoiceCount()
@@ -89,7 +86,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in currentCount..<desiredCount {
                 let voc = VocalTract()
                 let fader = Fader(voc, gain: 0.0)
-                mixer.addInput(fader)
+                AudioEngineManager.shared.mixer.addInput(fader)
                 voiceBundles.append((voice: voc, fader: fader))
                 if audioState == .playing {
                     startVoice(fader, voice: voc)
@@ -99,7 +96,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     stopVoice(last.fader, voice: last.voice)
-                    mixer.removeInput(last.fader)
+                    AudioEngineManager.shared.mixer.removeInput(last.fader)
                 }
             }
         }
@@ -131,39 +128,32 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         audioState = .stopped
 
         if immediate {
-            
             // Immediately stop voices and engine, no fade
             print("**stop engine immediately")
             voiceBundles.forEach { voiceBundle in
                 voiceBundle.voice.stop()
             }
-            engine.stop()
+            AudioEngineManager.shared.stopEngine()
         } else {
             // Fade out voices first
             print("**stop engine with fadeout")
             voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.engine.stop()
+                AudioEngineManager.shared.stopEngine()
             }
         }
     }
 
     func startEngine() {
-        do {
-            //print("**start engine")
-            try engine.start()
-            audioState = .waitingForFaceData
-            
-            // Wait a moment before enabling voices
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                print("Engine warmed up, ready for face data.")
-            }
+        AudioEngineManager.shared.startEngine()
+        audioState = .waitingForFaceData
 
-            print("Engine started with sample rate: \(engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate)")
-
-        } catch {
-            print("Error starting audio engine: \(error)")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("Engine warmed up, ready for face data.")
         }
+
+        let outputNode = AudioEngineManager.shared.engine.avEngine.outputNode
+        print("Engine started with sample rate: \(outputNode.outputFormat(forBus: 0).sampleRate)")
     }
     
     func updateWithFaceData(_ faceData: FaceData) {

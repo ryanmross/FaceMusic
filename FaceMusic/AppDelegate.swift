@@ -5,7 +5,6 @@
 //  Created by Ryan Ross on 6/11/24.
 //
 
-import UIKit
 import ARKit
 import AudioKit
 
@@ -18,9 +17,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
 
+        AudioEngineManager.shared.startEngine()
 
-            return true
-        }
+        return true
+    }
     
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         if !ARFaceTrackingConfiguration.isSupported {
@@ -37,63 +37,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             
             let storyboard = UIStoryboard(name: "Main", bundle: nil)
             window?.rootViewController = storyboard.instantiateViewController(withIdentifier: "unsupportedDeviceMessage")
-        }
-        do {
-            // detect device and do a rough and dirty buffer length change based on device age
-            let model = UIDevice.current.modelIdentifier
-            print("Detected device: \(model)")
-
-            // Default to medium buffer
-            var chosenBufferLength: Settings.BufferLength = .medium
-
-            if model.hasPrefix("iPhone") {
-                let parts = model
-                    .replacingOccurrences(of: "iPhone", with: "")
-                    .split(separator: ",")
-
-                if let majorString = parts.first,
-                   let major = Int(majorString) {
-
-                    if major >= 16 {
-                        // iPhone 16 and newer
-                        chosenBufferLength = .short
-                    } else if major >= 13 {
-                        // iPhone 13–15
-                        chosenBufferLength = .medium
-                    } else {
-                        // Older iPhones
-                        chosenBufferLength = .long
-                    }
-                }
-            }
-
-            Settings.bufferLength = chosenBufferLength
-            print("Selected buffer length: \(Settings.bufferLength)")
-            
-            
-            
-            //Settings.bufferLength = .veryShort
-            
-            
-            
-            Settings.enableLogging = true
-            
-            Settings.sampleRate = 48000
-            
-            
-            try AVAudioSession.sharedInstance().setPreferredIOBufferDuration(Settings.bufferLength.duration)
-            try AVAudioSession.sharedInstance().setCategory(.playAndRecord,
-                                                            options: [.defaultToSpeaker, .mixWithOthers, .allowBluetoothA2DP])
-            try AVAudioSession.sharedInstance().setPreferredSampleRate(48000)
-            try AVAudioSession.sharedInstance().setActive(true)
-            
-            
-            let hwRate = AVAudioSession.sharedInstance().sampleRate
-            print("Hardware sample rate: \(hwRate)")
-            
-            
-        } catch let err {
-            print(err)
         }
         
         return true

@@ -23,8 +23,6 @@ struct FaceData {
     var horizPosition: HorizDirection
 }
 
-
-
 class FaceDataBrain {
 
     func processFaceData(_ faceAnchor: ARFaceAnchor) -> FaceData {
@@ -68,15 +66,4 @@ class FaceDataBrain {
             horizPosition: horizPosition
         )
     }
-    
-//    func mapPitch(rawPitch: Float, lowRange: Int, highRange: Int) -> Int {
-//        let clampedRaw = min(max(rawPitch, ARDataPitchRange.min), ARDataPitchRange.max)
-//        return Int(clampedRaw.interpolated(
-//            fromLowerBound: ARDataPitchRange.min,
-//            fromUpperBound: ARDataPitchRange.max,
-//            toLowerBound: Float(lowRange),
-//            toUpperBound: Float(highRange)
-//        ))
-//    }
-    
 }

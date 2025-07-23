@@ -2,14 +2,19 @@ import Foundation
 
 class HarmonyMaker {
     
-    let appSettings = AppSettings()
+    private var previousPitch: Int?
     
     func voiceChord(currentPitch: Int, numOfVoices: Int = 1) -> [Int] {
         guard numOfVoices > 0 else { return [] }
+        previousPitch = currentPitch
 
         let key = MusicBrain.shared.currentKey
         let chordType = MusicBrain.shared.currentChordType
         let intervals = MusicBrain.shared.chordIntervals(for: chordType)
+
+        // Extract 3rd and 7th intervals if present
+        let thirdInterval = intervals.count > 1 ? intervals[1] : nil
+        let seventhInterval = intervals.count > 3 ? intervals[3] : nil
 
         let rootPitch = key.rawValue + 12 * 4 // Base octave 4
 
@@ -17,6 +22,23 @@ class HarmonyMaker {
         if numOfVoices == 1 { return harmony }
 
         var possibleHarmonies: Set<Int> = []
+
+        // Explicit prioritization for dominant 7th chords
+        if chordType == .dominant7 {
+            // Add the 3rd and 7th to possibleHarmonies if they are below currentPitch
+            if let third = thirdInterval {
+                let thirdPitch = key.rawValue + third + 12 * 3
+                if thirdPitch < currentPitch {
+                    possibleHarmonies.insert(thirdPitch)
+                }
+            }
+            if let seventh = seventhInterval {
+                let seventhPitch = key.rawValue + seventh + 12 * 3
+                if seventhPitch < currentPitch {
+                    possibleHarmonies.insert(seventhPitch)
+                }
+            }
+        }
 
         // Determine clarity thresholds
         let muddyThreshold = 48
@@ -28,14 +50,12 @@ class HarmonyMaker {
             for interval in intervals {
                 let pitch = key.rawValue + interval + base
                 if pitch < currentPitch {
-                    // Avoid muddy intervals in low register
+                    // New muddy/very muddy logic
                     if pitch < veryMuddyThreshold {
-                        // Only allow root and fifth
                         if interval == intervals[0] || (intervals.count > 2 && interval == intervals[2]) {
                             possibleHarmonies.insert(pitch)
                         }
                     } else if pitch < muddyThreshold {
-                        // Avoid 7ths and 3rds
                         if interval != intervals[1] && (intervals.count < 4 || interval != intervals[3]) {
                             possibleHarmonies.insert(pitch)
                         }
@@ -65,10 +85,26 @@ class HarmonyMaker {
         var selected: [Int] = []
         var lastPitch = currentPitch
 
+        // Previous pitch and contrary motion logic
+        let previousPitch = previousPitch ?? currentPitch
+        let sopranoMotion = currentPitch - previousPitch
+        let favorsContraryMotion: (Int) -> Bool = { note in
+            let harmonyMotion = note - currentPitch
+            return (harmonyMotion < 0) != (sopranoMotion > 0)
+        }
+
         for note in sorted {
             if selected.count >= numOfVoices - 1 { break }
+            // Leave more space below the soprano
+            if note >= currentPitch - 3 { continue }
             let interval = lastPitch - note
-            if interval >= 3 && interval <= 12 { // avoid too tight or too wide
+            let minSpacing = max(3, 12 - currentPitch / 12)
+            let maxSpacing = 12
+            let isForbiddenInterval = [7, 12].contains(abs(lastPitch - note))
+
+            if interval >= minSpacing && interval <= maxSpacing &&
+               !isForbiddenInterval &&
+               favorsContraryMotion(note) {
                 selected.append(note)
                 lastPitch = note
             }
@@ -103,7 +139,12 @@ class HarmonyMaker {
         var fillIndex = 0
         while finalHarmony.count < numOfVoices && fillIndex < sorted.count {
             let candidate = sorted[fillIndex]
-            if !finalHarmony.contains(candidate) {
+            // Use minSpacing/maxSpacing logic for spacing
+            let minSpacing = max(3, 12 - currentPitch / 12)
+            let maxSpacing = 12
+            let last = finalHarmony.last ?? currentPitch
+            let interval = abs(last - candidate)
+            if !finalHarmony.contains(candidate) && interval >= minSpacing && interval <= maxSpacing {
                 finalHarmony.append(candidate)
             }
             fillIndex += 1

@@ -351,7 +351,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
             label.text = reversedNotes[row % reversedNotes.count].displayName
         case 1:
-            label.text = chordTypes[row].rawValue
+            label.text = chordTypes[row].displayName
         case 2:
             label.text = "\(row + 1)"
         case 10:

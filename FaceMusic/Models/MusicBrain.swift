@@ -16,8 +16,18 @@ class MusicBrain {
         case halfDiminished
         case augmented
         
-        
         // Add other chord types as needed
+        
+        var displayName: String {
+            switch self {
+            case .major: return "Major"
+            case .minor: return "Minor"
+            case .dominant7: return "Dominant 7"
+            case .diminished: return "Diminished"
+            case .halfDiminished: return "Half-Diminished"
+            case .augmented: return "Augmented"
+            }
+        }
     }
 
     // Enum for note names

@@ -2,6 +2,7 @@ import Foundation
 
 class HarmonyMaker {
     
+    private let minHarmonyPitch = 36
     private var previousPitch: Int?
     
     func voiceChord(currentPitch: Int, numOfVoices: Int = 1) -> [Int] {
@@ -11,158 +12,84 @@ class HarmonyMaker {
         let key = MusicBrain.shared.currentKey
         let chordType = MusicBrain.shared.currentChordType
         let intervals = MusicBrain.shared.chordIntervals(for: chordType)
+        let rootPitch = key.rawValue + intervals[0] + 12 * 4 // Base root
 
-        // Extract 3rd and 7th intervals if present
-        let thirdInterval = intervals.count > 1 ? intervals[1] : nil
-        let seventhInterval = intervals.count > 3 ? intervals[3] : nil
-
-        let rootPitch = key.rawValue + 12 * 4 // Base octave 4
-
-        var harmony: [Int] = [currentPitch]
-        if numOfVoices == 1 { return harmony }
-
-        var possibleHarmonies: Set<Int> = []
-
-        // Explicit prioritization for dominant 7th chords
-        if chordType == .dominant7 {
-            // Add the 3rd and 7th to possibleHarmonies if they are below currentPitch
-            if let third = thirdInterval {
-                let thirdPitch = key.rawValue + third + 12 * 3
-                if thirdPitch < currentPitch {
-                    possibleHarmonies.insert(thirdPitch)
-                }
-            }
-            if let seventh = seventhInterval {
-                let seventhPitch = key.rawValue + seventh + 12 * 3
-                if seventhPitch < currentPitch {
-                    possibleHarmonies.insert(seventhPitch)
-                }
-            }
-        }
-
-        // Determine clarity thresholds
-        let muddyThreshold = 48
-        let veryMuddyThreshold = 36
-
-        // Add chord tones below currentPitch down to rootPitch - 2 octaves
+        var candidates: [Int] = []
         for octave in stride(from: 7, through: 2, by: -1) {
             let base = 12 * octave
             for interval in intervals {
                 let pitch = key.rawValue + interval + base
-                if pitch < currentPitch {
-                    // New muddy/very muddy logic
-                    if pitch < veryMuddyThreshold {
-                        if interval == intervals[0] || (intervals.count > 2 && interval == intervals[2]) {
-                            possibleHarmonies.insert(pitch)
-                        }
-                    } else if pitch < muddyThreshold {
-                        if interval != intervals[1] && (intervals.count < 4 || interval != intervals[3]) {
-                            possibleHarmonies.insert(pitch)
-                        }
-                    } else {
-                        possibleHarmonies.insert(pitch)
-                    }
+                if pitch < currentPitch && pitch >= minHarmonyPitch {
+                    candidates.append(pitch)
                 }
             }
         }
 
-        // Ensure 3rd is present
-        let third = key.rawValue + intervals[1] + 12 * 3
-        if third < currentPitch {
-            possibleHarmonies.insert(third)
+        struct ScoredNote {
+            let pitch: Int
+            let score: Int
         }
 
-        // Ensure 5th if available
-        if intervals.count > 2 {
-            let fifth = key.rawValue + intervals[2] + 12 * 3
-            if fifth < currentPitch {
-                possibleHarmonies.insert(fifth)
+        let muddyThreshold = 48
+        let veryMuddyThreshold = 36
+        let previous = previousPitch ?? currentPitch
+        let sopranoMotion = currentPitch - previous
+
+        func score(note: Int) -> Int {
+            var s = 0
+            let interval = (note - key.rawValue) % 12
+
+            // Prioritize essential chord tones
+            if interval == intervals[1] { s += 30 } // 3rd
+            if intervals.count > 3 && interval == intervals[3] { s += 25 } // 7th
+            if interval == intervals[0] { s += 20 } // root
+            if intervals.count > 2 && interval == intervals[2] { s += 10 } // 5th
+
+            // Penalize muddy regions more strongly
+            if note < veryMuddyThreshold {
+                s -= 50
+            } else if note < muddyThreshold {
+                s -= 25
             }
-        }
 
-        // Sort by descending and pick voices that are reasonably spaced
-        let sorted = possibleHarmonies.sorted(by: >)
-        var selected: [Int] = []
-        var lastPitch = currentPitch
-
-        // Previous pitch and contrary motion logic
-        let previousPitch = previousPitch ?? currentPitch
-        let sopranoMotion = currentPitch - previousPitch
-        let favorsContraryMotion: (Int) -> Bool = { note in
+            // Encourage contrary motion
             let harmonyMotion = note - currentPitch
-            return (harmonyMotion < 0) != (sopranoMotion > 0)
+            if (harmonyMotion < 0) != (sopranoMotion > 0) {
+                s += 5
+            }
+
+            // Penalize tight spacing
+            if currentPitch - note < 3 {
+                s -= 10
+            }
+
+            return s
         }
 
-        for note in sorted {
-            if selected.count >= numOfVoices - 1 { break }
-            // Leave more space below the soprano
-            if note >= currentPitch - 3 { continue }
-            let interval = lastPitch - note
-            let minSpacing = max(3, 12 - currentPitch / 12)
-            let maxSpacing = 12
-            let isForbiddenInterval = [7, 12].contains(abs(lastPitch - note))
+        var scored: [ScoredNote] = candidates.map { ScoredNote(pitch: $0, score: score(note: $0)) }
+        scored.sort { $0.score > $1.score }
 
-            if interval >= minSpacing && interval <= maxSpacing &&
-               !isForbiddenInterval &&
-               favorsContraryMotion(note) {
-                selected.append(note)
-                lastPitch = note
+        var final: [Int] = [currentPitch]
+        var used: Set<Int> = [currentPitch]
+
+        for cand in scored {
+            if final.count >= numOfVoices { break }
+            if !used.contains(cand.pitch) {
+                final.append(cand.pitch)
+                used.insert(cand.pitch)
             }
         }
 
-        // Fallback: If no notes were selected and more than one voice is requested,
-        // pick the highest available possible harmony below currentPitch
-        if selected.isEmpty && numOfVoices > 1 {
-            if let backupNote = sorted.first {
-                selected.append(backupNote)
-            }
+        // Fallback if not enough voices
+        if final.count < numOfVoices {
+            let fill = scored.prefix(numOfVoices - final.count).map { $0.pitch }
+            final.append(contentsOf: fill.filter { !used.contains($0) })
         }
 
-        harmony.append(contentsOf: selected)
-
-        // Ensure a strong bass root if currentPitch is high, while respecting voice count
-        let bassThreshold = 65
-        let bassRoot = key.rawValue + 12 * 4 + intervals.first!
-        if currentPitch >= bassThreshold && !harmony.contains(bassRoot) {
-            if harmony.count >= numOfVoices {
-                // Replace the lowest harmony note with bassRoot, only if not already present
-                harmony[harmony.count - 1] = bassRoot
-            } else {
-                harmony.append(bassRoot)
-            }
-        }
-
-        // Deduplicate and sort
-        var finalHarmony = Array(Set(harmony)).sorted(by: >)
-
-        // Fill in with extra harmonies if under voice count
-        var fillIndex = 0
-        while finalHarmony.count < numOfVoices && fillIndex < sorted.count {
-            let candidate = sorted[fillIndex]
-            // Use minSpacing/maxSpacing logic for spacing
-            let minSpacing = max(3, 12 - currentPitch / 12)
-            let maxSpacing = 12
-            let last = finalHarmony.last ?? currentPitch
-            let interval = abs(last - candidate)
-            if !finalHarmony.contains(candidate) && interval >= minSpacing && interval <= maxSpacing {
-                finalHarmony.append(candidate)
-            }
-            fillIndex += 1
-        }
-
-        // If still not enough, duplicate next highest pitch (not a low muddy note)
-        if finalHarmony.count < numOfVoices {
-            let bassDuplicationThreshold = 36
-            var fillPitch = finalHarmony.first(where: { $0 > bassDuplicationThreshold }) ?? finalHarmony.last!
-            while finalHarmony.count < numOfVoices {
-                finalHarmony.append(fillPitch)
-            }
-        }
-        
-        
-        finalHarmony.sort(by: >)
-
-        print("Harmony: \(finalHarmony)")
-        return finalHarmony
+        // Final sort and return
+        final = Array(Set(final)).sorted(by: >)
+        let noteNames = final.map { MusicBrain.NoteName.nameWithOctave(forMIDINote: $0) }
+        print("Harmony: \(final) - \(noteNames)")
+        return final
     }
 }

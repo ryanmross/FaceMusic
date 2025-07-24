@@ -158,7 +158,7 @@ class MusicBrain {
         self.currentKey = key
         self.currentScale = scale
         self.nearestNoteTable = []
-        updateKeyAndScale(key: key, chordType: .major)
+        //updateKeyAndScale(key: key, chordType: .major)
     }
 
     
@@ -179,10 +179,12 @@ class MusicBrain {
 
         if let mask = scaleMask {
             let scaleNotes = Self.pitchClasses(fromMask: mask)
+            print("MusicBrain.updateKeyAndScale: Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
             rebuildQuantization(withScaleClasses: scaleNotes)
         } else {
             let scale = ScaleType.scaleForChordType(chordType)
             self.currentScale = scale
+            print("MusicBrain.updateKeyAndScale: Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
             rebuildQuantization(withScaleClasses: scale.intervals.map { ($0 + key.rawValue) % 12 })
         }
     }

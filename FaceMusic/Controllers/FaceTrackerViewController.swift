@@ -213,10 +213,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
         // Remove old conductor from mixer
         if let oldConductor = self.conductor {
+            print("FaceTrackerViewController.loadPatchByID: Removing old conductor from mixer")
             AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
         }
 
         let newConductor = conductorType.init()
+        print("FaceTrackerViewController.loadPatchByID: Initializing new conductor with applySettings(\(settings))")
         newConductor.applySettings(settings)
         
         MusicBrain.shared.updateKeyAndScale(
@@ -224,9 +226,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             chordType: settings.chordType,
             scaleMask: settings.scaleMask
         )
+        print("FaceTrackerViewController.loadPatchByID: updated MusicBrain")
 
         self.conductor = newConductor
-        AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
+        
+        //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
 
         // Save this as the last used patch
         UserDefaults.standard.set(id, forKey: "LastPatchID")
@@ -305,61 +309,43 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+
+        UIApplication.shared.isIdleTimerDisabled = true
+        resetTracking()
+
+        let patchManager = PatchManager.shared
+
+        if !PatchManager.shared.listPatches().isEmpty {
+            if let lastID = patchManager.currentPatchID {
+                print("FaceTrackerViewController.viewWillAppear: Loading last patch ID with loadPatchByID(\(lastID))")
+                loadPatchByID(lastID)
+            } else if let firstID = patchManager.listPatches().first {
+                print("FaceTrackerViewController.viewWillAppear: Loading first patch ID with loadPatchByID(\(firstID))")
+                loadPatchByID(firstID)
+            }
+        } else {
+            let defaultSettings = patchManager.defaultPatchSettings
+            let newID = patchManager.generateNewPatchID()
+            patchManager.save(settings: defaultSettings, forID: newID)
+            UserDefaults.standard.set(newID, forKey: "LastPatchID")
+            print("FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
+            loadPatchByID(newID)
+        }
+
+        if conductor == nil {
+            let newConductor = VocalTractConductor()
+            newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
+            conductor = newConductor
+        }
         // Create a session configuration
         //let configuration = ARWorldTrackingConfiguration()
-        
         // Run the view's session
         //sceneView.session.run(configuration)
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
         print("FaceTrackerViewController: viewDidAppear")
-        
-        // Actions to take when the view appears on the screen.
-        UIApplication.shared.isIdleTimerDisabled = true
-        
-        resetTracking()
-        // Disable the idle timer and reset AR tracking.
-        
-        let patchManager = PatchManager.shared
-        
-        print("FaceTrackerViewController.viewDidAppear: patchManager.currentPatchID is: \(patchManager.currentPatchID!)")
-
-        // Check if patches exist
-        if !PatchManager.shared.listPatches().isEmpty {
-            // There are saved patches
-            if let lastID = patchManager.currentPatchID {
-                print("FaceTrackerViewController.viewDidAppear: Loading current patch ID: \(lastID)")
-                loadPatchByID(lastID)
-            } else {
-                // No ID saved, load the first available patch
-                if let firstID = patchManager.listPatches().first {
-                    print("FaceTrackerViewController.viewDidAppear: No last patch ID saved, loading first patch ID: \(firstID)")
-                    loadPatchByID(firstID)
-                }
-            }
-        } else {
-            // No patches exist, create a new default patch
-            let defaultSettings = patchManager.defaultPatchSettings
-            let newID = patchManager.generateNewPatchID()
-            patchManager.save(settings: defaultSettings, forID: newID)
-
-            // Save this as the last used patch
-            UserDefaults.standard.set(newID, forKey: "LastPatchID")
-            loadPatchByID(newID)
-        }
-
-        if conductor == nil {
-            // As a fallback, create a default conductor
-            print("FaceTrackerViewController.viewDidAppear: No conductor assigned, creating default")
-            let newConductor = VocalTractConductor()
-            newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
-            conductor = newConductor
-        }
-        // conductor?.startEngine() // Removed per instruction
     }
     
     override func viewWillDisappear(_ animated: Bool) {

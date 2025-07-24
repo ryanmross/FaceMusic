@@ -39,6 +39,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     @Published var numOfVoices: Int {
         didSet {
+            print("VocalTractConductor: numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
             updateVoiceCount()
         }
     }
@@ -64,12 +65,14 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     internal func updateVoiceCount() {
-        print("VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices)")
+        
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
-
+        
+        print("VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
+        
         if currentCount == desiredCount {
-            print("VocalTractConductor.updateVoiceCount(): Voice count unchanged—refreshing voices")
+            print("VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
             /*
             voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
             for (fader, voice) in voiceBundles.map({ ($0.fader, $0.voice) }) {
@@ -79,10 +82,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             }
              */
         } else if currentCount < desiredCount {
+            print("VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
                 let voc = VocalTract()
                 let fader = Fader(voc, gain: 0.0)
-                AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
+                //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: voc, fader: fader))
                 if audioState == .playing {
@@ -90,6 +94,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 }
             }
         } else {
+            print("VocalTractConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     stopVoice(last.fader, voice: last.voice)

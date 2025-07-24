@@ -176,12 +176,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             let selectedID = settings.activeVoiceID
             let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
 
-            // Remove old conductor from mixer
-            if let oldConductor = self.conductor {
-                AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
-            }
+            // Remove all inputs from mixer
+            print("FaceTrackerViewController.openPatchTapped() removing all inputs from mixer")
+            AudioEngineManager.shared.removeAllInputsFromMixer()
+            conductor = nil
 
             let newConductor = conductorType.init()
+            print("FaceTrackerViewController.openPatchTapped() creating new conductor")
             newConductor.applySettings(settings)
             
             MusicBrain.shared.updateKeyAndScale(
@@ -191,7 +192,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             )
 
             self.conductor = newConductor
-            AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
+            
+            //print("FaceTrackerViewController.openPatchTapped() adding new conductor to mixer")
+            //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
         }
 
         let nav = UINavigationController(rootViewController: patchListVC)
@@ -211,11 +214,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let selectedID = settings.activeVoiceID
         let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
 
-        // Remove old conductor from mixer
-        if let oldConductor = self.conductor {
-            print("FaceTrackerViewController.loadPatchByID: Removing old conductor from mixer")
-            AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
-        }
+        // Remove all inputs from mixer
+        print("FaceTrackerViewController.loadPatchByID: Removing all inputs from mixer")
+        AudioEngineManager.shared.removeAllInputsFromMixer()
+        conductor = nil
+
 
         let newConductor = conductorType.init()
         print("FaceTrackerViewController.loadPatchByID: Initializing new conductor with applySettings(\(settings))")
@@ -295,10 +298,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     private func createAndLoadNewPatch() {
         let defaultSettings = PatchSettings.default()
 
-        // Remove old conductor from mixer
-        if let oldConductor = self.conductor {
-            AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
-        }
+        AudioEngineManager.shared.removeAllInputsFromMixer()
+        conductor = nil
 
         let newConductor = VocalTractConductor()
         newConductor.applySettings(defaultSettings)
@@ -333,6 +334,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         }
 
         if conductor == nil {
+            print("FaceTrackerViewController.viewWillAppear: Conductor is nil.  Creating new conductor")
             let newConductor = VocalTractConductor()
             newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
             conductor = newConductor
@@ -354,10 +356,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Pause the view's session
         sceneView.session.pause()
         
-        print("FaceTrackerViewController.viewWillDisappear: Removing conductor from mixer")
-        if let conductor = conductor {
-            AudioEngineManager.shared.removeFromMixer(node: conductor.outputNode)
-        }
+        print("FaceTrackerViewController.viewWillDisappear: Removing all inputs mixer")
+        AudioEngineManager.shared.removeAllInputsFromMixer()
+        conductor = nil
+
     }
     
     
@@ -393,18 +395,18 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        print("FaceTrackerViewController.SessionWasInterrupted")
-        if let conductor = conductor {
-            AudioEngineManager.shared.removeFromMixer(node: conductor.outputNode)
-        }
+        
+        print("FaceTrackerViewController.SessionWasInterrupted.")
+        //AudioEngineManager.shared.removeAllInputsFromMixer()
+        //conductor = nil
+
     }
         
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
-        print("FaceTrackerViewController.sessionInterruptionEnded")
-        if let conductor = conductor {
-            AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
-        }
+        
+        print("FaceTrackerViewController.sessionInterruptionEnded.")
+        //AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
         //resetTracking()
     }
     

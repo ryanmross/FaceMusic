@@ -70,7 +70,7 @@ class PatchManager {
     
     // Load a patch by ID
     func load(forID id: Int) -> PatchSettings? {
-        print("PatchManager: load \(id)")
+        print("PatchManager.load(\(id)).  This simply returns info about the patch, not fully loading it yet.")
         if let patch = patches[id] {
             return patch
         }

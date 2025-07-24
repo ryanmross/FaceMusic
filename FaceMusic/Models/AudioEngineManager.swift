@@ -133,9 +133,25 @@ class AudioEngineManager {
 
     func removeFromMixer(node: Node, caller: String = #function) {
         let nodeID = ObjectIdentifier(node)
-        print("AudioEngineManager: 🧯 [Mixer] removeInput called from \(caller). Node: \(node)")
+        print("AudioEngineManager: 🧯 [Mixer] removeInput called from \(caller). Node: \(node).  Initial mixer state is:")
+        logMixerState("removeFromMixer() - before removal")
         mixer.removeInput(node)
         addedFaderIDs.remove(nodeID)
+        logMixerState("removeFromMixer() - after removal")
+    }
+
+    func removeAllInputsFromMixer(caller: String = #function) {
+        print("AudioEngineManager: 🧯 [Mixer] removeAllInputsFromMixer called from \(caller). Initial mixer state is:")
+        logMixerState("removeAllInputsFromMixer() - before removal")
+        
+        let connections = mixer.connections
+        for node in connections {
+            let nodeID = ObjectIdentifier(node)
+            mixer.removeInput(node)
+            addedFaderIDs.remove(nodeID)
+        }
+
+        logMixerState("removeAllInputsFromMixer() - after removal")
     }
     
     /// Logs the current mixer state for debugging.

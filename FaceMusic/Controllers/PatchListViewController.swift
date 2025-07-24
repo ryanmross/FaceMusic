@@ -85,7 +85,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
         let id = patchIDs[indexPath.row]
         
         let settings = patchManager.load(forID: id)
-        print("loaded patch \(id): \(settings?.name ?? "nil")")
+        print("PatchListViewController: loaded patch \(id): \(settings?.name ?? "nil")")
         patchManager.currentPatchID = id
         dismiss(animated: true) {
             self.onPatchSelected?(id, settings)

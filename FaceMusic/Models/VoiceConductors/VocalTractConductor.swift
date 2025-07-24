@@ -60,8 +60,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.currentSettings = defaultSettings
         self.audioState = .waitingForFaceData
 
-        //updateVoiceCount()
-        voiceBundles.forEach { $0.voice.start(); $0.voice.stop() }
     }
     
     internal func updateVoiceCount() {
@@ -73,14 +71,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         
         if currentCount == desiredCount {
             print("VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
-            /*
-            voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
-            for (fader, voice) in voiceBundles.map({ ($0.fader, $0.voice) }) {
-                if audioState == .playing {
-                    startVoice(fader, voice: voice)
-                }
-            }
-             */
+
         } else if currentCount < desiredCount {
             print("VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
@@ -89,14 +80,18 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: voc, fader: fader))
+                
                 if audioState == .playing {
+                    print("VocalTractConductor.updateVoiceCount(): Starting new voice.")
                     startVoice(fader, voice: voc)
                 }
+                
             }
         } else {
             print("VocalTractConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
+                    print("VocalTractConductor.updateVoiceCount(): Stopping voice.")
                     stopVoice(last.fader, voice: last.voice)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                 }
@@ -251,8 +246,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         //print("audioState: \(audioState)")
         
         if audioState == .waitingForFaceData {
+            print("VocalTractConductor.updateWithFaceData() setting audioState to .playing")
             audioState = .playing
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 ) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4 ) {
                 
                 self.voiceBundles.forEach { voiceBundle in
                     self.startVoice(voiceBundle.fader, voice: voiceBundle.voice)
@@ -338,5 +334,3 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
    
 }
-
-

@@ -89,7 +89,7 @@ class HarmonyMaker {
         // Final sort and return
         final = Array(Set(final)).sorted(by: >)
         let noteNames = final.map { MusicBrain.NoteName.nameWithOctave(forMIDINote: $0) }
-        print("Harmony: \(final) - \(noteNames)")
+        //print("Harmony: \(final) - \(noteNames)")
         return final
     }
 }

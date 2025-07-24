@@ -4,6 +4,7 @@ import CAudioKitEX
 import AudioToolbox
 import SoundpipeAudioKit
 
+
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
 
@@ -18,12 +19,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     static let defaultSettings = PatchSettings.default()
     
-    enum AudioState {
-        case stopped
-        case waitingForFaceData
-        case playing
-    }
-    
     var audioState: AudioState = .stopped
     
     var currentSettings: PatchSettings?
@@ -37,6 +32,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     var lowestNote: Int
     var highestNote: Int
     var glissandoSpeed: Float
+    
+    var outputNode: Node {
+        return voiceBundles.first?.fader ?? Mixer()
+    }
     
     @Published var numOfVoices: Int {
         didSet {
@@ -58,22 +57,19 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
+        self.audioState = .waitingForFaceData
 
-        AudioEngineManager.shared.engine.output = AudioEngineManager.shared.mixer
-        
-
-        updateVoiceCount()
+        //updateVoiceCount()
         voiceBundles.forEach { $0.voice.start(); $0.voice.stop() }
-        
     }
     
     internal func updateVoiceCount() {
-        print("Update voice count with numOfVoices: \(numOfVoices)")
+        print("VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices)")
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
 
         if currentCount == desiredCount {
-            print("Voice count unchanged—refreshing voices")
+            print("VocalTractConductor.updateVoiceCount(): Voice count unchanged—refreshing voices")
             /*
             voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
             for (fader, voice) in voiceBundles.map({ ($0.fader, $0.voice) }) {
@@ -86,7 +82,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in currentCount..<desiredCount {
                 let voc = VocalTract()
                 let fader = Fader(voc, gain: 0.0)
-                AudioEngineManager.shared.mixer.addInput(fader)
+                AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
+                AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: voc, fader: fader))
                 if audioState == .playing {
                     startVoice(fader, voice: voc)
@@ -96,22 +93,25 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     stopVoice(last.fader, voice: last.voice)
-                    AudioEngineManager.shared.mixer.removeInput(last.fader)
+                    AudioEngineManager.shared.removeFromMixer(node: last.fader)
                 }
             }
         }
+        
+        // log mixer state
+        AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
 
     private func startVoice(_ fader: Fader, voice: VocalTract) {
         fader.gain = 0.0
-        print("startVoice...")
+        print("VocalTractConductor.startVoice()")
         voice.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
     }
 
     private func stopVoice(_ fader: Fader, voice: VocalTract) {
-        print("stopVoice...")
+        print("VocalTractConductor.stopVoice()")
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
         voice.stop()
@@ -123,38 +123,33 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
 
-    func stopEngine(immediate: Bool = false) {
-
+    func disconnectFromMixer() {
+        print("VocalTractConductor: 🔌 Disconnecting voices from mixer...")
+        voiceBundles.forEach { bundle in
+            AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
+            // Extra safeguard to prevent duplicate stops
+            if audioState == .playing {
+                bundle.voice.stop()
+            }
+        }
         audioState = .stopped
+    }
 
-        if immediate {
-            // Immediately stop voices and engine, no fade
-            print("**stop engine immediately")
-            voiceBundles.forEach { voiceBundle in
-                voiceBundle.voice.stop()
-            }
-            AudioEngineManager.shared.stopEngine()
-        } else {
-            // Fade out voices first
-            print("**stop engine with fadeout")
-            voiceBundles.forEach { stopVoice($0.fader, voice: $0.voice) }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                AudioEngineManager.shared.stopEngine()
+    func connectToMixer() {
+        print("VocalTractConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+        for bundle in voiceBundles {
+            // Always try removing first (safe even if not connected)
+            AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
+
+            // Then re-add
+            AudioEngineManager.shared.addToMixer(node: bundle.fader)
+
+            if audioState == .playing {
+                startVoice(bundle.fader, voice: bundle.voice)
             }
         }
     }
 
-    func startEngine() {
-        AudioEngineManager.shared.startEngine()
-        audioState = .waitingForFaceData
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            print("Engine warmed up, ready for face data.")
-        }
-
-        let outputNode = AudioEngineManager.shared.engine.avEngine.outputNode
-        print("Engine started with sample rate: \(outputNode.outputFormat(forBus: 0).sampleRate)")
-    }
     
     func updateWithFaceData(_ faceData: FaceData) {
         // this gets called when we get new AR data from the face
@@ -248,16 +243,19 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             }
         }
         
+        //print("audioState: \(audioState)")
+        
         if audioState == .waitingForFaceData {
             audioState = .playing
-            voiceBundles.forEach { voiceBundle in
-                startVoice(voiceBundle.fader, voice: voiceBundle.voice)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4 ) {
+                
+                self.voiceBundles.forEach { voiceBundle in
+                    self.startVoice(voiceBundle.fader, voice: voiceBundle.voice)
+                }
             }
         }
         
 
-        
-        
         
 }
     
@@ -269,7 +267,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = settings.glissandoSpeed
         self.currentSettings = settings
         
-        updateVoiceCount()
+        if self.numOfVoices != settings.numOfVoices {
+            self.numOfVoices = settings.numOfVoices
+        }
     }
     
     func exportCurrentSettings() -> PatchSettings {
@@ -333,3 +333,5 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
    
 }
+
+

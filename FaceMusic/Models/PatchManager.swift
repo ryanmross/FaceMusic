@@ -70,7 +70,7 @@ class PatchManager {
     
     // Load a patch by ID
     func load(forID id: Int) -> PatchSettings? {
-        print("PatchManager load \(id)")
+        print("PatchManager: load \(id)")
         if let patch = patches[id] {
             return patch
         }
@@ -79,7 +79,7 @@ class PatchManager {
     
     // List all saved IDs
     func listPatches() -> [Int] {
-        print("PatchManager listPatches.  currentPatchID is: \(currentPatchID as Any)")
+        print("PatchManager: listPatches.  currentPatchID is: \(currentPatchID as Any)")
         return Array(patches.keys).sorted()
     }
     

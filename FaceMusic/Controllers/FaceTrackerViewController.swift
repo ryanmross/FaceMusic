@@ -176,7 +176,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             let selectedID = settings.activeVoiceID
             let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
 
-            self.conductor?.stopEngine(immediate: false)
+            // Remove old conductor from mixer
+            if let oldConductor = self.conductor {
+                AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
+            }
 
             let newConductor = conductorType.init()
             newConductor.applySettings(settings)
@@ -186,11 +189,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                 chordType: settings.chordType,
                 scaleMask: settings.scaleMask
             )
-            
 
             self.conductor = newConductor
-            self.conductor?.startEngine()
-            self.conductor = newConductor
+            AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
         }
 
         let nav = UINavigationController(rootViewController: patchListVC)
@@ -200,16 +201,20 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
     // initializes it, applies the settings, and assigns it to self.conductor.
     func loadPatchByID(_ id: Int) {
+        print("FaceTrackerViewController.loadPatchById(\(id))")
+        
         guard let settings = PatchManager.shared.load(forID: id) else {
-            print("Patch with ID \(id) not found.")
+            print("FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
             return
         }
 
         let selectedID = settings.activeVoiceID
         let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
 
-        // Stop the old conductor
-        self.conductor?.stopEngine(immediate: true)
+        // Remove old conductor from mixer
+        if let oldConductor = self.conductor {
+            AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
+        }
 
         let newConductor = conductorType.init()
         newConductor.applySettings(settings)
@@ -221,9 +226,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         )
 
         self.conductor = newConductor
-
-        // Start the new conductor
-        self.conductor?.startEngine()
+        AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
 
         // Save this as the last used patch
         UserDefaults.standard.set(id, forKey: "LastPatchID")
@@ -288,14 +291,16 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     private func createAndLoadNewPatch() {
         let defaultSettings = PatchSettings.default()
 
-        // Stop the old conductor
-        self.conductor?.stopEngine(immediate: false)
+        // Remove old conductor from mixer
+        if let oldConductor = self.conductor {
+            AudioEngineManager.shared.removeFromMixer(node: oldConductor.outputNode)
+        }
 
         let newConductor = VocalTractConductor()
         newConductor.applySettings(defaultSettings)
 
         self.conductor = newConductor
-        self.conductor?.startEngine()
+        AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -311,7 +316,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
-        print("viewDidAppear")
+        print("FaceTrackerViewController: viewDidAppear")
         
         // Actions to take when the view appears on the screen.
         UIApplication.shared.isIdleTimerDisabled = true
@@ -321,18 +326,18 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         let patchManager = PatchManager.shared
         
-        print("patchManager.currentPatchID is: \(patchManager.currentPatchID!)")
+        print("FaceTrackerViewController.viewDidAppear: patchManager.currentPatchID is: \(patchManager.currentPatchID!)")
 
         // Check if patches exist
         if !PatchManager.shared.listPatches().isEmpty {
             // There are saved patches
             if let lastID = patchManager.currentPatchID {
-                print("Loading current patch ID: \(lastID)")
+                print("FaceTrackerViewController.viewDidAppear: Loading current patch ID: \(lastID)")
                 loadPatchByID(lastID)
             } else {
                 // No ID saved, load the first available patch
                 if let firstID = patchManager.listPatches().first {
-                    print("No last patch ID saved, loading first patch ID: \(firstID)")
+                    print("FaceTrackerViewController.viewDidAppear: No last patch ID saved, loading first patch ID: \(firstID)")
                     loadPatchByID(firstID)
                 }
             }
@@ -349,12 +354,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
         if conductor == nil {
             // As a fallback, create a default conductor
-            print("No conductor assigned, creating default")
+            print("FaceTrackerViewController.viewDidAppear: No conductor assigned, creating default")
             let newConductor = VocalTractConductor()
             newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
             conductor = newConductor
         }
-        conductor?.startEngine()
+        // conductor?.startEngine() // Removed per instruction
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -363,8 +368,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Pause the view's session
         sceneView.session.pause()
         
-        print("viewWillDisappear")
-        conductor?.stopEngine(immediate: false)
+        print("FaceTrackerViewController.viewWillDisappear: Removing conductor from mixer")
+        if let conductor = conductor {
+            AudioEngineManager.shared.removeFromMixer(node: conductor.outputNode)
+        }
     }
     
     
@@ -400,14 +407,18 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        print("SessionWasInterrupted")
-        conductor?.stopEngine(immediate: true)
+        print("FaceTrackerViewController.SessionWasInterrupted")
+        if let conductor = conductor {
+            AudioEngineManager.shared.removeFromMixer(node: conductor.outputNode)
+        }
     }
         
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
-        print("SessionInterruptionEnded")
-        conductor?.startEngine()
+        print("FaceTrackerViewController.sessionInterruptionEnded")
+        if let conductor = conductor {
+            AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
+        }
         //resetTracking()
     }
     
@@ -488,7 +499,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         guard let faceAnchor = anchor as? ARFaceAnchor else { return }
         // Handle the removal of an ARFaceAnchor.
 
-        print("REMOVED AR ANCHOR")
+        print("FaceTrackerViewController.renderer.didRemove: REMOVED AR ANCHOR")
         
         faceAnchorsAndContentControllers[faceAnchor] = nil
         // Remove the face anchor from the dictionary.

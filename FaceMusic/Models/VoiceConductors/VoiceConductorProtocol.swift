@@ -6,6 +6,13 @@
 //
 
 import Foundation
+import AudioKit
+
+enum AudioState {
+    case stopped
+    case waitingForFaceData
+    case playing
+}
 
 protocol VoiceConductorProtocol: AnyObject {
     /// A unique identifier for this voice conductor
@@ -22,6 +29,12 @@ protocol VoiceConductorProtocol: AnyObject {
     
     var glissandoSpeed: Float { get set }
     
+    /// The conductor's audio output node
+    var outputNode: Node { get }
+
+    /// Optional: Current audio state
+    var audioState: AudioState { get set }
+    
     /// Required initializer
     init()
 
@@ -30,11 +43,12 @@ protocol VoiceConductorProtocol: AnyObject {
     
     func exportCurrentSettings() -> PatchSettings
 
-    /// Start the audio engine or playback
-    func startEngine()
 
-    /// Stop the audio engine or playback
-    func stopEngine(immediate: Bool)
+    /// Connect the conductor's nodes to the shared mixer
+    func connectToMixer()
+
+    /// Disconnect the conductor's nodes from the shared mixer
+    func disconnectFromMixer()
 
     /// Update the conductor with face data
     func updateWithFaceData(_ data: FaceData)
@@ -47,4 +61,6 @@ protocol VoiceConductorProtocol: AnyObject {
 
     /// Return music stats string
     func returnMusicStats() -> String
+
+
 }

@@ -221,7 +221,7 @@ class MusicBrain {
     }
     
     func rebuildQuantization(withScaleClasses scaleClasses: [Int]) {
-        print("rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
+        print("MusicBrain: rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
         var result: [Int] = []
         for midiNote in 0...127 where scaleClasses.contains(midiNote % 12) {
             result.append(midiNote)

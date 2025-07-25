@@ -34,6 +34,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     // loads the default VocalTractConductor(), but will be overwritten later with loadPatchByID()
     private var conductor: VoiceConductorProtocol?
+
+    // Label for displaying patch name
+    private var patchNameLabel: UILabel!
     
     
     override func viewDidLoad() {
@@ -72,6 +75,39 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         // Setup settings button
         createButtons()
+
+        // Add patch name label overlay at the bottom of the screen
+        patchNameLabel = UILabel()
+        patchNameLabel.translatesAutoresizingMaskIntoConstraints = false
+        patchNameLabel.text = "Untitled Patch"
+        patchNameLabel.textColor = .white
+        patchNameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        patchNameLabel.textAlignment = .center
+        patchNameLabel.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+        patchNameLabel.layer.cornerRadius = 8
+        patchNameLabel.layer.masksToBounds = true
+
+        view.addSubview(patchNameLabel)
+
+        NSLayoutConstraint.activate([
+            patchNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            patchNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            patchNameLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+            patchNameLabel.heightAnchor.constraint(equalToConstant: 30)
+        ])
+
+        // Observe patch change notifications
+        NotificationCenter.default.addObserver(self, selector: #selector(updatePatchNameLabel), name: NSNotification.Name("PatchDidChange"), object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func updatePatchNameLabel() {
+        if let id = PatchManager.shared.currentPatchID, let patch = PatchManager.shared.getPatchData(forID: id) {
+            patchNameLabel.text = patch.name ?? "Untitled Patch"
+        }
     }
   
     
@@ -144,6 +180,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         key: MusicBrain.shared.currentKey,
                         chordType: conductor.chordType,
                         numOfVoices: conductor.numOfVoices,
+                        vibratoAmount: conductor.vibratoAmount,
                         glissandoSpeed: conductor.glissandoSpeed,
                         lowestNote: conductor.lowestNote,
                         highestNote: conductor.highestNote,
@@ -192,7 +229,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             )
 
             self.conductor = newConductor
-            
+            patchNameLabel.text = settings.name ?? "Untitled Patch"
             //print("FaceTrackerViewController.openPatchTapped() adding new conductor to mixer")
             //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
         }
@@ -206,7 +243,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func loadPatchByID(_ id: Int) {
         print("FaceTrackerViewController.loadPatchById(\(id))")
         
-        guard let settings = PatchManager.shared.load(forID: id) else {
+        guard let settings = PatchManager.shared.getPatchData(forID: id) else {
             print("FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
             return
         }
@@ -232,7 +269,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         print("FaceTrackerViewController.loadPatchByID: updated MusicBrain")
 
         self.conductor = newConductor
-        
+        patchNameLabel.text = settings.name ?? "Untitled Patch"
         //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
 
         // Save this as the last used patch

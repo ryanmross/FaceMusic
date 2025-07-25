@@ -18,7 +18,7 @@ struct PatchSettings: Codable {
     var chordType: MusicBrain.ChordType
     
     var numOfVoices: Int
-    //var vibrato: Bool
+    var vibratoAmount: Float // Ranges from 0 to 100
     //var alternateChords: [String]
 
     var glissandoSpeed: Float
@@ -69,8 +69,8 @@ class PatchManager {
     }
     
     // Load a patch by ID
-    func load(forID id: Int) -> PatchSettings? {
-        print("PatchManager.load(\(id)).  This simply returns info about the patch, not fully loading it yet.")
+    func getPatchData(forID id: Int) -> PatchSettings? {
+        print("PatchManager.getPatchData(\(id)).")
         if let patch = patches[id] {
             return patch
         }
@@ -92,7 +92,7 @@ class PatchManager {
         } else {
             if let nextID = patches.keys.sorted().first {
                 currentPatchID = nextID
-                _ = load(forID: nextID)
+                _ = getPatchData(forID: nextID)
             }
         }
     }
@@ -136,6 +136,7 @@ extension PatchSettings {
             key: .C,
             chordType: .major,
             numOfVoices: 1,
+            vibratoAmount: 25,
             glissandoSpeed: 50,
             lowestNote: 30,
             highestNote: 100,

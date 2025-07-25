@@ -32,7 +32,20 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     var lowestNote: Int
     var highestNote: Int
     var glissandoSpeed: Float
-    
+
+    // vibratoAmount is always scaled 0–100; scale to 0–1 semitone in getter/setter
+    @Published var vibratoAmount: Float = 0.0 {
+        didSet {
+            // Clamp vibratoAmount to 0–100 if needed
+            if vibratoAmount < 0.0 { vibratoAmount = 0.0 }
+            if vibratoAmount > 100.0 { vibratoAmount = 100.0 }
+        }
+    }
+    var vibratoRate: Float = 5.0
+    private var vibratoPhase: Float = 0.0
+    private var baseFrequencies: [Float] = []
+    private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
+
     var outputNode: Node {
         return voiceBundles.first?.fader ?? Mixer()
     }
@@ -215,6 +228,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
         // if faceData.horizPosition == .left {
         
+        let now = CACurrentMediaTime()
+        let deltaTime = Float(now - lastUpdateTime)
+        lastUpdateTime = now
+
+        vibratoPhase += 2 * Float.pi * vibratoRate * deltaTime
+        if vibratoPhase > 2 * Float.pi {
+            vibratoPhase -= 2 * Float.pi
+        }
+
+        let vibratoOffset = sin(vibratoPhase) * (vibratoAmount / 100.0)
         
         while harmonies.count < numOfVoices {
             harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
@@ -225,7 +248,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 let voice = voiceBundles[index].voice
                 //voice.frequency = midiNoteToFrequency(harmony)
                 
-                let targetFreq = midiNoteToFrequency(harmony)
+                let baseFreq = midiNoteToFrequency(harmony)
+                let targetFreq = baseFreq * pow(2.0, vibratoOffset / 12.0)
                 if glissandoSpeed > 0 {
                     //print ("ramping to \(targetFreq)")
                     voice.$frequency.ramp(to: targetFreq, duration: Float(glissandoSpeed) / 1000.0)
@@ -233,13 +257,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     voice.frequency = targetFreq
                 }
                 
-                
                 voice.jawOpen = interpolatedJawOpen
                 voice.lipShape = interpolatedMouthClose
                 voice.tongueDiameter = 0.5
                 voice.tonguePosition = 0.5
                 voice.tenseness = 0.6
                 voice.nasality = 0.0
+                //voice.vibratoAmount = self.vibratoAmount
             }
         }
         
@@ -248,9 +272,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         if audioState == .waitingForFaceData {
             print("VocalTractConductor.updateWithFaceData() setting audioState to .playing")
             audioState = .playing
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.4 ) {
-                
-                self.voiceBundles.forEach { voiceBundle in
+            
+            for (index, voiceBundle) in self.voiceBundles.enumerated() {
+                let delay = Double(index) * 0.1
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
                     self.startVoice(voiceBundle.fader, voice: voiceBundle.voice)
                 }
             }
@@ -266,6 +291,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.lowestNote = settings.lowestNote
         self.highestNote = settings.highestNote
         self.glissandoSpeed = settings.glissandoSpeed
+        self.vibratoAmount = settings.vibratoAmount
         self.currentSettings = settings
         
         if self.numOfVoices != settings.numOfVoices {
@@ -280,6 +306,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             key: MusicBrain.shared.currentKey,
             chordType: self.chordType,
             numOfVoices: self.numOfVoices,
+            vibratoAmount: self.vibratoAmount,
             glissandoSpeed: self.glissandoSpeed,
             lowestNote: self.lowestNote,
             highestNote: self.highestNote,

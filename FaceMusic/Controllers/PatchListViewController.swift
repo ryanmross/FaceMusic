@@ -64,7 +64,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let id = patchIDs[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "PatchCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "PatchCell")
-        if let settings = patchManager.load(forID: id) {
+        if let settings = patchManager.getPatchData(forID: id) {
             cell.textLabel?.text = settings.name
         } else {
             cell.textLabel?.text = "Patch \(id)"
@@ -84,11 +84,12 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let id = patchIDs[indexPath.row]
         
-        let settings = patchManager.load(forID: id)
+        let settings = patchManager.getPatchData(forID: id)
         print("PatchListViewController: loaded patch \(id): \(settings?.name ?? "nil")")
         patchManager.currentPatchID = id
         dismiss(animated: true) {
             self.onPatchSelected?(id, settings)
+            NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
         }
     }
     
@@ -102,7 +103,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
 
             // Optionally notify that a new current patch is selected
             if let newCurrentID = self.patchManager.currentPatchID,
-               let newSettings = self.patchManager.load(forID: newCurrentID) {
+               let newSettings = self.patchManager.getPatchData(forID: newCurrentID) {
                 self.onPatchSelected?(newCurrentID, newSettings)
             }
 
@@ -113,7 +114,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
             let alert = UIAlertController(title: "Rename Patch", message: "Enter a new name.", preferredStyle: .alert)
             alert.addTextField { textField in
                 textField.placeholder = "Patch Name"
-                if let settings = self.patchManager.load(forID: id) {
+                if let settings = self.patchManager.getPatchData(forID: id) {
                     textField.text = settings.name
                 }
             }
@@ -121,6 +122,7 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
                 let newName = alert.textFields?.first?.text ?? "Untitled Patch"
                 self.patchManager.renamePatch(id: id, newName: newName)
                 self.loadPatches()
+                NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
             })
             alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
             self.present(alert, animated: true)

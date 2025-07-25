@@ -24,51 +24,50 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     let appSettings = AppSettings()
     var patchSettings: PatchSettings!
     
-    var applyButton: UIButton!
     var closeButton: UIButton!
+    var vibratoValueLabel: UILabel!
 
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        if let refreshedSettings = PatchManager.shared.load(forID: patchSettings.id) {
+        
+        if let refreshedSettings = PatchManager.shared.getPatchData(forID: patchSettings.id) {
             patchSettings = refreshedSettings
             print("PatchSettings: \(patchSettings)")
         }
+        let blurEffect = UIBlurEffect(style: .light)
+        let blurView = UIVisualEffectView(effect: blurEffect)
+        blurView.frame = view.bounds
+        blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(blurView)
         setupUI()
         configurePickersWithConductorSettings()
     }
     
     
     private func setupUI() {
-        view.backgroundColor = .black
+        // --- Vibrato Container ---
+        let vibratoLabel = createTitleLabel("Vibrato")
 
-        // Sound Label
-        let soundLabel = UILabel()
-        soundLabel.text = "Sound:"
-        soundLabel.textColor = .white
-        soundLabel.textAlignment = .center
-        soundLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(soundLabel)
+        let vibratoSlider = UISlider()
+        vibratoSlider.minimumValue = 0
+        vibratoSlider.maximumValue = 100
+        vibratoSlider.value = patchSettings.vibratoAmount
+        vibratoSlider.translatesAutoresizingMaskIntoConstraints = false
+        vibratoSlider.addTarget(self, action: #selector(vibratoSliderChanged(_:)), for: .valueChanged)
 
-        // Blank Picker
-        let soundPicker = UIPickerView()
-        soundPicker.delegate = self
-        soundPicker.dataSource = self
-        soundPicker.tag = 5
-        soundPicker.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-        soundPicker.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(soundPicker)
+        vibratoValueLabel = UILabel.settingsLabel(text: "\(Int(patchSettings.vibratoAmount))", fontSize: 13, bold: false)
 
-        // Create and configure the apply button
-        applyButton = UIButton(type: .system)
-        applyButton.setTitle("Apply", for: .normal)
-        applyButton.addTarget(self, action: #selector(applyChanges), for: .touchUpInside)
-        applyButton.backgroundColor = .systemBlue
-        applyButton.tintColor = .white
-        applyButton.layer.cornerRadius = 10
-        applyButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(applyButton)
+        let vibratoStack = createSettingsStack(with: [vibratoLabel, vibratoSlider, vibratoValueLabel])
+        let vibratoContainer = createSettingsContainer(with: vibratoStack)
+
+        view.addSubview(vibratoContainer)
+        NSLayoutConstraint.activate([
+            vibratoContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
+            vibratoContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            vibratoContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
+        ])
 
         // Create and configure the close button (X)
         closeButton = UIButton(type: .system)
@@ -80,22 +79,7 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         closeButton.addTarget(self, action: #selector(closeSettings), for: .touchUpInside)
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(closeButton)
-
-        // Layout constraints
         NSLayoutConstraint.activate([
-            soundLabel.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
-            soundLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-
-            soundPicker.topAnchor.constraint(equalTo: soundLabel.bottomAnchor, constant: 10),
-            soundPicker.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            soundPicker.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
-            soundPicker.heightAnchor.constraint(equalToConstant: 150),
-
-            applyButton.topAnchor.constraint(equalTo: soundPicker.bottomAnchor, constant: 20),
-            applyButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            applyButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.6),
-            applyButton.heightAnchor.constraint(equalToConstant: 44),
-
             closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
             closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             closeButton.widthAnchor.constraint(equalToConstant: 40),
@@ -103,6 +87,12 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         ])
     }
     
+    @objc private func vibratoSliderChanged(_ sender: UISlider) {
+        patchSettings.vibratoAmount = sender.value
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        conductor?.applySettings(patchSettings)
+        vibratoValueLabel.text = "\(Int(sender.value))"
+    }
      
      
     private func configurePickersWithConductorSettings() {
@@ -132,44 +122,6 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     }
     
     
-    
-    @objc private func applyChanges() {
-        
-        /*
-        let selectedKey = MusicBrain.NoteName.allCases[keyPicker.selectedRow(inComponent: 0)]
-        let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
-
-        print("Changing key to \(selectedKey.displayName) with chord type: \(selectedChordType)")
-
-        let lowestNote = lowestNotePicker.selectedRow(inComponent: 0)
-        let highestNote = highestNotePicker.selectedRow(inComponent: 0)
-
-        print("Note range set to \(lowestNote) - \(highestNote)")
-
-        patchSettings.lowestNote = lowestNote
-        patchSettings.highestNote = highestNote
-        patchSettings.numOfVoices = selectedNumOfVoices
-        patchSettings.glissandoSpeed = glissandoSlider.value
-        
-        print("Glissando Speed set to \(patchSettings.glissandoSpeed)")
-        
-        patchSettings.key = selectedKey
-        patchSettings.chordType = selectedChordType
-
-        // Save the updated settings
-        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
-        
-        // Apply to the conductor in one call
-        conductor?.applySettings(patchSettings)
-
-        MusicBrain.shared.updateKeyAndChordType(key: selectedKey, chordType: selectedChordType)
-
-        print("Selected chord type from picker: \(selectedChordType)")
-        
-        */
-        
-        self.dismiss(animated: true, completion: nil)
-    }
     
     @objc private func closeSettings() {
         // Dismiss the settings view using SwiftEntryKit's dismiss method

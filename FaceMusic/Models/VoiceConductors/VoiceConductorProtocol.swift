@@ -28,6 +28,7 @@ protocol VoiceConductorProtocol: AnyObject {
     var chordType: MusicBrain.ChordType { get set }
     
     var glissandoSpeed: Float { get set }
+    var vibratoAmount: Float { get set }
     
     /// The conductor's audio output node
     var outputNode: Node { get }

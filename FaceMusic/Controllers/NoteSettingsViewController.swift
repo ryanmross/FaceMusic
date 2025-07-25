@@ -60,7 +60,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(blurView)
 
-        if let refreshedSettings = PatchManager.shared.load(forID: patchSettings.id) {
+        if let refreshedSettings = PatchManager.shared.getPatchData(forID: patchSettings.id) {
             patchSettings = refreshedSettings
             //print("PatchSettings: \(patchSettings!)")
         }

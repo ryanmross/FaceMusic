@@ -42,7 +42,7 @@ class HarmonyMaker {
             // Prioritize essential chord tones
             if interval == intervals[1] { s += 30 } // 3rd
             if intervals.count > 3 && interval == intervals[3] { s += 25 } // 7th
-            if interval == intervals[0] { s += 20 } // root
+            if interval == intervals[0] { s += 40 } // root (stronger priority)
             if intervals.count > 2 && interval == intervals[2] { s += 10 } // 5th
 
             // Penalize muddy regions more strongly

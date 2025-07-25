@@ -169,6 +169,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let defaults = PatchSettings.default()
         // If the current patch has no name or is untitled, prompt to save
         if let conductor = self.conductor, (conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch") {
+            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
             AlertHelper.promptToSavePatch(
                 presenter: self,
                 saveHandler: { [weak self] patchName in
@@ -187,6 +188,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         activeVoiceID: type(of: conductor).id
                     )
                     PatchManager.shared.save(settings: currentSettings, forID: newID)
+                    NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
                     self.createAndLoadNewPatch()
                 },
                 skipHandler: { [weak self] in
@@ -204,36 +206,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let patchListVC = PatchListViewController()
         patchListVC.onPatchSelected = { [weak self] patchID, settings in
             guard let self = self else { return }
-
             guard let settings = settings else {
                 print("Could not load settings for patch ID \(patchID)")
                 return
             }
-
-            let selectedID = settings.activeVoiceID
-            let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
-
-            // Remove all inputs from mixer
-            print("FaceTrackerViewController.openPatchTapped() removing all inputs from mixer")
-            AudioEngineManager.shared.removeAllInputsFromMixer()
-            conductor = nil
-
-            let newConductor = conductorType.init()
-            print("FaceTrackerViewController.openPatchTapped() creating new conductor")
-            newConductor.applySettings(settings)
-            
-            MusicBrain.shared.updateKeyAndScale(
-                key: settings.key,
-                chordType: settings.chordType,
-                scaleMask: settings.scaleMask
-            )
-
-            self.conductor = newConductor
-            patchNameLabel.text = settings.name ?? "Untitled Patch"
-            //print("FaceTrackerViewController.openPatchTapped() adding new conductor to mixer")
-            //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
+            self.loadAndApplyPatch(settings: settings, patchID: patchID)
         }
-
         let nav = UINavigationController(rootViewController: patchListVC)
         present(nav, animated: true)
     }
@@ -242,38 +220,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // initializes it, applies the settings, and assigns it to self.conductor.
     func loadPatchByID(_ id: Int) {
         print("FaceTrackerViewController.loadPatchById(\(id))")
-        
         guard let settings = PatchManager.shared.getPatchData(forID: id) else {
             print("FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
             return
         }
-
-        let selectedID = settings.activeVoiceID
-        let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
-
-        // Remove all inputs from mixer
-        print("FaceTrackerViewController.loadPatchByID: Removing all inputs from mixer")
-        AudioEngineManager.shared.removeAllInputsFromMixer()
-        conductor = nil
-
-
-        let newConductor = conductorType.init()
-        print("FaceTrackerViewController.loadPatchByID: Initializing new conductor with applySettings(\(settings))")
-        newConductor.applySettings(settings)
-        
-        MusicBrain.shared.updateKeyAndScale(
-            key: settings.key,
-            chordType: settings.chordType,
-            scaleMask: settings.scaleMask
-        )
-        print("FaceTrackerViewController.loadPatchByID: updated MusicBrain")
-
-        self.conductor = newConductor
-        patchNameLabel.text = settings.name ?? "Untitled Patch"
-        //AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
-
-        // Save this as the last used patch
-        UserDefaults.standard.set(id, forKey: "LastPatchID")
+        self.loadAndApplyPatch(settings: settings, patchID: id)
     }
 
     // MARK: - Voice Settings Button
@@ -352,14 +303,17 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         resetTracking()
 
         let patchManager = PatchManager.shared
-
         if !PatchManager.shared.listPatches().isEmpty {
             if let lastID = patchManager.currentPatchID {
                 print("FaceTrackerViewController.viewWillAppear: Loading last patch ID with loadPatchByID(\(lastID))")
-                loadPatchByID(lastID)
+                if let settings = patchManager.getPatchData(forID: lastID) {
+                    self.loadAndApplyPatch(settings: settings, patchID: lastID)
+                }
             } else if let firstID = patchManager.listPatches().first {
                 print("FaceTrackerViewController.viewWillAppear: Loading first patch ID with loadPatchByID(\(firstID))")
-                loadPatchByID(firstID)
+                if let settings = patchManager.getPatchData(forID: firstID) {
+                    self.loadAndApplyPatch(settings: settings, patchID: firstID)
+                }
             }
         } else {
             let defaultSettings = patchManager.defaultPatchSettings
@@ -367,7 +321,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             patchManager.save(settings: defaultSettings, forID: newID)
             UserDefaults.standard.set(newID, forKey: "LastPatchID")
             print("FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
-            loadPatchByID(newID)
+            self.loadAndApplyPatch(settings: defaultSettings, patchID: newID)
         }
 
         if conductor == nil {
@@ -380,6 +334,31 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         //let configuration = ARWorldTrackingConfiguration()
         // Run the view's session
         //sceneView.session.run(configuration)
+    }
+
+    // MARK: - Patch Loading Helper
+    private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
+        let selectedID = settings.activeVoiceID
+        let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
+
+        AudioEngineManager.shared.removeAllInputsFromMixer()
+        conductor = nil
+
+        let newConductor = conductorType.init()
+        newConductor.applySettings(settings)
+
+        MusicBrain.shared.updateKeyAndScale(
+            key: settings.key,
+            chordType: settings.chordType,
+            scaleMask: settings.scaleMask
+        )
+
+        self.conductor = newConductor
+        patchNameLabel.text = settings.name ?? "Untitled Patch"
+
+        if let id = patchID {
+            UserDefaults.standard.set(id, forKey: "LastPatchID")
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {

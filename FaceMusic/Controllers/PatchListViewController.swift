@@ -111,21 +111,12 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
         }
 
         let renameAction = UIContextualAction(style: .normal, title: "Rename") { (_, _, completionHandler) in
-            let alert = UIAlertController(title: "Rename Patch", message: "Enter a new name.", preferredStyle: .alert)
-            alert.addTextField { textField in
-                textField.placeholder = "Patch Name"
-                if let settings = self.patchManager.getPatchData(forID: id) {
-                    textField.text = settings.name
-                }
-            }
-            alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-                let newName = alert.textFields?.first?.text ?? "Untitled Patch"
+            AlertHelper.promptForPatchName(presenter: self) { [weak self] newName in
+                guard let self = self, let newName = newName else { return }
                 self.patchManager.renamePatch(id: id, newName: newName)
                 self.loadPatches()
                 NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
-            })
-            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-            self.present(alert, animated: true)
+            }
             completionHandler(true)
         }
 

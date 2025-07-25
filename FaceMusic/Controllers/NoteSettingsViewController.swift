@@ -72,42 +72,15 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         NotificationCenter.default.removeObserver(self)
     }
     private func setupUI() {
-        
         // --- Voice Pitch Container ---
-
-        let voicePitchTitleLabel = createTitleLabel("Voice Pitch")
-        
-
-
-        voicePitchPicker = UIPickerView()
-        voicePitchPicker.delegate = self
-        voicePitchPicker.dataSource = self
-        voicePitchPicker.tag = 10
-        voicePitchPicker.backgroundColor = .clear
-        voicePitchPicker.translatesAutoresizingMaskIntoConstraints = false
-
-        let voicePitchStack = createSettingsStack(with: [voicePitchTitleLabel, voicePitchPicker])
-        
-        let voicePitchContainer = createSettingsContainer(with: voicePitchStack)
+        let (voicePitchContainer, voicePitchPickerInstance) = createLabeledPicker(title: "Voice Pitch", tag: 10, delegate: self)
+        self.voicePitchPicker = voicePitchPickerInstance
 
         // --- Note Range Container ---
-
-        let noteRangeTitleLabel = createTitleLabel("Note Range")
-
-        
-        noteRangePicker = UIPickerView()
-        noteRangePicker.delegate = self
-        noteRangePicker.dataSource = self
-        noteRangePicker.tag = 11
-        noteRangePicker.backgroundColor = .clear
-        noteRangePicker.translatesAutoresizingMaskIntoConstraints = false
-
-        let noteRangeStack = createSettingsStack(with: [noteRangeTitleLabel, noteRangePicker])
-        
-        let noteRangeContainer = createSettingsContainer(with: noteRangeStack)
+        let (noteRangeContainer, noteRangePickerInstance) = createLabeledPicker(title: "Note Range", tag: 11, delegate: self)
+        self.noteRangePicker = noteRangePickerInstance
 
         // --- Stack view containing the two containers ---
-        
         let pitchRangeStack = UIStackView(arrangedSubviews: [voicePitchContainer, noteRangeContainer])
         pitchRangeStack.axis = .horizontal
         pitchRangeStack.spacing = 10
@@ -123,33 +96,13 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         ])
 
         // --- Key Picker with Label in Container ---
-        keyPicker = UIPickerView()
-        keyPicker.delegate = self
-        keyPicker.dataSource = self
-        keyPicker.tag = 0
-        keyPicker.backgroundColor = .clear
-        keyPicker.translatesAutoresizingMaskIntoConstraints = false
+        let (keyContainer, keyPickerInstance) = createLabeledPicker(title: "Key", tag: 0, delegate: self)
+        self.keyPicker = keyPickerInstance
 
-        let keyLabel = createTitleLabel("Key")
-        
-        let keyStack = createSettingsStack(with: [keyLabel, keyPicker])
-        
-        let keyContainer = createSettingsContainer(with: keyStack)
-        
         // --- Chord Picker with Label in Container ---
-        chordTypePicker = UIPickerView()
-        chordTypePicker.delegate = self
-        chordTypePicker.dataSource = self
-        chordTypePicker.tag = 1
-        chordTypePicker.backgroundColor = .clear
-        chordTypePicker.translatesAutoresizingMaskIntoConstraints = false
-        
-        let chordLabel = createTitleLabel("Chord")
+        let (chordContainer, chordTypePickerInstance) = createLabeledPicker(title: "Chord", tag: 1, delegate: self)
+        self.chordTypePicker = chordTypePickerInstance
 
-        let chordStack = createSettingsStack(with: [chordLabel, chordTypePicker])
-        
-        let chordContainer = createSettingsContainer(with: chordStack)
-        
         // --- Horizontal Stack for Key and Chord Containers ---
         let keyChordStack = UIStackView(arrangedSubviews: [keyContainer, chordContainer])
         keyChordStack.axis = .horizontal
@@ -166,63 +119,30 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         ])
         // Optional: set a minimum width for each container
         keyPicker.widthAnchor.constraint(equalToConstant: 110).isActive = true
-        
+
         // PIANO KEYBOARD
         setupPianoKeyboard(below: keyChordStack)
-        
-        
+
         // --- Voices Container ---
+        let (voicesContainer, voicesPickerInstance) = createLabeledPicker(title: "Number of Voices", tag: 2, delegate: self)
+        self.voicesPicker = voicesPickerInstance
 
-        let voicesLabel = createTitleLabel("Number of Voices")
-
-        voicesPicker = UIPickerView()
-        voicesPicker.delegate = self
-        voicesPicker.dataSource = self
-        voicesPicker.tag = 2
-        voicesPicker.backgroundColor = .clear
-        voicesPicker.translatesAutoresizingMaskIntoConstraints = false
-
-        let voicesStack = createSettingsStack(with: [voicesLabel, voicesPicker])
-        
-        let voicesContainer = createSettingsContainer(with: voicesStack)
-        
         // --- Glissando Container ---
+        let (glissandoContainer, slider, valueLabel) = createLabeledSlider(
+            title: "Note Glide Speed",
+            minLabel: "Instant",
+            maxLabel: "Slow",
+            minValue: 0,
+            maxValue: 500,
+            initialValue: patchSettings.glissandoSpeed,
+            target: self,
+            valueChangedAction: #selector(glissandoSliderChanged),
+            touchUpAction: #selector(glissandoSliderDidEndSliding)
+        )
 
+        self.glissandoSlider = slider
+        self.glissandoValueLabel = valueLabel
 
-        // Glissando Speed Label
-        let glissandoLabel = createTitleLabel("Note Glide Speed")
-
-        // Glissando Instant/Slow Labels Stack
-        
-        let glissandoLabelsStack = UIStackView()
-        let instantLabel = UILabel.settingsLabel(text: "Instant", fontSize: 14, bold: false)
-        instantLabel.textAlignment = .left
-        let slowLabel = UILabel.settingsLabel(text: "Slow", fontSize: 14, bold: false)
-        slowLabel.textAlignment = .right
-        glissandoLabelsStack.axis = .horizontal
-        glissandoLabelsStack.distribution = .fillEqually
-        glissandoLabelsStack.alignment = .fill
-        glissandoLabelsStack.translatesAutoresizingMaskIntoConstraints = false
-        glissandoLabelsStack.addArrangedSubview(instantLabel)
-        glissandoLabelsStack.addArrangedSubview(slowLabel)
-
-        // Glissando Slider
-        glissandoSlider = UISlider()
-        glissandoSlider.minimumValue = 0
-        glissandoSlider.maximumValue = 500 // 500 ms max
-        glissandoSlider.value = patchSettings.glissandoSpeed
-        glissandoSlider.translatesAutoresizingMaskIntoConstraints = false
-        glissandoSlider.addTarget(self, action: #selector(glissandoSliderChanged), for: .valueChanged)
-        glissandoSlider.addTarget(self, action: #selector(glissandoSliderDidEndSliding), for: [.touchUpInside, .touchUpOutside])
-
-        // Glissando Value Label
-        glissandoValueLabel = UILabel.settingsLabel(text: "\(Int(patchSettings.glissandoSpeed)) ms", fontSize: 13, bold: false)
-
-        // Stack for glissando controls
-        let glissandoStack = createSettingsStack(with: [glissandoLabel, glissandoLabelsStack, glissandoSlider, glissandoValueLabel])
-        
-        let glissandoContainer = createSettingsContainer(with: glissandoStack)
-        
         // --- Voices and Glissando Horizontal Stack ---
         let voicesAndGlissStack = UIStackView(arrangedSubviews: [voicesContainer, glissandoContainer])
         voicesAndGlissStack.axis = .horizontal
@@ -231,7 +151,6 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         voicesAndGlissStack.distribution = .fillEqually
         voicesAndGlissStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(voicesAndGlissStack)
-
 
         // Constraints for voicesAndGlissStack, containers
         NSLayoutConstraint.activate([
@@ -242,26 +161,17 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             voicesContainer.heightAnchor.constraint(equalToConstant: 130),
             glissandoContainer.heightAnchor.constraint(equalToConstant: 130)
         ])
-        
-        // Create and configure the close button (X)
-        closeButton = UIButton(type: .system)
-        closeButton.setTitle("X", for: .normal)
-        closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 24)
-        closeButton.setTitleColor(.white, for: .normal)
-        closeButton.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-        closeButton.layer.cornerRadius = 20
-        closeButton.addTarget(self, action: #selector(closeSettings), for: .touchUpInside)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
+
+        // Create and configure the close button (X) using reusable helper
+        closeButton = createCloseButton(target: self, action: #selector(closeSettings))
         view.addSubview(closeButton)
-        
-        // Close button constraints
+
         NSLayoutConstraint.activate([
             closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
             closeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             closeButton.widthAnchor.constraint(equalToConstant: 40),
             closeButton.heightAnchor.constraint(equalToConstant: 40)
         ])
-        
     }
     
     private func configurePickersWithConductorSettings() {
@@ -551,46 +461,3 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
 
 
 
-
-// Helper for creating settings container views
-func createSettingsContainer(with stack: UIStackView, cornerRadius: CGFloat = 16) -> UIView {
-    let container = UIView()
-    container.translatesAutoresizingMaskIntoConstraints = false
-    container.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-    container.layer.cornerRadius = cornerRadius
-    container.addSubview(stack)
-    NSLayoutConstraint.activate([
-        stack.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-        stack.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8),
-        stack.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-        stack.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8)
-    ])
-    return container
-}
-
-// Helper for creating settings stack views
-func createSettingsStack(with views: [UIView], spacing: CGFloat = 2) -> UIStackView {
-    let stack = UIStackView(arrangedSubviews: views)
-    stack.axis = .vertical
-    stack.alignment = .fill
-    stack.spacing = spacing
-    stack.translatesAutoresizingMaskIntoConstraints = false
-    return stack
-}
-
-// Helper for creating title labels for settings
-func createTitleLabel(_ text: String) -> UILabel {
-    let label = UILabel()
-    label.text = text
-    label.textColor = .white
-    label.textAlignment = .center
-    label.backgroundColor = .clear
-    label.translatesAutoresizingMaskIntoConstraints = false
-    label.setContentHuggingPriority(.required, for: .vertical)
-    label.setContentCompressionResistancePriority(.required, for: .vertical)
-    label.numberOfLines = 1
-    label.adjustsFontSizeToFitWidth = true
-    label.baselineAdjustment = .alignCenters
-    label.font = UIFont.boldSystemFont(ofSize: 15)
-    return label
-}

@@ -9,7 +9,18 @@
 struct VoiceConductorRegistry {
     static let allTypes: [VoiceConductorProtocol.Type] = [
         VocalTractConductor.self,
-        // SynthPadConductor.self,
+        AutoHarmonyConductor.self,
         // GranularConductor.self
     ]
+    
+static func displayNames() -> [String] {
+    return allTypes.map { $0.displayName }
+}
+    
+    static func conductorIndex(of type: VoiceConductorProtocol.Type) -> Int? {
+        return allTypes.firstIndex { $0 == type }
+    }
+    static var defaultType: VoiceConductorProtocol.Type {
+        return allTypes.first ?? VocalTractConductor.self
+    }
 }

@@ -11,12 +11,24 @@ import AudioKitEX
 import AudioKitUI
 
 class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
+    var voiceSoundPicker: UIPickerView!
+
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        return 0
+        return 1
     }
     
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+        if pickerView.tag == 99 {
+            return VoiceConductorRegistry.displayNames().count
+        }
         return 0
+    }
+    
+    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+        if pickerView.tag == 99 {
+            return VoiceConductorRegistry.displayNames()[row]
+        }
+        return nil
     }
     
     
@@ -47,37 +59,38 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     
     
     private func setupUI() {
+        let (voiceSoundContainer, voiceSoundPickerInstance) = createLabeledPicker(title: "Voice Sound", tag: 99, delegate: self)
+        self.voiceSoundPicker = voiceSoundPickerInstance
+        view.addSubview(voiceSoundContainer)
+        NSLayoutConstraint.activate([
+            voiceSoundContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10),
+            voiceSoundContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            voiceSoundContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
+        ])
+
         // --- Vibrato Container ---
-        let vibratoLabel = createTitleLabel("Vibrato")
-
-        let vibratoSlider = UISlider()
-        vibratoSlider.minimumValue = 0
-        vibratoSlider.maximumValue = 100
-        vibratoSlider.value = patchSettings.vibratoAmount
-        vibratoSlider.translatesAutoresizingMaskIntoConstraints = false
-        vibratoSlider.addTarget(self, action: #selector(vibratoSliderChanged(_:)), for: .valueChanged)
-
-        vibratoValueLabel = UILabel.settingsLabel(text: "\(Int(patchSettings.vibratoAmount))", fontSize: 13, bold: false)
-
-        let vibratoStack = createSettingsStack(with: [vibratoLabel, vibratoSlider, vibratoValueLabel])
-        let vibratoContainer = createSettingsContainer(with: vibratoStack)
+        let (vibratoContainer, vibratoSlider, vibratoValueLabelInstance) = createLabeledSlider(
+            title: "Vibrato",
+            minLabel: "None",
+            maxLabel: "Max",
+            minValue: 0,
+            maxValue: 100,
+            initialValue: patchSettings.vibratoAmount,
+            target: self,
+            valueChangedAction: #selector(vibratoSliderChanged(_:)),
+            touchUpAction: #selector(vibratoSliderChanged(_:))
+        )
+        self.vibratoValueLabel = vibratoValueLabelInstance
 
         view.addSubview(vibratoContainer)
         NSLayoutConstraint.activate([
-            vibratoContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 40),
+            vibratoContainer.topAnchor.constraint(equalTo: voiceSoundContainer.bottomAnchor, constant: 20),
             vibratoContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             vibratoContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
         ])
 
         // Create and configure the close button (X)
-        closeButton = UIButton(type: .system)
-        closeButton.setTitle("X", for: .normal)
-        closeButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 24)
-        closeButton.setTitleColor(.white, for: .normal)
-        closeButton.backgroundColor = UIColor(white: 0.0, alpha: 0.5)
-        closeButton.layer.cornerRadius = 20
-        closeButton.addTarget(self, action: #selector(closeSettings), for: .touchUpInside)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton = createCloseButton(target: self, action: #selector(closeSettings))
         view.addSubview(closeButton)
         NSLayoutConstraint.activate([
             closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),

@@ -122,42 +122,4 @@ func shiftArray<T>(_ array: [T], by positions: Int) -> [T] {
     return Array(firstPart) + Array(secondPart)
 }
 
-enum AlertHelper {
-    static func promptToSavePatch(
-        presenter: UIViewController,
-        saveHandler: @escaping (String?) -> Void,
-        skipHandler: @escaping () -> Void
-    ) {
-        let alert = UIAlertController(
-            title: "New Patch",
-            message: "Do you want to save the current patch before creating a new one?",
-            preferredStyle: .alert
-        )
-        alert.addAction(UIAlertAction(title: "Save and Create New", style: .default) { _ in
-            promptForPatchName(presenter: presenter, completion: saveHandler)
-        })
-        alert.addAction(UIAlertAction(title: "Create New Without Saving", style: .destructive) { _ in
-            skipHandler()
-        })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        presenter.present(alert, animated: true)
-    }
 
-    private static func promptForPatchName(
-        presenter: UIViewController,
-        completion: @escaping (String?) -> Void
-    ) {
-        let alert = UIAlertController(
-            title: "Save Patch",
-            message: "Enter a name for this patch.",
-            preferredStyle: .alert
-        )
-        alert.addTextField { $0.placeholder = "Patch Name" }
-        alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
-            let name = alert.textFields?.first?.text
-            completion(name)
-        })
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        presenter.present(alert, animated: true)
-    }
-}

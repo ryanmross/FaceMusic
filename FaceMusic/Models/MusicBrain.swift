@@ -162,13 +162,11 @@ class MusicBrain {
     }
 
     
-    func setKeyAndChordType(key: NoteName, chordType: ChordType) {
-        print("setKeyAndChordType() received key:\(key), chordType: \(chordType)")
+    func setKeyAndChordType(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
+        print("setKeyAndChordType() received key:\(key), chordType: \(chordType), scaleMask: \(scaleMask ?? 0)")
         self.currentChordType = chordType
-        // Clear custom scale mask if user changed key/chord
-        self.customScaleMask = nil
-        // Delegate to updateKeyAndScale
-        updateKeyAndScale(key: key, chordType: chordType)
+        self.customScaleMask = scaleMask ?? self.customScaleMask
+        updateKeyAndScale(key: key, chordType: chordType, scaleMask: self.customScaleMask)
     }
     
     

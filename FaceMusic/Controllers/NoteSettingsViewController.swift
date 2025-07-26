@@ -221,7 +221,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
-        MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+        MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
         print("updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
         
         DispatchQueue.main.async {
@@ -307,7 +307,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
 
         if pickerView.tag == 0 || pickerView.tag == 1 {
-            MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType)
+            MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
             updatePianoHighlighting()
         } else if pickerView.tag == 10 || pickerView.tag == 11 {
             MusicBrain.shared.updateVoicePitchOrRangeOnly()

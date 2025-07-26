@@ -126,3 +126,11 @@ func shiftArray<T>(_ array: [T], by positions: Int) -> [T] {
 func midiNoteToFrequency(_ midiNote: Int) -> Float {
     return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
 }
+
+
+func FloatValue(from any: Any) -> Float? {
+    if let f = any as? Float { return f }
+    if let d = any as? Double { return Float(d) }
+    if let i = any as? Int { return Float(i) }
+    return nil
+}

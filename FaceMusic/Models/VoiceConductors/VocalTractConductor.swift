@@ -61,8 +61,19 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     var vibratoRate: Float = 5.0
     private var vibratoPhase: Float = 0.0
+    private var vibratoActivationTime: [TimeInterval] = []
+    
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
+
+    // --- GLISSANDO/VIBRATO STATE ---
+    // These arrays store state for each voice
+    static var lastTargetFrequency: [Float] = []
+    static var glissandoStartTime: [TimeInterval] = []
+    static var glissandoEndTime: [TimeInterval] = []
+    static var frequencyStartValue: [Float] = []
+    static var targetFrequency: [Float] = []
+    static var shouldApplyGlissando: [Bool] = []
 
     var outputNode: Node {
         return voiceBundles.first?.fader ?? Mixer()
@@ -111,12 +122,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: voc, fader: fader))
-                
+                vibratoActivationTime.append(0.0)
                 if audioState == .playing {
                     print("VocalTractConductor.updateVoiceCount(): Starting new voice.")
                     startVoice(fader, voice: voc)
                 }
-                
             }
         } else {
             print("VocalTractConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
@@ -125,6 +135,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     print("VocalTractConductor.updateVoiceCount(): Stopping voice.")
                     stopVoice(last.fader, voice: last.voice)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
+                    vibratoActivationTime.removeLast()
                 }
             }
         }
@@ -191,37 +202,20 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     func updateWithFaceData(_ faceData: FaceData) {
         // this gets called when we get new AR data from the face
-        
-        self.faceData = faceData
-        
-        var harmonies: [Int]
-        
-        // grab AudioGenerationParameters from its file along with the interpolation bounds (tweak in AudioGenerationParameterMetadata file to adjust)
-        var interpolatedValues: [AudioGenerationParameter: Float] = [:]
-            
-        for parameter in AudioGenerationParameter.allCases {
-            let bounds = parameter.metadata
-            let rawValue = faceData[keyPath: parameter.keyPath]
-            
-            let interpolatedValue = rawValue.interpolated(
-                fromLowerBound: bounds.fromLower,
-                fromUpperBound: bounds.fromUpper,
-                toLowerBound: bounds.toLower,
-                toUpperBound: bounds.toUpper
-            )
-            
-            interpolatedValues[parameter] = interpolatedValue
-        }
-        
 
+        self.faceData = faceData
+
+        var harmonies: [Int]
+
+        // Use extracted interpolation method
+        let interpolatedValues = interpolateFaceParameters(from: faceData)
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
         let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
-        
+
         //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
-        
-        
+
         // Map raw face pitch directly to nearest quantized note using MusicBrain
         let quantizedNote = MusicBrain.shared.nearestQuantizedNote(
             rawPitch: faceData.pitch,
@@ -251,8 +245,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         // Store harmonies for later use in returnMusicStats()
         latestHarmonies = harmonies
 
-        // if faceData.horizPosition == .left {
-        
         let now = CACurrentMediaTime()
         let deltaTime = Float(now - lastUpdateTime)
         lastUpdateTime = now
@@ -262,42 +254,71 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             vibratoPhase -= 2 * Float.pi
         }
 
-        let vibratoOffset = sin(vibratoPhase) * ((conductorSpecificSettings["vibratoAmount"] as? Float ?? 0.0) / 100.0)
-        
         while harmonies.count < numOfVoices {
             harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
         }
-        
+
+        // Ensure arrays are sized properly
+        let voicesCount = numOfVoices
+        while Self.lastTargetFrequency.count < voicesCount { Self.lastTargetFrequency.append(0.0) }
+        while Self.glissandoStartTime.count < voicesCount { Self.glissandoStartTime.append(0.0) }
+        while Self.glissandoEndTime.count < voicesCount { Self.glissandoEndTime.append(0.0) }
+        while Self.frequencyStartValue.count < voicesCount { Self.frequencyStartValue.append(0.0) }
+        while Self.targetFrequency.count < voicesCount { Self.targetFrequency.append(0.0) }
+        while Self.shouldApplyGlissando.count < voicesCount { Self.shouldApplyGlissando.append(false) }
+
         for (index, harmony) in harmonies.enumerated() {
             if index < voiceBundles.count {
                 let voice = voiceBundles[index].voice
-                //voice.frequency = midiNoteToFrequency(harmony)
-                
-                let baseFreq = midiNoteToFrequency(harmony)
-                let targetFreq = baseFreq * pow(2.0, vibratoOffset / 12.0)
-                if glissandoSpeed > 0 {
-                    //print ("ramping to \(targetFreq)")
-                    voice.$frequency.ramp(to: targetFreq, duration: Float(glissandoSpeed) / 1000.0)
-                } else {
-                    voice.frequency = targetFreq
+                let currentFrequency = midiNoteToFrequency(harmony)
+                let previousTargetFrequency = Self.lastTargetFrequency[index]
+
+                // If frequency changes significantly, start new glissando
+                if abs(currentFrequency - previousTargetFrequency) > 0.1 {
+                    Self.glissandoStartTime[index] = now
+                    Self.glissandoEndTime[index] = now + (Double(glissandoSpeed) / 1000)
+                    vibratoActivationTime[index] = Self.glissandoEndTime[index]
+                    Self.targetFrequency[index] = currentFrequency
+                    Self.frequencyStartValue[index] = voice.frequency
+                    Self.lastTargetFrequency[index] = currentFrequency
+                    Self.shouldApplyGlissando[index] = true
                 }
-                
+
+                // Apply glissando if active
+                if Self.shouldApplyGlissando[index] {
+                    let glissDuration = Self.glissandoEndTime[index] - Self.glissandoStartTime[index]
+                    let glissProgress = (now - Self.glissandoStartTime[index]) / glissDuration
+                    let clampedProgress = max(0.0, min(1.0, glissProgress))
+                    voice.frequency = Self.frequencyStartValue[index] + Float(clampedProgress) * (Self.targetFrequency[index] - Self.frequencyStartValue[index])
+
+                    if clampedProgress >= 1.0 {
+                        Self.shouldApplyGlissando[index] = false
+                    }
+                }
+                // Vibrato is applied only after glissando is finished and after vibrato activation time
+                if !Self.shouldApplyGlissando[index] && now > vibratoActivationTime[index] {
+                    let harmonyAttenuation: Float = (index == 0) ? 1.0 : 0.4 // Lead voice full vibrato, harmonies less
+                    let attenuatedVibrato = vibratoAmount * harmonyAttenuation
+                    let vibratoOffset = sin(vibratoPhase) * (attenuatedVibrato / 100.0)
+                    let vibratoFreq = currentFrequency * pow(2.0, vibratoOffset / 12.0)
+                    voice.frequency = vibratoFreq
+                }
+
                 voice.jawOpen = interpolatedJawOpen
                 voice.lipShape = interpolatedMouthClose
                 voice.tongueDiameter = 0.5
                 voice.tonguePosition = 0.5
                 voice.tenseness = 0.6
                 voice.nasality = 0.0
-                //voice.vibratoAmount = self.vibratoAmount
             }
         }
-        
+
         //print("audioState: \(audioState)")
-        
+
         if audioState == .waitingForFaceData {
             print("VocalTractConductor.updateWithFaceData() setting audioState to .playing")
             audioState = .playing
-            
+
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
                 let delay = Double(index) * 0.1
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -305,10 +326,23 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 }
             }
         }
-        
+    }
 
-        
-}
+    private func interpolateFaceParameters(from faceData: FaceData) -> [AudioGenerationParameter: Float] {
+        var interpolatedValues: [AudioGenerationParameter: Float] = [:]
+        for parameter in AudioGenerationParameter.allCases {
+            let bounds = parameter.metadata
+            let rawValue = faceData[keyPath: parameter.keyPath]
+            let interpolatedValue = rawValue.interpolated(
+                fromLowerBound: bounds.fromLower,
+                fromUpperBound: bounds.fromUpper,
+                toLowerBound: bounds.toLower,
+                toUpperBound: bounds.toUpper
+            )
+            interpolatedValues[parameter] = interpolatedValue
+        }
+        return interpolatedValues
+    }
     
     func applySettings(_ settings: PatchSettings) {
         self.numOfVoices = settings.numOfVoices
@@ -326,18 +360,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        
         print("VocalTractConductor.applyConductorSpecificSettings called with patch: \(patch)")
-        
-        if let vibratoValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
-            if let vibrato = vibratoValue as? Float {
+
+        if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
+            if let vibrato = FloatValue(from: anyValue) {
                 self.vibratoAmount = vibrato
-            } else if let vibratoDouble = vibratoValue as? Double {
-                self.vibratoAmount = Float(vibratoDouble)
+                self.conductorSpecificSettings["vibratoAmount"] = vibrato
             }
-            self.conductorSpecificSettings["vibratoAmount"] = self.vibratoAmount
         }
     }
+
     
     func exportConductorSpecificSettings() -> [String: Any]? {
         return ["vibratoAmount": self.vibratoAmount]
@@ -432,8 +464,5 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
         return result
     }
-    
-    
 
-   
 }

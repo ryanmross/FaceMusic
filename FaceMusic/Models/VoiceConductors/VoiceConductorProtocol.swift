@@ -15,10 +15,10 @@ enum AudioState {
 }
 
 protocol VoiceConductorProtocol: AnyObject {
-    /// A unique identifier for this voice conductor
+    /// A unique string ID for storing and identifying this conductor (used in PatchSettings)
     static var id: String { get }
 
-    /// A display name for UI
+    /// A human-readable name for UI menus and labels
     static var displayName: String { get }
 
     var lowestNote: Int { get set }
@@ -63,5 +63,7 @@ protocol VoiceConductorProtocol: AnyObject {
     /// Return music stats string
     func returnMusicStats() -> String
 
+    /// Stop all active voices
+    func stopAllVoices()
 
 }

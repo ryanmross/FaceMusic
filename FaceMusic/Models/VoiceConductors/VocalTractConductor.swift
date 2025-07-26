@@ -131,6 +131,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         
     }
     
+    func stopAllVoices() {
+        print("VocalTractConductor.stopAllVoices()")
+        for bundle in voiceBundles {
+            stopVoice(bundle.fader, voice: bundle.voice)
+        }
+    }
+    
     func updateIntervalChordTypes() {
         // Removed: No longer used with MusicBrain types
     }
@@ -359,5 +366,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     
+
    
 }

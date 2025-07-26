@@ -11,7 +11,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
     static var id: String = "autoharmony"
     static var displayName: String = "Auto Harmony"
     
-    private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []
+    private var voiceBundles: [(voice: Oscillator, fader: Fader)] = []
     
     var faceData: FaceData?
     let engine = AudioEngineManager.shared.engine
@@ -88,15 +88,15 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         } else if currentCount < desiredCount {
             print("VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
-                let voc = VocalTract()
-                let fader = Fader(voc, gain: 0.0)
+                let osc = Oscillator()
+                let fader = Fader(osc, gain: 0.0)
                 //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
                 AudioEngineManager.shared.addToMixer(node: fader)
-                voiceBundles.append((voice: voc, fader: fader))
+                voiceBundles.append((voice: osc, fader: fader))
                 
                 if audioState == .playing {
                     print("VocalTractConductor.updateVoiceCount(): Starting new voice.")
-                    startVoice(fader, voice: voc)
+                    startVoice(fader, voice: osc)
                 }
                 
             }
@@ -115,7 +115,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
 
-    private func startVoice(_ fader: Fader, voice: VocalTract) {
+    private func startVoice(_ fader: Fader, voice: Oscillator) {
         fader.gain = 0.0
         print("VocalTractConductor.startVoice()")
         voice.start()
@@ -123,12 +123,19 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         fader.automateGain(events: [fadeEvent])
     }
 
-    private func stopVoice(_ fader: Fader, voice: VocalTract) {
+    private func stopVoice(_ fader: Fader, voice: Oscillator) {
         print("VocalTractConductor.stopVoice()")
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
         voice.stop()
         
+    }
+    
+    func stopAllVoices() {
+        print("VocalTractConductor.stopAllVoices()")
+        for bundle in voiceBundles {
+            stopVoice(bundle.fader, voice: bundle.voice)
+        }
     }
     
     func updateIntervalChordTypes() {
@@ -257,12 +264,14 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
                     voice.frequency = targetFreq
                 }
                 
+                /*
                 voice.jawOpen = interpolatedJawOpen
                 voice.lipShape = interpolatedMouthClose
                 voice.tongueDiameter = 0.5
                 voice.tonguePosition = 0.5
                 voice.tenseness = 0.6
                 voice.nasality = 0.0
+                 */
                 //voice.vibratoAmount = self.vibratoAmount
             }
         }

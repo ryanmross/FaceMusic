@@ -9,7 +9,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     // Track the last highlighted note for piano key highlighting
     private var lastHighlightedNote: Int?
     
-    var conductor: VoiceConductorProtocol?
+    // var conductor: VoiceConductorProtocol?
     let appSettings = AppSettings()
     var patchSettings: PatchSettings!
     
@@ -192,27 +192,28 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         }
         
         // Number of voices from conductor if you want:
-        if let conductor = conductor {
-            selectedNumOfVoices = Int(conductor.numOfVoices)
-            voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
-            
-            // Set default selections for new pickers based on current lowest/highest notes, if possible
-            // Try to infer closest pitch/range
-            let currentLowest = conductor.lowestNote
-            let currentHighest = conductor.highestNote
-            let currentCenter = (currentLowest + currentHighest) / 2
-            let currentRange = currentHighest - currentLowest
-            // Find closest match for center
-            if let idx = voicePitchOptions.enumerated().min(by: { abs($0.element.centerMIDINote - currentCenter) < abs($1.element.centerMIDINote - currentCenter) })?.offset {
-                selectedVoicePitchIndex = idx
-            }
-            // Find closest match for range
-            if let idx = noteRangeOptions.enumerated().min(by: { abs($0.element.rangeSize - currentRange) < abs($1.element.rangeSize - currentRange) })?.offset {
-                selectedNoteRangeIndex = idx
-            }
-            voicePitchPicker.selectRow(selectedVoicePitchIndex, inComponent: 0, animated: false)
-            noteRangePicker.selectRow(selectedNoteRangeIndex, inComponent: 0, animated: false)
+        let conductor = VoiceConductorManager.shared.activeConductor
+        
+        selectedNumOfVoices = Int(conductor.numOfVoices)
+        voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
+        
+        // Set default selections for new pickers based on current lowest/highest notes, if possible
+        // Try to infer closest pitch/range
+        let currentLowest = conductor.lowestNote
+        let currentHighest = conductor.highestNote
+        let currentCenter = (currentLowest + currentHighest) / 2
+        let currentRange = currentHighest - currentLowest
+        // Find closest match for center
+        if let idx = voicePitchOptions.enumerated().min(by: { abs($0.element.centerMIDINote - currentCenter) < abs($1.element.centerMIDINote - currentCenter) })?.offset {
+            selectedVoicePitchIndex = idx
         }
+        // Find closest match for range
+        if let idx = noteRangeOptions.enumerated().min(by: { abs($0.element.rangeSize - currentRange) < abs($1.element.rangeSize - currentRange) })?.offset {
+            selectedNoteRangeIndex = idx
+        }
+        voicePitchPicker.selectRow(selectedVoicePitchIndex, inComponent: 0, animated: false)
+        noteRangePicker.selectRow(selectedNoteRangeIndex, inComponent: 0, animated: false)
+    
         
         // Update piano highlighting after configuring pickers
         let reversedNotesArr = Array(MusicBrain.NoteName.allCases.reversed())
@@ -303,7 +304,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             patchSettings.scaleMask = nil
         }
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
-        conductor?.applySettings(patchSettings)
+        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
 
         if pickerView.tag == 0 || pickerView.tag == 1 {
             MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType)
@@ -329,7 +330,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     @objc private func glissandoSliderDidEndSliding() {
         patchSettings.glissandoSpeed = glissandoSlider.value
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
-        conductor?.applySettings(patchSettings)
+        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
     }
     
     // MARK: - Piano Keyboard Setup
@@ -446,7 +447,7 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
 
         // Apply to conductor
-        conductor?.applySettings(patchSettings)
+        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
         
         // Rebuild quantization with current lowest/highest notes
         MusicBrain.shared.rebuildQuantization(

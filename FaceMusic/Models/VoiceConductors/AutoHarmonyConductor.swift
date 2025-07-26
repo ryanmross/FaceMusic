@@ -8,7 +8,7 @@ import SoundpipeAudioKit
 class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
 
-    static var id: String = "autoharmony"
+    static var id: String { "AutoHarmonyConductor" }
     static var displayName: String = "Auto Harmony"
     
     private var voiceBundles: [(voice: Oscillator, fader: Fader)] = []

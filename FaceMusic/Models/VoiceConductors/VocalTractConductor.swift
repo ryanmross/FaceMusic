@@ -8,7 +8,7 @@ import SoundpipeAudioKit
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
 
-    static var id: String = "vocaltract"
+    static var id: String { "VocalTractConductor" }
     static var displayName: String = "Vocal Tract"
     
     private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []

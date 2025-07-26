@@ -31,9 +31,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
     
-    
-    // loads the default VocalTractConductor(), but will be overwritten later with loadPatchByID()
-    private var conductor: VoiceConductorProtocol?
 
     // Label for displaying patch name
     private var patchNameLabel: UILabel!
@@ -166,10 +163,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     // MARK: - Plus Button / New Patch
     @objc private func newPatchTapped() {
-        let defaults = PatchSettings.default()
+        //let defaults = PatchSettings.default()
         // If the current patch has no name or is untitled, prompt to save
-        if let conductor = self.conductor, (conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch") {
-            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
+        let conductor = VoiceConductorManager.shared.activeConductor
+        if conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch" {            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
             AlertHelper.promptToSavePatch(
                 presenter: self,
                 saveHandler: { [weak self] patchName in
@@ -231,11 +228,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     @objc private func voiceSettingsButtonTapped() {
         let voiceSettingsViewController = VoiceSettingsViewController()
         
-        if let conductor = conductor {
-            voiceSettingsViewController.patchSettings = conductor.exportCurrentSettings()
-        }
-        
-        voiceSettingsViewController.conductor = self.conductor
+        let conductor = VoiceConductorManager.shared.activeConductor
+        voiceSettingsViewController.patchSettings = conductor.exportCurrentSettings()
+
+        // voiceSettingsViewController.conductor = self.conductor
 
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
@@ -256,12 +252,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     @objc private func noteSettingsButtonTapped() {
         let noteSettingsViewController = NoteSettingsViewController()
 
-        if let conductor = conductor {
-            noteSettingsViewController.patchSettings = conductor.exportCurrentSettings()
-        }
+        let conductor = VoiceConductorManager.shared.activeConductor
+        noteSettingsViewController.patchSettings = conductor.exportCurrentSettings()
+        
 
-        // Pass the conductor instance to SettingsViewController
-        noteSettingsViewController.conductor = self.conductor
+        // noteSettingsViewController.conductor = self.conductor
 
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
@@ -285,15 +280,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
     private func createAndLoadNewPatch() {
         let defaultSettings = PatchSettings.default()
-
-        AudioEngineManager.shared.removeAllInputsFromMixer()
-        conductor = nil
-
-        let newConductor = VocalTractConductor()
-        newConductor.applySettings(defaultSettings)
-
-        self.conductor = newConductor
-        AudioEngineManager.shared.addToMixer(node: newConductor.outputNode)
+        _ = VoiceConductorManager.shared.switchToConductor(settings: defaultSettings)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -323,13 +310,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             print("FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
             self.loadAndApplyPatch(settings: defaultSettings, patchID: newID)
         }
-
-        if conductor == nil {
-            print("FaceTrackerViewController.viewWillAppear: Conductor is nil.  Creating new conductor")
-            let newConductor = VocalTractConductor()
-            newConductor.applySettings(PatchManager.shared.defaultPatchSettings)
-            conductor = newConductor
-        }
         // Create a session configuration
         //let configuration = ARWorldTrackingConfiguration()
         // Run the view's session
@@ -338,14 +318,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
     // MARK: - Patch Loading Helper
     private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
-        let selectedID = settings.activeVoiceID
-        let conductorType = VoiceConductorRegistry.allTypes.first { $0.id == selectedID } ?? VocalTractConductor.self
-
-        AudioEngineManager.shared.removeAllInputsFromMixer()
-        conductor = nil
-
-        let newConductor = conductorType.init()
-        newConductor.applySettings(settings)
+        print("FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
+        
+        _ = VoiceConductorManager.shared.switchToConductor(settings: settings)
 
         MusicBrain.shared.updateKeyAndScale(
             key: settings.key,
@@ -353,7 +328,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             scaleMask: settings.scaleMask
         )
 
-        self.conductor = newConductor
         patchNameLabel.text = settings.name ?? "Untitled Patch"
 
         if let id = patchID {
@@ -374,8 +348,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         print("FaceTrackerViewController.viewWillDisappear: Removing all inputs mixer")
         AudioEngineManager.shared.removeAllInputsFromMixer()
-        conductor = nil
-
+        // conductor = nil
     }
     
     
@@ -479,19 +452,18 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         let faceData = faceDataBrain.processFaceData(faceAnchor)
         
         // Update Conductor with new face data
-        conductor?.updateWithFaceData(faceData)
+        VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
         
         // Throttle stats updates to 4 times per second
         let now = CACurrentMediaTime()
         if now - lastStatsUpdate > 0.25 {
             faceStatsManager.updateFaceStats(with: faceData)
-            if let conductor = conductor {
-                let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
-                var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
-                audioStatsString += conductor.returnAudioStats()
-                audioStatsManager.updateStats(with: audioStatsString)
-                musicStatsManager.updateStats(with: conductor.returnMusicStats())
-            }
+            let conductor = VoiceConductorManager.shared.activeConductor
+            let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
+            var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
+            audioStatsString += conductor.returnAudioStats()
+            audioStatsManager.updateStats(with: audioStatsString)
+            musicStatsManager.updateStats(with: conductor.returnMusicStats())
             lastStatsUpdate = now
         }
         

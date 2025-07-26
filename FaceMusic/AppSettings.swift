@@ -30,11 +30,6 @@ class AppSettings {
         .mouthFunnel: (0.0, 1.0, 0.0, 1.0)
     ]
     
-    // Face Direction Limits
-    static var upperLimit: Float = 0.06
-    static var lowerLimit: Float = -0.5
-    static var rightLimit: Float = -0.5
-    static var leftLimit: Float = 0.30
 }
 
 enum ParametersForAudioGeneration: String, CaseIterable {

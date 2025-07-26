@@ -83,13 +83,21 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let id = patchIDs[indexPath.row]
-        
-        let settings = patchManager.getPatchData(forID: id)
-        print("PatchListViewController: loaded patch \(id): \(settings?.name ?? "nil")")
-        patchManager.currentPatchID = id
-        dismiss(animated: true) {
-            self.onPatchSelected?(id, settings)
-            NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
+
+        if let settings = patchManager.getPatchData(forID: id) {
+            print("*** PatchListViewController.didSelectRowAt: user chose patch \(id): \(settings.name ?? "nil")")
+            
+            // Switch to the new conductor only if needed
+            if type(of: VoiceConductorManager.shared.activeConductor).id != settings.activeVoiceID {
+                print("PatchListViewController.didSelectRowAt: we need to switch to conductor \(settings.activeVoiceID). Calling switchToConductor...")
+                VoiceConductorManager.shared.switchToConductor(settings: settings)
+            }
+
+            patchManager.currentPatchID = id
+            dismiss(animated: true) {
+                self.onPatchSelected?(id, settings)
+                NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
+            }
         }
     }
     

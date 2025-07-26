@@ -33,7 +33,10 @@ class VoiceConductorManager {
     
     /// Computed property for the active conductor, returns a default if not found
     var activeConductor: VoiceConductorProtocol {
-        return getActiveConductor() ?? VocalTractConductor()
+        if let id = activeConductorID, let conductor = conductors[id] {
+            return conductor
+        }
+        return VocalTractConductor()
     }
     
     /// Exposes the currently active conductor ID
@@ -60,24 +63,27 @@ class VoiceConductorManager {
         activeConductorID = id
     }
     
-    /// Switches to a new conductor type and applies settings
-    func switchToConductor(type: VoiceConductorProtocol.Type, settings: PatchSettings) {
-        let id = type.id
+    /// Switches to a new conductor type and applies settings, returns the new conductor
+    func switchToConductor(settings: PatchSettings) -> VoiceConductorProtocol {
+        print("VoiceConductorManager.switchToConductor() called with settings: \(settings)")
+        
+        let id = settings.activeVoiceID
+
+        if let oldID = activeConductorID, let oldConductor = conductors[oldID] {
+            oldConductor.stopAllVoices()
+            AudioEngineManager.shared.removeAllInputsFromMixer()
+        }
+
+        guard let type = VoiceConductorRegistry.allTypes.first(where: { $0.id == id }) else {
+            print("No VoiceConductor type found for ID '\(id)'")
+            return VocalTractConductor()
+        }
+
         let newConductor = type.init()
         conductors[id] = newConductor
         activeConductorID = id
         newConductor.applySettings(settings)
-    }
-    
-    /// Applies settings to the active VoiceConductor
-    func applyPatchSettings(settings: PatchSettings) {
-        setActiveConductor(id: settings.activeVoiceID)
-        
-        if let conductor = getActiveConductor() {
-            conductor.applySettings(settings)
-        } else {
-            print("No active VoiceConductor to apply settings.")
-        }
+        return newConductor
     }
     
     /// Passthrough method to stop all voices on active conductor

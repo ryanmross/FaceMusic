@@ -329,9 +329,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         
         print("VocalTractConductor.applyConductorSpecificSettings called with patch: \(patch)")
         
-        if let vibrato = patch.conductorSpecificSettings?["vibratoAmount"]?.value as? Float {
-            self.vibratoAmount = vibrato
-            self.conductorSpecificSettings["vibratoAmount"] = vibrato
+        if let vibratoValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
+            if let vibrato = vibratoValue as? Float {
+                self.vibratoAmount = vibrato
+            } else if let vibratoDouble = vibratoValue as? Double {
+                self.vibratoAmount = Float(vibratoDouble)
+            }
+            self.conductorSpecificSettings["vibratoAmount"] = self.vibratoAmount
         }
     }
     
@@ -388,9 +392,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
 
     
-    func midiNoteToFrequency(_ midiNote: Int) -> Float {
-        return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
-    }
+
   
     func returnAudioStats() -> String {
         var result = "audioState: \(audioState)"

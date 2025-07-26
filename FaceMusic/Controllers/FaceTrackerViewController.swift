@@ -318,8 +318,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // MARK: - Patch Loading Helper
     private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
         print("FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
-        
+
         _ = VoiceConductorManager.shared.switchToConductor(settings: settings)
+
+        let activeConductor = VoiceConductorManager.shared.activeConductor
+        activeConductor.applyConductorSpecificSettings(from: settings)
 
         MusicBrain.shared.updateKeyAndScale(
             key: settings.key,

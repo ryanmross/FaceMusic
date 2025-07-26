@@ -366,11 +366,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         return [autoTuneContainer]
     }
     
-    
-    
-    func midiNoteToFrequency(_ midiNote: Int) -> Float {
-        return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
-    }
+
     
     func returnAudioStats() -> String {
         var result = "audioState: \(audioState)"

@@ -54,7 +54,6 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(blurView)
         setupUI()
-        configurePickersWithConductorSettings()
     }
     
     
@@ -99,49 +98,19 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     }
     
     @objc private func handleConductorSettingUpdate(_ sender: UISlider) {
-        print("VoiceSettingsViewController: handleConductorSettingUpdate called (sender: \(String(describing: sender))")
         let activeConductor = VoiceConductorManager.shared.activeConductor
         if let fieldKey = sender.accessibilityIdentifier {
-            
-            print("VoiceSettingsViewController.handleConductorSettingsUpdate if let fieldKey is true............")
-            
+                        
             
             var updatedSettings: [String: AnyCodable] = patchSettings.conductorSpecificSettings ?? [:]
             updatedSettings[fieldKey] = AnyCodable(sender.value)
             patchSettings.conductorSpecificSettings = updatedSettings
             PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
             activeConductor.applyConductorSpecificSettings(from: patchSettings)
-            print("VoiceSettingsViewController.handleConductorSettingUpdate is calling activeConductor.applyConductorSpecificSettings(from: \(patchSettings)) with \(sender.value)")
+            
+            //print("VoiceSettingsViewController.handleConductorSettingUpdate is calling activeConductor.applyConductorSpecificSettings(from: \(patchSettings)) with \(sender.value)")
         }
     }
-     
-     
-    private func configurePickersWithConductorSettings() {
-        
-        /*
-        // Use the current key from MusicBrain
-        let currentKey = MusicBrain.shared.currentKey
-
-        if let keyIndex = MusicBrain.NoteName.allCases.firstIndex(of: currentKey) {
-            keyPicker.selectRow(keyIndex, inComponent: 0, animated: false)
-        }
-        
-        // Use the current chord type from MusicBrain
-        let currentChordType = MusicBrain.shared.currentChordType
-        if let chordIndex = chordTypes.firstIndex(of: currentChordType) {
-            chordTypePicker.selectRow(chordIndex, inComponent: 0, animated: false)
-        }
-
-        // Number of voices from conductor if you want:
-        if let conductor = conductor {
-            selectedNumOfVoices = Int(conductor.numOfVoices)
-            voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
-            lowestNotePicker.selectRow(conductor.lowestNote, inComponent: 0, animated: false)
-            highestNotePicker.selectRow(conductor.highestNote, inComponent: 0, animated: false)
-        }
-         */
-    }
-    
     
     
     @objc private func closeSettings() {

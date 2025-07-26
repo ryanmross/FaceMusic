@@ -9,6 +9,7 @@ import UIKit
 import SwiftEntryKit
 import AudioKitEX
 import AudioKitUI
+import AnyCodable
 
 class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     var voiceSoundPicker: UIPickerView!
@@ -37,7 +38,6 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     var patchSettings: PatchSettings!
     
     var closeButton: UIButton!
-    var vibratoValueLabel: UILabel!
 
     
     override func viewDidLoad() {
@@ -68,26 +68,24 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
             voiceSoundContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
         ])
 
-        // --- Vibrato Container ---
-        let (vibratoContainer, vibratoSlider, vibratoValueLabelInstance) = createLabeledSlider(
-            title: "Vibrato",
-            minLabel: "None",
-            maxLabel: "Max",
-            minValue: 0,
-            maxValue: 100,
-            initialValue: patchSettings.vibratoAmount,
+        let activeConductor = VoiceConductorManager.shared.activeConductor
+        
+        let customViews = activeConductor.makeSettingsUI(
             target: self,
-            valueChangedAction: #selector(vibratoSliderChanged(_:)),
-            touchUpAction: #selector(vibratoSliderChanged(_:))
-        )
-        self.vibratoValueLabel = vibratoValueLabelInstance
-
-        view.addSubview(vibratoContainer)
-        NSLayoutConstraint.activate([
-            vibratoContainer.topAnchor.constraint(equalTo: voiceSoundContainer.bottomAnchor, constant: 20),
-            vibratoContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            vibratoContainer.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
-        ])
+            valueChangedAction: #selector(handleConductorSettingUpdate(_:)),
+            touchUpAction: #selector(handleConductorSettingUpdate(_:))
+        ) ?? []
+        
+        var previousView: UIView = voiceSoundContainer
+        for customView in customViews {
+            view.addSubview(customView)
+            NSLayoutConstraint.activate([
+                customView.topAnchor.constraint(equalTo: previousView.bottomAnchor, constant: 20),
+                customView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                customView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
+            ])
+            previousView = customView
+        }
 
         // Create and configure the close button (X)
         closeButton = createCloseButton(target: self, action: #selector(closeSettings))
@@ -100,11 +98,21 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         ])
     }
     
-    @objc private func vibratoSliderChanged(_ sender: UISlider) {
-        patchSettings.vibratoAmount = sender.value
-        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
-        conductor?.applySettings(patchSettings)
-        vibratoValueLabel.text = "\(Int(sender.value))"
+    @objc private func handleConductorSettingUpdate(_ sender: UISlider) {
+        print("VoiceSettingsViewController: handleConductorSettingUpdate called (sender: \(String(describing: sender))")
+        let activeConductor = VoiceConductorManager.shared.activeConductor
+        if let fieldKey = sender.accessibilityIdentifier {
+            
+            print("VoiceSettingsViewController.handleConductorSettingsUpdate if let fieldKey is true............")
+            
+            
+            var updatedSettings: [String: AnyCodable] = patchSettings.conductorSpecificSettings ?? [:]
+            updatedSettings[fieldKey] = AnyCodable(sender.value)
+            patchSettings.conductorSpecificSettings = updatedSettings
+            PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+            activeConductor.applyConductorSpecificSettings(from: patchSettings)
+            print("VoiceSettingsViewController.handleConductorSettingUpdate is calling activeConductor.applyConductorSpecificSettings(from: \(patchSettings)) with \(sender.value)")
+        }
     }
      
      

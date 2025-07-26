@@ -178,7 +178,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         key: MusicBrain.shared.currentKey,
                         chordType: conductor.chordType,
                         numOfVoices: conductor.numOfVoices,
-                        vibratoAmount: conductor.vibratoAmount,
                         glissandoSpeed: conductor.glissandoSpeed,
                         lowestNote: conductor.lowestNote,
                         highestNote: conductor.highestNote,

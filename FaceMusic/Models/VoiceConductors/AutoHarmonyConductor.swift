@@ -3,11 +3,14 @@ import AudioKitEX
 import CAudioKitEX
 import AudioToolbox
 import SoundpipeAudioKit
+import AnyCodable
 
 
 class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
-
+    // MARK: - Auto-tune parameter
+    @Published var autoTuneAmount: Float = 50.0
+    
     static var id: String { "AutoHarmonyConductor" }
     static var displayName: String = "Auto Harmony"
     
@@ -16,13 +19,29 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
     var faceData: FaceData?
     let engine = AudioEngineManager.shared.engine
     
-
-    static let defaultSettings = PatchSettings.default()
+    
+    static var defaultSettings: PatchSettings { Self.defaultPatch }
+    
+    static var defaultPatch: PatchSettings {
+        PatchSettings(
+            id: -1,
+            name: "Auto Harmony Default",
+            key: .C,
+            chordType: .major,
+            numOfVoices: 3,
+            glissandoSpeed: 20,
+            lowestNote: 48,
+            highestNote: 72,
+            activeVoiceID: Self.id
+        )
+    }
+    
+    static var hasCustomSettings: Bool { true }
     
     var audioState: AudioState = .stopped
     
     var currentSettings: PatchSettings?
-
+    
     var chordType: MusicBrain.ChordType
     
     var currentPitch: Int?
@@ -32,20 +51,11 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
     var lowestNote: Int
     var highestNote: Int
     var glissandoSpeed: Float
+    
 
-    // vibratoAmount is always scaled 0–100; scale to 0–1 semitone in getter/setter
-    @Published var vibratoAmount: Float = 0.0 {
-        didSet {
-            // Clamp vibratoAmount to 0–100 if needed
-            if vibratoAmount < 0.0 { vibratoAmount = 0.0 }
-            if vibratoAmount > 100.0 { vibratoAmount = 100.0 }
-        }
-    }
-    var vibratoRate: Float = 5.0
-    private var vibratoPhase: Float = 0.0
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
-
+    
     var outputNode: Node {
         return voiceBundles.first?.fader ?? Mixer()
     }
@@ -59,12 +69,12 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
     
     
     private var hasFaceData = false  // Flag to track when data is ready
-
+    
     private var latestHarmonies: [Int]? = nil
     
     required init() {
         // get default key from defaultSettings
-        let defaultSettings = PatchManager.shared.defaultPatchSettings
+        let defaultSettings = Self.defaultPatch
         self.chordType = defaultSettings.chordType
         self.lowestNote = defaultSettings.lowestNote
         self.highestNote = defaultSettings.highestNote
@@ -72,8 +82,23 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
         self.audioState = .waitingForFaceData
-
     }
+    
+    
+    
+    // MARK: - Conductor-Specific Settings Protocol Stubs
+    
+    func applyConductorSpecificSettings(from patch: PatchSettings) {
+        if let raw = patch.conductorSpecificSettings?["autoTuneAmount"], let autoAmount = (raw as? AnyCodable)?.value as? Float {
+            self.autoTuneAmount = autoAmount
+        }
+    }
+    
+    func exportConductorSpecificSettings() -> [String: Any]? {
+        // Return a dictionary of any conductor-specific settings.
+        return ["autoTuneAmount": AnyCodable(autoTuneAmount)]
+    }
+    
     
     internal func updateVoiceCount() {
         
@@ -84,7 +109,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         
         if currentCount == desiredCount {
             print("VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
-
+            
         } else if currentCount < desiredCount {
             print("VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
@@ -114,7 +139,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         // log mixer state
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
-
+    
     private func startVoice(_ fader: Fader, voice: Oscillator) {
         fader.gain = 0.0
         print("VocalTractConductor.startVoice()")
@@ -122,7 +147,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
     }
-
+    
     private func stopVoice(_ fader: Fader, voice: Oscillator) {
         print("VocalTractConductor.stopVoice()")
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
@@ -142,7 +167,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         // Removed: No longer used with MusicBrain types
     }
     
-
+    
     func disconnectFromMixer() {
         print("VocalTractConductor: 🔌 Disconnecting voices from mixer...")
         voiceBundles.forEach { bundle in
@@ -154,22 +179,22 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         }
         audioState = .stopped
     }
-
+    
     func connectToMixer() {
         print("VocalTractConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
         for bundle in voiceBundles {
             // Always try removing first (safe even if not connected)
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
-
+            
             // Then re-add
             AudioEngineManager.shared.addToMixer(node: bundle.fader)
-
+            
             if audioState == .playing {
                 startVoice(bundle.fader, voice: bundle.voice)
             }
         }
     }
-
+    
     
     func updateWithFaceData(_ faceData: FaceData) {
         // this gets called when we get new AR data from the face
@@ -180,7 +205,7 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         
         // grab AudioGenerationParameters from its file along with the interpolation bounds (tweak in AudioGenerationParameterMetadata file to adjust)
         var interpolatedValues: [AudioGenerationParameter: Float] = [:]
-            
+        
         for parameter in AudioGenerationParameter.allCases {
             let bounds = parameter.metadata
             let rawValue = faceData[keyPath: parameter.keyPath]
@@ -195,8 +220,8 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
             interpolatedValues[parameter] = interpolatedValue
         }
         
-
-
+        
+        
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
         let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
@@ -210,42 +235,36 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
             lowestNote: self.lowestNote,
             highestNote: self.highestNote
         )
-
+        
         currentPitch = quantizedNote
         guard let currentPitch = currentPitch else { return }
-
+        
         let keyIndex = currentPitch % 12
         let displayNote = 60 + keyIndex // force note into C4–B4 range
         //print("🔔 Posting HighlightPianoKey for note \(displayNote)")
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: Notification.Name("HighlightPianoKey"), object: nil, userInfo: ["midiNote": displayNote])
         }
-
+        
         // Use harmonyMaker with current key, no chordType argument
         harmonies = harmonyMaker.voiceChord(currentPitch: currentPitch, numOfVoices: numOfVoices)
-
+        
         // Ensure lead note is first
         if let index = harmonies.firstIndex(of: currentPitch) {
             harmonies.remove(at: index)
         }
         harmonies.insert(currentPitch, at: 0)
-
+        
         // Store harmonies for later use in returnMusicStats()
         latestHarmonies = harmonies
-
+        
         // if faceData.horizPosition == .left {
         
         let now = CACurrentMediaTime()
         let deltaTime = Float(now - lastUpdateTime)
         lastUpdateTime = now
-
-        vibratoPhase += 2 * Float.pi * vibratoRate * deltaTime
-        if vibratoPhase > 2 * Float.pi {
-            vibratoPhase -= 2 * Float.pi
-        }
-
-        let vibratoOffset = sin(vibratoPhase) * (vibratoAmount / 100.0)
         
+
         while harmonies.count < numOfVoices {
             harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
         }
@@ -256,7 +275,12 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
                 //voice.frequency = midiNoteToFrequency(harmony)
                 
                 let baseFreq = midiNoteToFrequency(harmony)
-                let targetFreq = baseFreq * pow(2.0, vibratoOffset / 12.0)
+                
+                //let targetFreq = baseFreq * pow(2.0, vibratoOffset / 12.0)
+                //removed vibrato
+                
+                let targetFreq = baseFreq
+                
                 if glissandoSpeed > 0 {
                     //print ("ramping to \(targetFreq)")
                     voice.$frequency.ramp(to: targetFreq, duration: Float(glissandoSpeed) / 1000.0)
@@ -265,12 +289,12 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
                 }
                 
                 /*
-                voice.jawOpen = interpolatedJawOpen
-                voice.lipShape = interpolatedMouthClose
-                voice.tongueDiameter = 0.5
-                voice.tonguePosition = 0.5
-                voice.tenseness = 0.6
-                voice.nasality = 0.0
+                 voice.jawOpen = interpolatedJawOpen
+                 voice.lipShape = interpolatedMouthClose
+                 voice.tongueDiameter = 0.5
+                 voice.tonguePosition = 0.5
+                 voice.tenseness = 0.6
+                 voice.nasality = 0.0
                  */
                 //voice.vibratoAmount = self.vibratoAmount
             }
@@ -290,22 +314,21 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
             }
         }
         
-
         
-}
+        
+    }
     
     func applySettings(_ settings: PatchSettings) {
-        self.numOfVoices = settings.numOfVoices
+        // Apply all shared patch settings; ignore missing custom fields gracefully.
         self.chordType = settings.chordType
         self.lowestNote = settings.lowestNote
         self.highestNote = settings.highestNote
         self.glissandoSpeed = settings.glissandoSpeed
-        self.vibratoAmount = settings.vibratoAmount
-        self.currentSettings = settings
-        
         if self.numOfVoices != settings.numOfVoices {
             self.numOfVoices = settings.numOfVoices
         }
+        self.currentSettings = settings
+        // Any custom fields would be handled here if present; currently none.
     }
     
     func exportCurrentSettings() -> PatchSettings {
@@ -315,26 +338,47 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
             key: MusicBrain.shared.currentKey,
             chordType: self.chordType,
             numOfVoices: self.numOfVoices,
-            vibratoAmount: self.vibratoAmount,
             glissandoSpeed: self.glissandoSpeed,
             lowestNote: self.lowestNote,
             highestNote: self.highestNote,
             activeVoiceID: type(of: self).id
         )
     }
-
+    
+    // MARK: - VoiceConductorProtocol UI
+    func makeSettingsUI(target: Any?, valueChangedAction: Selector, touchUpAction: Selector) -> [UIView] {
+        let (autoTuneContainer, autoTuneSlider, autoTuneValueLabel) = createLabeledSlider(
+            title: "Auto Tune Amount",
+            minLabel: "Subtle",
+            maxLabel: "Strong",
+            minValue: 0,
+            maxValue: 100,
+            initialValue: autoTuneAmount,
+            target: target,
+            valueChangedAction: valueChangedAction,
+            touchUpAction: touchUpAction
+        )
+        autoTuneSlider.addAction(UIAction { _ in
+            self.autoTuneAmount = autoTuneSlider.value
+            autoTuneValueLabel.text = "\(Int(autoTuneSlider.value))"
+        }, for: .valueChanged)
+        autoTuneSlider.accessibilityIdentifier = "autoTuneAmount"
+        return [autoTuneContainer]
+    }
+    
+    
     
     func midiNoteToFrequency(_ midiNote: Int) -> Float {
         return Float(440.0 * pow(2.0, (Float(midiNote) - 69.0) / 12.0))
     }
-  
+    
     func returnAudioStats() -> String {
         var result = "audioState: \(audioState)"
-
+        
         for (index, bundle) in voiceBundles.enumerated() {
             result += "\nVoice \(index + 1): Frequency: \(bundle.voice.frequency)"
         }
-
+        
         return result
     }
     
@@ -346,14 +390,14 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
         guard let unwrappedPitch = currentPitch else {
             return "Pitch data is unavailable."
         }
-
+        
         let noteInOctave = unwrappedPitch % 12
         let octave = unwrappedPitch / 12 - 1 // Middle C = C4
-
+        
         let noteName = MusicBrain.NoteName.allCases[noteInOctave].displayName
-
+        
         var result = "\(noteName)\(octave) (MIDI \(unwrappedPitch))"
-
+        
         let harmonyNotesOnly = harmonies.dropFirst()
         if numOfVoices > 1 && !harmonyNotesOnly.isEmpty {
             for harmonyNote in harmonyNotesOnly {
@@ -363,10 +407,10 @@ class AutoHarmonyConductor: ObservableObject, HasAudioEngine, VoiceConductorProt
                 result += "\n\(harmonyNoteName)\(harmonyOctave) (MIDI \(harmonyNote))"
             }
         }
-
+        
         return result
     }
     
     
-   
+    
 }

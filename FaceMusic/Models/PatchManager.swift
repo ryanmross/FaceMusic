@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AnyCodable
 
 /// Simple PatchSettings model to store user settings for each patch.
 struct PatchSettings: Codable {
@@ -18,7 +19,6 @@ struct PatchSettings: Codable {
     var chordType: MusicBrain.ChordType
     
     var numOfVoices: Int
-    var vibratoAmount: Float // Ranges from 0 to 100
     //var alternateChords: [String]
 
     var glissandoSpeed: Float
@@ -29,6 +29,8 @@ struct PatchSettings: Codable {
     var scaleMask: UInt16? // nil -> derive from chordType; non-nil -> custom scale membership
     
     var activeVoiceID: String
+    
+    var conductorSpecificSettings: [String: AnyCodable]?
 }
 
 class PatchManager {
@@ -146,7 +148,6 @@ extension PatchSettings {
             key: .C,
             chordType: .major,
             numOfVoices: 1,
-            vibratoAmount: 25,
             glissandoSpeed: 50,
             lowestNote: 30,
             highestNote: 100,

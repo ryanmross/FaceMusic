@@ -29,6 +29,7 @@
 		8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5922D262C40004F4EDD /* SwiftEntryKit */; };
 		8DEBE5972D262CBE004F4EDD /* NoteSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEBE5962D262CBE004F4EDD /* NoteSettingsViewController.swift */; };
 		8DECF9222E34040500D05F8D /* UIHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DECF9212E34040300D05F8D /* UIHelpers.swift */; };
+		8DECF9272E3578B400D05F8D /* AnyCodable in Frameworks */ = {isa = PBXBuildFile; productRef = 8DECF9262E3578B400D05F8D /* AnyCodable */; };
 		8DF0276D2E170D3C00B1CD6A /* SoundpipeAudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8DF0276C2E170D3C00B1CD6A /* SoundpipeAudioKit */; };
 /* End PBXBuildFile section */
 
@@ -84,6 +85,7 @@
 				8DF0276D2E170D3C00B1CD6A /* SoundpipeAudioKit in Frameworks */,
 				8D199ACA2C190FD500BD63A8 /* AudioKit in Frameworks */,
 				8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */,
+				8DECF9272E3578B400D05F8D /* AnyCodable in Frameworks */,
 				8DCEDA8C2E25D1A100565677 /* AudioKitUI in Frameworks */,
 				8D13C51A2E29BB9A00B6649F /* PianoKeyboard in Frameworks */,
 				8DEBE57A2D2367AE004F4EDD /* MusicTheory in Frameworks */,
@@ -216,6 +218,7 @@
 				8DF0276C2E170D3C00B1CD6A /* SoundpipeAudioKit */,
 				8DCEDA8B2E25D1A100565677 /* AudioKitUI */,
 				8D13C5192E29BB9A00B6649F /* PianoKeyboard */,
+				8DECF9262E3578B400D05F8D /* AnyCodable */,
 			);
 			productName = FaceMusic;
 			productReference = 8D199A962C190F6300BD63A8 /* FaceMusic.app */;
@@ -297,6 +300,7 @@
 				8DF0276B2E170D3C00B1CD6A /* XCLocalSwiftPackageReference "../../SoundpipeAudioKit/SoundpipeAudioKit" */,
 				8DCEDA8A2E25D1A100565677 /* XCRemoteSwiftPackageReference "AudioKitUI" */,
 				8D13C5182E29BB9A00B6649F /* XCRemoteSwiftPackageReference "PianoKeyboard" */,
+				8DECF9252E3578B400D05F8D /* XCRemoteSwiftPackageReference "AnyCodable" */,
 			);
 			productRefGroup = 8D199A972C190F6300BD63A8 /* Products */;
 			projectDirPath = "";
@@ -756,6 +760,14 @@
 				minimumVersion = 2.0.0;
 			};
 		};
+		8DECF9252E3578B400D05F8D /* XCRemoteSwiftPackageReference "AnyCodable" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Flight-School/AnyCodable.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.6.7;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -788,6 +800,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8DEBE5912D262C40004F4EDD /* XCRemoteSwiftPackageReference "SwiftEntryKit" */;
 			productName = SwiftEntryKit;
+		};
+		8DECF9262E3578B400D05F8D /* AnyCodable */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8DECF9252E3578B400D05F8D /* XCRemoteSwiftPackageReference "AnyCodable" */;
+			productName = AnyCodable;
 		};
 		8DF0276C2E170D3C00B1CD6A /* SoundpipeAudioKit */ = {
 			isa = XCSwiftPackageProductDependency;

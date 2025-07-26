@@ -3,7 +3,7 @@ import AudioKitEX
 import CAudioKitEX
 import AudioToolbox
 import SoundpipeAudioKit
-
+import AnyCodable
 
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
@@ -17,9 +17,26 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     let engine = AudioEngineManager.shared.engine
     
 
-    static let defaultSettings = PatchSettings.default()
+    static var defaultPatch: PatchSettings {
+        return PatchSettings(
+            id: -1,
+            name: "Default Vocal Tract",
+            key: .C,
+            chordType: .major,
+            numOfVoices: 3,
+            glissandoSpeed: 20.0,
+            lowestNote: 48,
+            highestNote: 72,
+            activeVoiceID: Self.id,
+            conductorSpecificSettings: [
+                "vibratoAmount": AnyCodable(50.0)
+            ]
+        )
+    }
     
     var audioState: AudioState = .stopped
+    
+    var conductorSpecificSettings: [String: Any] = [:]
     
     var currentSettings: PatchSettings?
 
@@ -39,6 +56,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             // Clamp vibratoAmount to 0–100 if needed
             if vibratoAmount < 0.0 { vibratoAmount = 0.0 }
             if vibratoAmount > 100.0 { vibratoAmount = 100.0 }
+            conductorSpecificSettings["vibratoAmount"] = vibratoAmount
         }
     }
     var vibratoRate: Float = 5.0
@@ -244,7 +262,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             vibratoPhase -= 2 * Float.pi
         }
 
-        let vibratoOffset = sin(vibratoPhase) * (vibratoAmount / 100.0)
+        let vibratoOffset = sin(vibratoPhase) * ((conductorSpecificSettings["vibratoAmount"] as? Float ?? 0.0) / 100.0)
         
         while harmonies.count < numOfVoices {
             harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
@@ -298,13 +316,29 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.lowestNote = settings.lowestNote
         self.highestNote = settings.highestNote
         self.glissandoSpeed = settings.glissandoSpeed
-        self.vibratoAmount = settings.vibratoAmount
         self.currentSettings = settings
-        
+
         if self.numOfVoices != settings.numOfVoices {
             self.numOfVoices = settings.numOfVoices
         }
+
+        applyConductorSpecificSettings(from: settings)
     }
+    
+    func applyConductorSpecificSettings(from patch: PatchSettings) {
+        
+        print("VocalTractConductor.applyConductorSpecificSettings called with patch: \(patch)")
+        
+        if let vibrato = patch.conductorSpecificSettings?["vibratoAmount"]?.value as? Float {
+            self.vibratoAmount = vibrato
+            self.conductorSpecificSettings["vibratoAmount"] = vibrato
+        }
+    }
+    
+    func exportConductorSpecificSettings() -> [String: Any]? {
+        return ["vibratoAmount": self.vibratoAmount]
+    }
+    
     
     func exportCurrentSettings() -> PatchSettings {
         return PatchSettings(
@@ -313,13 +347,45 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             key: MusicBrain.shared.currentKey,
             chordType: self.chordType,
             numOfVoices: self.numOfVoices,
-            vibratoAmount: self.vibratoAmount,
             glissandoSpeed: self.glissandoSpeed,
             lowestNote: self.lowestNote,
             highestNote: self.highestNote,
-            activeVoiceID: type(of: self).id
+            activeVoiceID: type(of: self).id,
+            conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }
         )
     }
+    
+    // MARK: - VoiceConductorProtocol
+
+    
+    func makeSettingsUI(target: Any?, valueChangedAction: Selector, touchUpAction: Selector) -> [UIView] {
+        var views: [UIView] = []
+
+        let sliderData = createLabeledSlider(
+            title: "Vibrato Amount",
+            minLabel: "None",
+            maxLabel: "Wide",
+            minValue: 0.0,
+            maxValue: 100.0,
+            initialValue: self.vibratoAmount,
+            target: target,
+            valueChangedAction: valueChangedAction,
+            touchUpAction: touchUpAction
+        )
+
+        sliderData.slider.accessibilityIdentifier = "vibratoAmount"
+        sliderData.valueLabel.accessibilityIdentifier = "vibratoAmountValueLabel"
+
+        sliderData.slider.addAction(UIAction { _ in
+            sliderData.valueLabel.text = "\(Int(sliderData.slider.value)) ms"
+        }, for: .valueChanged)
+
+        views.append(sliderData.container)
+        return views
+    }
+
+
+
 
     
     func midiNoteToFrequency(_ midiNote: Int) -> Float {

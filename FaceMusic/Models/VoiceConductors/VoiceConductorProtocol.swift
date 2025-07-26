@@ -7,6 +7,7 @@
 
 import Foundation
 import AudioKit
+import UIKit
 
 enum AudioState {
     case stopped
@@ -21,6 +22,9 @@ protocol VoiceConductorProtocol: AnyObject {
     /// A human-readable name for UI menus and labels
     static var displayName: String { get }
 
+    /// The default patch settings specific to this conductor
+    static var defaultPatch: PatchSettings { get }
+
     var lowestNote: Int { get set }
     var highestNote: Int { get set }
 
@@ -28,7 +32,6 @@ protocol VoiceConductorProtocol: AnyObject {
     var chordType: MusicBrain.ChordType { get set }
     
     var glissandoSpeed: Float { get set }
-    var vibratoAmount: Float { get set }
     
     /// The conductor's audio output node
     var outputNode: Node { get }
@@ -41,10 +44,19 @@ protocol VoiceConductorProtocol: AnyObject {
 
     /// Apply settings from a patch
     func applySettings(_ settings: PatchSettings)
-    
+
+    /// Export current full patch settings
     func exportCurrentSettings() -> PatchSettings
 
+    /// Apply only the conductor-specific fields from patch
+    func applyConductorSpecificSettings(from patch: PatchSettings)
 
+    /// Export only the conductor-specific fields to a patch
+    func exportConductorSpecificSettings() -> [String: Any]?
+    
+    /// Generate UI views for conductor-specific settings
+    func makeSettingsUI(target: Any?, valueChangedAction: Selector, touchUpAction: Selector) -> [UIView]
+    
     /// Connect the conductor's nodes to the shared mixer
     func connectToMixer()
 

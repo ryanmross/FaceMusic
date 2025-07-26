@@ -1,6 +1,15 @@
 {
-  "originHash" : "645b7d277fadcd3973018c2fd5ffa2b7e0f6dc266be2ae99b671ef6874eb37e4",
+  "originHash" : "3cf22fbba6d2db8114da3f2c7ed7aecd71498ba3bffc842fc52de9a6a86cb52a",
   "pins" : [
+    {
+      "identity" : "anycodable",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Flight-School/AnyCodable.git",
+      "state" : {
+        "revision" : "862808b2070cd908cb04f9aafe7de83d35f81b05",
+        "version" : "0.6.7"
+      }
+    },
     {
       "identity" : "audiokit",
       "kind" : "remoteSourceControl",

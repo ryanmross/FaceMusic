@@ -23,6 +23,11 @@ struct VoiceConductorRegistry {
             id: OscillatorConductor.id,
             displayName: OscillatorConductor.displayName,
             makeInstance: { OscillatorConductor() }
+        ),
+        VoiceConductorDescriptor(
+            id: VoiceHarmonizerConductor.id,
+            displayName: VoiceHarmonizerConductor.displayName,
+            makeInstance: { VoiceHarmonizerConductor() }
         )
         // Add additional conductors here
     ]

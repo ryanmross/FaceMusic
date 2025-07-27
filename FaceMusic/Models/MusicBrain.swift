@@ -162,24 +162,20 @@ class MusicBrain {
     }
 
     
-    func setKeyAndChordType(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
-        print("setKeyAndChordType() received key:\(key), chordType: \(chordType), scaleMask: \(scaleMask ?? 0)")
-        self.currentChordType = chordType
-        self.customScaleMask = scaleMask ?? self.customScaleMask
-        updateKeyAndScale(key: key, chordType: chordType, scaleMask: self.customScaleMask)
-    }
-    
-    
     func updateKeyAndScale(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
         self.currentKey = key
         self.currentChordType = chordType
         self.customScaleMask = scaleMask
 
         if let mask = scaleMask {
+            // if scaleMask contains a custom scale
+            
             let scaleNotes = Self.pitchClasses(fromMask: mask)
             print("MusicBrain.updateKeyAndScale: Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
             rebuildQuantization(withScaleClasses: scaleNotes)
         } else {
+            // if scaleMask is nil and we want to use default key and scale
+            
             let scale = ScaleType.scaleForChordType(chordType)
             self.currentScale = scale
             print("MusicBrain.updateKeyAndScale: Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")

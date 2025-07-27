@@ -43,17 +43,57 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        print("VoiceSettingsViewController.viewDidLoad()")
         
-        if let refreshedSettings = PatchManager.shared.getPatchData(forID: patchSettings.id) {
-            patchSettings = refreshedSettings
-            print("PatchSettings: \(patchSettings)")
+        guard let initialSettings = patchSettings,
+              let refreshedSettings = PatchManager.shared.getPatchData(forID: initialSettings.id) else {
+            print("⚠️ VoiceSettingsViewController.viewDidLoad(): Failed to load patch settings.")
+            return
         }
+
+        self.patchSettings = refreshedSettings
+        
+        print("VoiceSettingsViewController.viewDidLoad() PatchSettings: \(self.patchSettings!)")
+
         let blurEffect = UIBlurEffect(style: .light)
         let blurView = UIVisualEffectView(effect: blurEffect)
         blurView.frame = view.bounds
         blurView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(blurView)
         setupUI()
+        configurePickersWithConductorSettings()
+    }
+    
+    private func configurePickersWithConductorSettings() {
+        let activeID = self.patchSettings.activeVoiceID
+        if let index = VoiceConductorRegistry.conductorIndex(of: activeID) {
+            voiceSoundPicker?.selectRow(index, inComponent: 0, animated: false)
+        }
+
+        // Remove existing custom views
+        for subview in view.subviews where subview.tag == 101 {
+            subview.removeFromSuperview()
+        }
+
+        // Add settings UI for active conductor
+        let activeConductor = VoiceConductorManager.shared.activeConductor
+        let customViews = activeConductor.makeSettingsUI(
+            target: self,
+            valueChangedAction: #selector(handleConductorSettingUpdate(_:)),
+            touchUpAction: #selector(handleConductorSettingUpdate(_:))
+        ) ?? []
+
+        var previousView: UIView = voiceSoundPicker.superview!
+        for customView in customViews {
+            customView.tag = 101
+            view.addSubview(customView)
+            NSLayoutConstraint.activate([
+                customView.topAnchor.constraint(equalTo: previousView.bottomAnchor, constant: 20),
+                customView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                customView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
+            ])
+            previousView = customView
+        }
     }
     
     
@@ -77,6 +117,7 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         
         var previousView: UIView = voiceSoundContainer
         for customView in customViews {
+            customView.tag = 101
             view.addSubview(customView)
             NSLayoutConstraint.activate([
                 customView.topAnchor.constraint(equalTo: previousView.bottomAnchor, constant: 20),
@@ -118,4 +159,48 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
         SwiftEntryKit.dismiss()
     }
     
+    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+        if pickerView.tag == 99 {
+            
+            print("👉 VoiceSettingsViewController.pickerView didSelectRow \(row)")
+            let selectedConductorName = VoiceConductorRegistry.displayNames()[row]
+            if let descriptor = VoiceConductorRegistry.descriptor(forDisplayName: selectedConductorName) {
+                let selectedID = descriptor.id
+                if selectedID != VoiceConductorManager.shared.activeConductorID {
+                    let selectedConductor = descriptor.makeInstance()
+                    
+                    print("VoiceSettingsViewController.pickerView didSelectRow switching conductors to \(selectedConductorName)")
+                    
+                    self.patchSettings.activeVoiceID = selectedID
+                    PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+                    VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
+                    self.conductor = selectedConductor
+
+                    // Remove existing custom views
+                    for subview in view.subviews where subview.tag == 101 {
+                        subview.removeFromSuperview()
+                    }
+
+                    // Re-add updated settings UI
+                    let customViews = selectedConductor.makeSettingsUI(
+                        target: self,
+                        valueChangedAction: #selector(handleConductorSettingUpdate(_:)),
+                        touchUpAction: #selector(handleConductorSettingUpdate(_:))
+                    )
+
+                    var previousView: UIView = voiceSoundPicker.superview!
+                    for customView in customViews {
+                        customView.tag = 101
+                        view.addSubview(customView)
+                        NSLayoutConstraint.activate([
+                            customView.topAnchor.constraint(equalTo: previousView.bottomAnchor, constant: 20),
+                            customView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+                            customView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8)
+                        ])
+                        previousView = customView
+                    }
+                }
+            }
+        }
+    }
 }

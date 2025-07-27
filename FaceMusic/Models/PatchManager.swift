@@ -75,7 +75,7 @@ class PatchManager {
         let validIDs = VoiceConductorRegistry.voiceConductorIDs
         if !validIDs().contains(patch.activeVoiceID) {
             print("⚠️ Invalid VoiceConductor ID '\(patch.activeVoiceID)' found. Resetting to default.")
-            patch.activeVoiceID = VoiceConductorRegistry.defaultType.id
+            patch.activeVoiceID = VoiceConductorRegistry.defaultID
         }
     }
 

@@ -1,11 +1,3 @@
-//
-//  VocalTractConductor 2.swift
-//  FaceMusic
-//
-//  Created by Ryan Ross on 7/26/25.
-//
-
-
 import AudioKit
 import AudioKitEX
 import CAudioKitEX
@@ -13,13 +5,13 @@ import AudioToolbox
 import SoundpipeAudioKit
 import AnyCodable
 
-class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
+class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
 
-    static var id: String { "VocalTractConductor" }
-    static var displayName: String = "Vocal Tract"
+    static var id: String { "OscillatorConductor" }
+    static var displayName: String = "Oscillator"
     
-    private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []
+    private var voiceBundles: [(voice: MorphingOscillator, fader: Fader)] = []
     
     var faceData: FaceData?
     let engine = AudioEngineManager.shared.engine
@@ -89,7 +81,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     @Published var numOfVoices: Int {
         didSet {
-            print("VocalTractConductor: numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
+            print("OscillatorConductor: numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
             updateVoiceCount()
         }
     }
@@ -117,30 +109,32 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
         
-        print("VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
+        print("OscillatorConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
         
         if currentCount == desiredCount {
-            print("VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            print("OscillatorConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
 
         } else if currentCount < desiredCount {
-            print("VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            print("OscillatorConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
-                let voc = VocalTract()
+                let voc = MorphingOscillator(waveformArray: [Table(.triangle), Table(.square), Table(.sine), Table(.sawtooth)])
+
+                
                 let fader = Fader(voc, gain: 0.0)
                 //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: voc, fader: fader))
                 vibratoActivationTime.append(0.0)
                 if audioState == .playing {
-                    print("VocalTractConductor.updateVoiceCount(): Starting new voice.")
+                    print("OscillatorConductor.updateVoiceCount(): Starting new voice.")
                     startVoice(fader, voice: voc)
                 }
             }
         } else {
-            print("VocalTractConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            print("OscillatorConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
-                    print("VocalTractConductor.updateVoiceCount(): Stopping voice.")
+                    print("OscillatorConductor.updateVoiceCount(): Stopping voice.")
                     stopVoice(last.fader, voice: last.voice)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                     vibratoActivationTime.removeLast()
@@ -152,16 +146,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
 
-    private func startVoice(_ fader: Fader, voice: VocalTract) {
+    private func startVoice(_ fader: Fader, voice: MorphingOscillator) {
         fader.gain = 0.0
-        print("VocalTractConductor.startVoice()")
+        print("OscillatorConductor.startVoice()")
         voice.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
     }
 
-    private func stopVoice(_ fader: Fader, voice: VocalTract) {
-        print("VocalTractConductor.stopVoice()")
+    private func stopVoice(_ fader: Fader, voice: MorphingOscillator) {
+        print("OscillatorConductor.stopVoice()")
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
         voice.stop()
@@ -169,7 +163,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func stopAllVoices() {
-        print("VocalTractConductor.stopAllVoices()")
+        print("OscillatorConductor.stopAllVoices()")
         for bundle in voiceBundles {
             stopVoice(bundle.fader, voice: bundle.voice)
         }
@@ -181,7 +175,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
 
     func disconnectFromMixer() {
-        print("VocalTractConductor: 🔌 Disconnecting voices from mixer...")
+        print("OscillatorConductor: 🔌 Disconnecting voices from mixer...")
         voiceBundles.forEach { bundle in
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
             // Extra safeguard to prevent duplicate stops
@@ -193,7 +187,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
     func connectToMixer() {
-        print("VocalTractConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+        print("OscillatorConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
         for bundle in voiceBundles {
             // Always try removing first (safe even if not connected)
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
@@ -312,19 +306,17 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     voice.frequency = vibratoFreq
                 }
 
-                voice.jawOpen = interpolatedJawOpen
-                voice.lipShape = interpolatedMouthClose
-                voice.tongueDiameter = 0.5
-                voice.tonguePosition = 0.5
-                voice.tenseness = 0.6
-                voice.nasality = 0.0
+                
+                voice.index = interpolatedJawOpen
+                //voice.lipShape = interpolatedMouthClose
+
             }
         }
 
         //print("audioState: \(audioState)")
 
         if audioState == .waitingForFaceData {
-            print("VocalTractConductor.updateWithFaceData() setting audioState to .playing")
+            print("OscillatorConductor.updateWithFaceData() setting audioState to .playing")
             audioState = .playing
 
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
@@ -367,7 +359,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        print("VocalTractConductor.applyConductorSpecificSettings called with patch: \(patch)")
+        print("OscillatorConductor.applyConductorSpecificSettings called with patch: \(patch)")
 
         if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
             if let vibrato = FloatValue(from: anyValue) {

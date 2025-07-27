@@ -221,7 +221,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
-        MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
+        MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
         print("updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
         
         DispatchQueue.main.async {
@@ -276,13 +276,16 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     }
 
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        if pickerView.tag == 2 { // Number of Voices picker
-            selectedNumOfVoices = row + 1 // Picker rows are 0-indexed
-            print("Selected number of voices: \(selectedNumOfVoices)")
-        } else if pickerView.tag == 10 {
+        switch pickerView.tag {
+        case 2: // Number of Voices picker
+            selectedNumOfVoices = row + 1
+            print("👉 NoteSettingsViewController: Selected number of voices: \(selectedNumOfVoices)")
+        case 10: // Voice Pitch
             selectedVoicePitchIndex = row
-        } else if pickerView.tag == 11 {
+        case 11: // Note Range
             selectedNoteRangeIndex = row
+        default:
+            break
         }
 
         let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
@@ -301,17 +304,20 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         patchSettings.glissandoSpeed = glissandoSlider.value
 
         if pickerView.tag == 0 || pickerView.tag == 1 {
+            // clearing scaleMask if user chose a new key or chord
             patchSettings.scaleMask = nil
-        }
-        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
-        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
 
-        if pickerView.tag == 0 || pickerView.tag == 1 {
-            MusicBrain.shared.setKeyAndChordType(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
+
+            print("👉 NoteSettingsViewController: user chose a new key or chord")
+
+            MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
             updatePianoHighlighting()
         } else if pickerView.tag == 10 || pickerView.tag == 11 {
             MusicBrain.shared.updateVoicePitchOrRangeOnly()
         }
+
+        PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
     }
         
     

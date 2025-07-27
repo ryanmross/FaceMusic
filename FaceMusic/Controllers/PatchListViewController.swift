@@ -85,12 +85,12 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
         let id = patchIDs[indexPath.row]
 
         if let settings = patchManager.getPatchData(forID: id) {
-            print("*** PatchListViewController.didSelectRowAt: user chose patch \(id): \(settings.name ?? "nil")")
+            print("👉 PatchListViewController.didSelectRowAt: user chose patch \(id): \(settings.name ?? "nil")")
             
             // Switch to the new conductor only if needed
-            if type(of: VoiceConductorManager.shared.activeConductor).id != settings.activeVoiceID {
-                print("PatchListViewController.didSelectRowAt: we need to switch to conductor \(settings.activeVoiceID). Calling switchToConductor...")
-                VoiceConductorManager.shared.switchToConductor(settings: settings)
+            if VoiceConductorManager.shared.activeConductorID != settings.activeVoiceID {
+                print("PatchListViewController.didSelectRowAt: we need to switch to conductor \(settings.activeVoiceID). Calling setActiveConductor...")
+                VoiceConductorManager.shared.setActiveConductor(settings: settings)
             }
 
             patchManager.currentPatchID = id

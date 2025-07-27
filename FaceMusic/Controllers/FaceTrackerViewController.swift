@@ -166,7 +166,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         //let defaults = PatchSettings.default()
         // If the current patch has no name or is untitled, prompt to save
         let conductor = VoiceConductorManager.shared.activeConductor
-        if conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch" {            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
+        if conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch" {
+            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
             AlertHelper.promptToSavePatch(
                 presenter: self,
                 saveHandler: { [weak self] patchName in
@@ -181,7 +182,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         glissandoSpeed: conductor.glissandoSpeed,
                         lowestNote: conductor.lowestNote,
                         highestNote: conductor.highestNote,
-                        activeVoiceID: type(of: conductor).id
+                        activeVoiceID: VoiceConductorManager.shared.activeConductorID ?? VoiceConductorRegistry.defaultID
                     )
                     PatchManager.shared.save(settings: currentSettings, forID: newID)
                     NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
@@ -279,7 +280,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
     private func createAndLoadNewPatch() {
         let defaultSettings = PatchSettings.default()
-        _ = VoiceConductorManager.shared.switchToConductor(settings: defaultSettings)
+        VoiceConductorManager.shared.setActiveConductor(settings: defaultSettings)
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -319,7 +320,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
         print("FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
 
-        _ = VoiceConductorManager.shared.switchToConductor(settings: settings)
+        VoiceConductorManager.shared.setActiveConductor(settings: settings)
 
         let activeConductor = VoiceConductorManager.shared.activeConductor
         activeConductor.applyConductorSpecificSettings(from: settings)

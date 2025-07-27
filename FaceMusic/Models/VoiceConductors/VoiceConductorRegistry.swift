@@ -6,37 +6,52 @@
 //
 
 
+struct VoiceConductorDescriptor {
+    let id: String
+    let displayName: String
+    let makeInstance: () -> VoiceConductorProtocol
+}
+
 struct VoiceConductorRegistry {
-    static let allTypes: [VoiceConductorProtocol.Type] = [
-        VocalTractConductor.self,
-        AutoHarmonyConductor.self,
-        // GranularConductor.self
+    static let all: [VoiceConductorDescriptor] = [
+        VoiceConductorDescriptor(
+            id: VocalTractConductor.id,
+            displayName: VocalTractConductor.displayName,
+            makeInstance: { VocalTractConductor() }
+        ),
+        VoiceConductorDescriptor(
+            id: OscillatorConductor.id,
+            displayName: OscillatorConductor.displayName,
+            makeInstance: { OscillatorConductor() }
+        )
+        // Add additional conductors here
     ]
-    
+
     static func displayNames() -> [String] {
-        return allTypes.map { $0.displayName }
+        return all.map { $0.displayName }
     }
 
     static func voiceConductorIDs() -> [String] {
-        return allTypes.map { $0.id }
+        return all.map { $0.id }
     }
 
-    static func type(for id: String) -> VoiceConductorProtocol.Type? {
-        return allTypes.first { $0.id == id }
+    static func descriptor(for id: String) -> VoiceConductorDescriptor? {
+        return all.first { $0.id == id }
     }
 
-    static func type(forDisplayName name: String) -> VoiceConductorProtocol.Type? {
-        return allTypes.first { $0.displayName == name }
+    static func descriptor(forDisplayName name: String) -> VoiceConductorDescriptor? {
+        return all.first { $0.displayName == name }
     }
 
     static var defaultID: String {
-        return defaultType.id
+        return defaultDescriptor.id
     }
-    
-    static func conductorIndex(of type: VoiceConductorProtocol.Type) -> Int? {
-        return allTypes.firstIndex { $0 == type }
+
+    static var defaultDescriptor: VoiceConductorDescriptor {
+        return all.first!
     }
-    static var defaultType: VoiceConductorProtocol.Type {
-        return allTypes.first ?? VocalTractConductor.self
+
+    static func conductorIndex(of id: String) -> Int? {
+        return all.firstIndex { $0.id == id }
     }
 }

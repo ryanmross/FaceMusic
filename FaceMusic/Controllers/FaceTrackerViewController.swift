@@ -286,6 +286,22 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
+        if UserDefaults.standard.object(forKey: "currentPatchID") == nil {
+            print("🧠 UserDefaults: currentPatchID not set")
+        } else {
+            print("🧠 UserDefaults currentPatchID:", UserDefaults.standard.integer(forKey: "currentPatchID"))
+        }
+        
+        
+        print("📀 PatchManager currentPatchID:", PatchManager.shared.currentPatchID ?? -999)
+        PatchManager.shared.listPatches().forEach { id in
+            if let patch = PatchManager.shared.getPatchData(forID: id) {
+                print("📦 ID \(id):", patch.name ?? "Unnamed")
+            } else {
+                print("⚠️ No patch found for ID \(id)")
+            }
+        }
+        
         UIApplication.shared.isIdleTimerDisabled = true
         resetTracking()
 

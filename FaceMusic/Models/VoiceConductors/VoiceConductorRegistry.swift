@@ -52,16 +52,12 @@ struct VoiceConductorRegistry {
         return all.first { $0.id == id }
     }
 
-    static func descriptor(forDisplayName name: String) -> VoiceConductorDescriptor? {
-        return all.first { $0.displayName == name }
+    static var defaultDescriptor: VoiceConductorDescriptor {
+        return all.first!
     }
 
     static var defaultID: String {
         return defaultDescriptor.id
-    }
-
-    static var defaultDescriptor: VoiceConductorDescriptor {
-        return all.first!
     }
 
     static func conductorIndex(of id: String) -> Int? {

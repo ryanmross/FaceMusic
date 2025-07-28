@@ -46,14 +46,19 @@ class PatchManager {
     // Computed property for current patch ID, stored in UserDefaults
     var currentPatchID: Int? {
         get {
-            let val = UserDefaults.standard.object(forKey: "CurrentPatchID")
-            if let intVal = val as? Int {
-                return intVal
+            if let stored = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
+                return stored
             }
             return nil
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: "CurrentPatchID")
+            if let id = newValue {
+                UserDefaults.standard.set(id, forKey: "currentPatchID")
+                print("💾 Saved currentPatchID to UserDefaults: \(id)")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "currentPatchID")
+                print("🧹 Removed currentPatchID from UserDefaults")
+            }
         }
     }
     
@@ -62,10 +67,20 @@ class PatchManager {
     
     private init() {
         loadFromStorage()
+        //print("PatchManager initialized. 📦UserDefaults snapshot: \(UserDefaults.standard.dictionaryRepresentation())")
+        
+        if let storedID = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
+            currentPatchID = storedID
+            print("📥 Restored currentPatchID from UserDefaults: \(storedID)")
+        } else {
+            print("⚠️ No currentPatchID found in UserDefaults — may be first launch or unset.")
+        }
     }
     
     /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
     func save(settings: PatchSettings, forID: Int? = nil) {
+        print("💾 PatchManager.save(settings:), id: \(settings.id), isDefault: \(settings.id < 1000)")
+        
         var settingsToSave = settings
         let patchID = forID ?? (settingsToSave.id != 0 ? settingsToSave.id : generateNewPatchID())
         settingsToSave.id = patchID
@@ -125,7 +140,10 @@ class PatchManager {
     
     // Load everything from UserDefaults
     private func loadFromStorage() {
-        guard let data = UserDefaults.standard.data(forKey: patchesKey) else { return }
+        guard let data = UserDefaults.standard.data(forKey: patchesKey) else {
+            print("📭 No saved patch data found in UserDefaults for key: \(patchesKey)")
+            return
+        }
         if let decoded = try? JSONDecoder().decode([Int: PatchSettings].self, from: data) {
             patches = decoded
         }
@@ -134,6 +152,7 @@ class PatchManager {
     // Save everything to UserDefaults
     private func saveToStorage() {
         if let encoded = try? JSONEncoder().encode(patches) {
+            print("💾 PatchManager: saveToStorage. patches \(patches)")
             UserDefaults.standard.set(encoded, forKey: patchesKey)
         }
     }

@@ -28,8 +28,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: -1,
-                name: "Default Harmonizer",
+                id: 3001,
+                name: "Harmonizer 1",
                 key: .C,
                 chordType: .major,
                 numOfVoices: 3,
@@ -46,8 +46,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 
             ),
             PatchSettings(
-                id: -2,
-                name: "Wide Vibrato",
+                id: 3002,
+                name: "Harmonizer 2",
                 key: .D,
                 chordType: .minor,
                 numOfVoices: 4,

@@ -28,7 +28,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: -1,
+                id: 1001,
                 name: "Classic Tract",
                 key: .C,
                 chordType: .major,
@@ -44,7 +44,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 ]
             ),
             PatchSettings(
-                id: -2,
+                id: 1002,
                 name: "Wide Vibrato",
                 key: .C,
                 chordType: .minor,
@@ -387,7 +387,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        print("VocalTractConductor.applyConductorSpecificSettings called with patch: \(patch)")
+        print("VocalTractConductor.applyConductorSpecificSettings called with patch.conductorSpecificSettings: \(patch.conductorSpecificSettings)")
 
         if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
             if let vibrato = FloatValue(from: anyValue) {

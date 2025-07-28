@@ -20,8 +20,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: -1,
-                name: "Saw Lead",
+                id: 2001,
+                name: "Osc Saw Lead",
                 key: .C,
                 chordType: .major,
                 numOfVoices: 3,
@@ -36,8 +36,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 ]
             ),
             PatchSettings(
-                id: -1,
-                name: "Smooth Sine",
+                id: 2002,
+                name: "Osc Smooth Sine",
                 key: .C,
                 chordType: .minor,
                 numOfVoices: 2,

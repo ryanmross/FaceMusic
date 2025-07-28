@@ -22,8 +22,9 @@ protocol VoiceConductorProtocol: AnyObject {
     /// A human-readable name for UI menus and labels
     static var displayName: String { get }
 
-    /// The default patch settings specific to this conductor
-    static var defaultPatch: PatchSettings { get }
+    
+    /// The default patches specific to this conductor
+    static var defaultPatches: [PatchSettings] { get }
 
     var lowestNote: Int { get set }
     var highestNote: Int { get set }

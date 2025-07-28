@@ -25,21 +25,41 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     let engine = AudioEngineManager.shared.engine
     
 
-    static var defaultPatch: PatchSettings {
-        return PatchSettings(
-            id: -1,
-            name: "Default Vocal Tract",
-            key: .C,
-            chordType: .major,
-            numOfVoices: 3,
-            glissandoSpeed: 20.0,
-            lowestNote: 48,
-            highestNote: 72,
-            activeVoiceID: Self.id,
-            conductorSpecificSettings: [
-                "vibratoAmount": AnyCodable(50.0)
-            ]
-        )
+    static var defaultPatches: [PatchSettings] {
+        return [
+            PatchSettings(
+                id: -1,
+                name: "Classic Tract",
+                key: .C,
+                chordType: .major,
+                numOfVoices: 3,
+                glissandoSpeed: 20.0,
+                lowestNote: 48,
+                highestNote: 72,
+                version: 1,
+                conductorID: Self.id,
+                imageName: "icon_vocaltract_classic",
+                conductorSpecificSettings: [
+                    "vibratoAmount": AnyCodable(50.0)
+                ]
+            ),
+            PatchSettings(
+                id: -2,
+                name: "Wide Vibrato",
+                key: .C,
+                chordType: .minor,
+                numOfVoices: 4,
+                glissandoSpeed: 30.0,
+                lowestNote: 45,
+                highestNote: 69,
+                version: 1,
+                conductorID: Self.id,
+                imageName: "icon_vocaltract_widevibrato",
+                conductorSpecificSettings: [
+                    "vibratoAmount": AnyCodable(90.0)
+                ]
+            )
+        ]
     }
     
     var audioState: AudioState = .stopped
@@ -393,7 +413,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             glissandoSpeed: self.glissandoSpeed,
             lowestNote: self.lowestNote,
             highestNote: self.highestNote,
-            activeVoiceID: type(of: self).id,
+            version: 1,
+            conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }
         )
     }

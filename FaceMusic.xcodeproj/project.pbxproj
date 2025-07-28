@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8D13C51A2E29BB9A00B6649F /* PianoKeyboard in Frameworks */ = {isa = PBXBuildFile; productRef = 8D13C5192E29BB9A00B6649F /* PianoKeyboard */; };
+		8D17BF2A2E36EB5E0056C2BE /* PatchSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */; };
 		8D199A9A2C190F6300BD63A8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199A992C190F6300BD63A8 /* AppDelegate.swift */; };
 		8D199A9C2C190F6300BD63A8 /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D199A9B2C190F6300BD63A8 /* art.scnassets */; };
 		8D199A9E2C190F6300BD63A8 /* FaceTrackerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199A9D2C190F6300BD63A8 /* FaceTrackerViewController.swift */; };
@@ -51,6 +52,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchSelectorView.swift; sourceTree = "<group>"; };
 		8D199A962C190F6300BD63A8 /* FaceMusic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FaceMusic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D199A992C190F6300BD63A8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		8D199A9B2C190F6300BD63A8 /* art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = art.scnassets; sourceTree = "<group>"; };
@@ -178,6 +180,7 @@
 				8DECF9212E34040300D05F8D /* UIHelpers.swift */,
 				8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */,
 				8D199A9D2C190F6300BD63A8 /* FaceTrackerViewController.swift */,
+				8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */,
 			);
 			path = Controllers;
 			sourceTree = "<group>";
@@ -348,6 +351,7 @@
 			files = (
 				8D199A9E2C190F6300BD63A8 /* FaceTrackerViewController.swift in Sources */,
 				8DCEDA602E1DBCD300565677 /* PatchListViewController.swift in Sources */,
+				8D17BF2A2E36EB5E0056C2BE /* PatchSelectorView.swift in Sources */,
 				8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */,
 				8DECF9222E34040500D05F8D /* UIHelpers.swift in Sources */,
 				8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */,

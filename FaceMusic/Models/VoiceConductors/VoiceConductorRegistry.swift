@@ -9,7 +9,9 @@
 struct VoiceConductorDescriptor {
     let id: String
     let displayName: String
+    let imageName: String
     let makeInstance: () -> VoiceConductorProtocol
+    let defaultPatches: [PatchSettings]
 }
 
 struct VoiceConductorRegistry {
@@ -17,17 +19,23 @@ struct VoiceConductorRegistry {
         VoiceConductorDescriptor(
             id: VocalTractConductor.id,
             displayName: VocalTractConductor.displayName,
-            makeInstance: { VocalTractConductor() }
+            imageName: "vocaltract_icon",
+            makeInstance: { VocalTractConductor() },
+            defaultPatches: VocalTractConductor.defaultPatches
         ),
         VoiceConductorDescriptor(
             id: OscillatorConductor.id,
             displayName: OscillatorConductor.displayName,
-            makeInstance: { OscillatorConductor() }
+            imageName: "oscillator_icon",
+            makeInstance: { OscillatorConductor() },
+            defaultPatches: OscillatorConductor.defaultPatches
         ),
         VoiceConductorDescriptor(
             id: VoiceHarmonizerConductor.id,
             displayName: VoiceHarmonizerConductor.displayName,
-            makeInstance: { VoiceHarmonizerConductor() }
+            imageName: "harmonizer_icon",
+            makeInstance: { VoiceHarmonizerConductor() },
+            defaultPatches: VoiceHarmonizerConductor.defaultPatches
         )
         // Add additional conductors here
     ]
@@ -58,5 +66,13 @@ struct VoiceConductorRegistry {
 
     static func conductorIndex(of id: String) -> Int? {
         return all.firstIndex { $0.id == id }
+    }
+    
+    
+    static func descriptor(containingPatchID patchID: String) -> VoiceConductorDescriptor? {
+        guard let patchIDInt = Int(patchID) else { return nil }
+        return all.first { descriptor in
+            descriptor.defaultPatches.contains { $0.id == patchIDInt }
+        }
     }
 }

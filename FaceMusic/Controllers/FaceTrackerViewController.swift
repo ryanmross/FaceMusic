@@ -9,9 +9,11 @@ import UIKit
 import SceneKit
 import ARKit
 import SwiftEntryKit
+import SwiftUI
 
 class FaceTrackerViewController: UIViewController, ARSessionDelegate {
-    
+    private var patchSelectorHostingController: UIHostingController<PatchSelectorViewRepresentable>?
+    private var patchSelectorViewModel = PatchSelectorViewModel()
     @IBOutlet weak var sceneView: ARSCNView!
     
     var statsStackView: UIStackView!
@@ -30,10 +32,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
-    
-
-    // Label for displaying patch name
-    private var patchNameLabel: UILabel!
     
     
     override func viewDidLoad() {
@@ -73,39 +71,37 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Setup settings button
         createButtons()
 
-        // Add patch name label overlay at the bottom of the screen
-        patchNameLabel = UILabel()
-        patchNameLabel.translatesAutoresizingMaskIntoConstraints = false
-        patchNameLabel.text = "Untitled Patch"
-        patchNameLabel.textColor = .white
-        patchNameLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
-        patchNameLabel.textAlignment = .center
-        patchNameLabel.backgroundColor = UIColor.black.withAlphaComponent(0.4)
-        patchNameLabel.layer.cornerRadius = 8
-        patchNameLabel.layer.masksToBounds = true
 
-        view.addSubview(patchNameLabel)
 
+
+        // Add PatchSelectorView as a SwiftUI hosting controller at the bottom
+        let patchSelectorView = PatchSelectorViewRepresentable(viewModel: patchSelectorViewModel)
+        let hostingController = UIHostingController(rootView: patchSelectorView)
+        self.patchSelectorHostingController = hostingController
+
+        addChild(hostingController)
+        view.addSubview(hostingController.view)
+        hostingController.didMove(toParent: self)
+
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        hostingController.view.backgroundColor = .clear 
         NSLayoutConstraint.activate([
-            patchNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            patchNameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-            patchNameLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            patchNameLabel.heightAnchor.constraint(equalToConstant: 30)
+            hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            hostingController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            hostingController.view.heightAnchor.constraint(equalToConstant: 100)
         ])
-
-        // Observe patch change notifications
-        NotificationCenter.default.addObserver(self, selector: #selector(updatePatchNameLabel), name: NSNotification.Name("PatchDidChange"), object: nil)
+        patchSelectorViewModel.loadPatches()
+        patchSelectorViewModel.onPatchSelected = { [weak self] patch in
+            guard let self = self else { return }
+            self.loadPatchByID(Int(patch.id) ?? -1)
+        }
     }
 
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
 
-    @objc private func updatePatchNameLabel() {
-        if let id = PatchManager.shared.currentPatchID, let patch = PatchManager.shared.getPatchData(forID: id) {
-            patchNameLabel.text = patch.name ?? "Untitled Patch"
-        }
-    }
   
     
     private func createButtons() {
@@ -182,7 +178,11 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         glissandoSpeed: conductor.glissandoSpeed,
                         lowestNote: conductor.lowestNote,
                         highestNote: conductor.highestNote,
-                        activeVoiceID: VoiceConductorManager.shared.activeConductorID ?? VoiceConductorRegistry.defaultID
+                        scaleMask: nil,
+                        version: 1,
+                        conductorID: VoiceConductorManager.shared.activeConductorID ?? VoiceConductorRegistry.defaultID,
+                        imageName: nil,
+                        conductorSpecificSettings: nil
                     )
                     PatchManager.shared.save(settings: currentSettings, forID: newID)
                     NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
@@ -331,7 +331,6 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             scaleMask: settings.scaleMask
         )
 
-        patchNameLabel.text = settings.name ?? "Untitled Patch"
 
         if let id = patchID {
             UserDefaults.standard.set(id, forKey: "LastPatchID")

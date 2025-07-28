@@ -13,14 +13,10 @@ struct PatchSettings: Codable {
     var id: Int
     var name: String?
     
-//    var lockChromatic: Bool
-    
     var key: MusicBrain.NoteName
     var chordType: MusicBrain.ChordType
     
     var numOfVoices: Int
-    //var alternateChords: [String]
-
     var glissandoSpeed: Float
     
     var lowestNote: Int
@@ -28,7 +24,12 @@ struct PatchSettings: Codable {
     
     var scaleMask: UInt16? // nil -> derive from chordType; non-nil -> custom scale membership
     
-    var activeVoiceID: String
+    var version: Int
+    var conductorID: String
+    
+    var imageName: String? // optional because this comes from the voice conductor and so for user saved patches it will be empty and default to the conductor's image
+
+    
     
     var conductorSpecificSettings: [String: AnyCodable]?
 }
@@ -63,19 +64,22 @@ class PatchManager {
         loadFromStorage()
     }
     
-    // Save or update a patch by ID
-    func save(settings: PatchSettings, forID id: Int) {
-        patches[id] = settings
+    /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
+    func save(settings: PatchSettings, forID: Int? = nil) {
+        var settingsToSave = settings
+        let patchID = forID ?? (settingsToSave.id != 0 ? settingsToSave.id : generateNewPatchID())
+        settingsToSave.id = patchID
+        patches[patchID] = settingsToSave
         saveToStorage()
-        currentPatchID = id
+        currentPatchID = patchID
     }
     
     // Migrate a patch to fix old/invalid VoiceConductor IDs, etc.
     private func migratePatch(_ patch: inout PatchSettings) {
         let validIDs = VoiceConductorRegistry.voiceConductorIDs
-        if !validIDs().contains(patch.activeVoiceID) {
-            print("⚠️ Invalid VoiceConductor ID '\(patch.activeVoiceID)' found. Resetting to default.")
-            patch.activeVoiceID = VoiceConductorRegistry.defaultID
+        if !validIDs().contains(patch.conductorID) {
+            print("⚠️ Invalid VoiceConductor ID '\(patch.conductorID)' found. Resetting to default.")
+            patch.conductorID = VoiceConductorRegistry.defaultID
         }
     }
 
@@ -116,6 +120,8 @@ class PatchManager {
         patches[id] = settings
         saveToStorage()
     }
+
+
     
     // Load everything from UserDefaults
     private func loadFromStorage() {
@@ -152,8 +158,8 @@ extension PatchSettings {
             lowestNote: 30,
             highestNote: 100,
             scaleMask: nil,
-            activeVoiceID: "VocalTractConductor"
+            version: 1,
+            conductorID: "VocalTractConductor"
         )
     }
 }
-

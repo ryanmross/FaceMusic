@@ -65,7 +65,7 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
     }
     
     private func configurePickersWithConductorSettings() {
-        let activeID = self.patchSettings.activeVoiceID
+        let activeID = self.patchSettings.conductorID
         if let index = VoiceConductorRegistry.conductorIndex(of: activeID) {
             voiceSoundPicker?.selectRow(index, inComponent: 0, animated: false)
         }
@@ -171,7 +171,7 @@ class VoiceSettingsViewController: UIViewController, UIPickerViewDelegate, UIPic
                     
                     print("VoiceSettingsViewController.pickerView didSelectRow switching conductors to \(selectedConductorName)")
                     
-                    self.patchSettings.activeVoiceID = selectedID
+                    self.patchSettings.conductorID = selectedID
                     PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
                     VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
                     self.conductor = selectedConductor

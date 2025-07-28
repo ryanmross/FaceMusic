@@ -56,9 +56,9 @@ class VoiceConductorManager {
     
     /// Sets the active VoiceConductor and applies its settings
     func setActiveConductor(settings: PatchSettings) {
-        print("VoiceConductorManager.setActiveConductor() called with settings: \(settings)")
+        print("VoiceConductorManager.setActiveConductor() called with conductorID: \(settings.conductorID)")
         
-        let id = settings.activeVoiceID
+        let id = settings.conductorID
 
         // Do nothing if the same conductor is already active
         if activeConductorID == id {

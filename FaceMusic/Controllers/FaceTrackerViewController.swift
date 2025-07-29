@@ -84,7 +84,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         hostingController.didMove(toParent: self)
 
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-        hostingController.view.backgroundColor = .clear 
+        hostingController.view.backgroundColor = .clear
         NSLayoutConstraint.activate([
             hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -144,10 +144,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(buttonStack)
 
-        // Constraints: align to lower right (safe area), plus at top, reset at bottom
+        // Constraints: align to upper right (safe area), plus at top, reset at bottom
         NSLayoutConstraint.activate([
             buttonStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
-            buttonStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20)
+            buttonStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
         ])
         // Set fixed size for all buttons
         [gearButton, folderButton, plusButton, voiceSettingsButton, resetButton].forEach { btn in
@@ -176,8 +176,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                         chordType: conductor.chordType,
                         numOfVoices: conductor.numOfVoices,
                         glissandoSpeed: conductor.glissandoSpeed,
-                        lowestNote: conductor.lowestNote,
-                        highestNote: conductor.highestNote,
+                        voicePitchLevel: conductor.voicePitchLevel,
+                        noteRangeSize: conductor.noteRangeSize,
                         scaleMask: nil,
                         version: 1,
                         conductorID: VoiceConductorManager.shared.activeConductorID ?? VoiceConductorRegistry.defaultID,
@@ -227,12 +227,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // MARK: - Voice Settings Button
     @objc private func voiceSettingsButtonTapped() {
         let voiceSettingsViewController = VoiceSettingsViewController()
-        
+
         let conductor = VoiceConductorManager.shared.activeConductor
-        voiceSettingsViewController.patchSettings = conductor.exportCurrentSettings()
-
-        // voiceSettingsViewController.conductor = self.conductor
-
+        let settings = conductor.exportCurrentSettings()
+        voiceSettingsViewController.patchSettings = settings
+        
+        print("FaceTrackerViewController.voiceSettingsButtonTapped  settings: \(settings)")
+        
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
         attributes.name = "Voice Settings"

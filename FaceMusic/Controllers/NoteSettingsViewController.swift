@@ -3,6 +3,57 @@ import SwiftEntryKit
 import AudioKitEX
 import AudioKitUI
 import PianoKeyboard
+//import Foundation
+
+enum VoicePitchLevel: String, Codable, CaseIterable {
+    case veryHigh, high, medium, low, veryLow
+
+    var centerMIDINote: Int {
+        switch self {
+        case .veryHigh: return 84
+        case .high: return 72
+        case .medium: return 60
+        case .low: return 48
+        case .veryLow: return 36
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .veryHigh: return "Very High"
+        case .high: return "High"
+        case .medium: return "Medium"
+        case .low: return "Low"
+        case .veryLow: return "Very Low"
+        }
+    }
+}
+
+enum NoteRangeSize: String, Codable, CaseIterable {
+    case small, medium, large, xLarge
+
+    var rangeSize: Int {
+        switch self {
+        case .small: return 12
+        case .medium: return 24
+        case .large: return 48
+        case .xLarge: return 128
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .small: return "Small"
+        case .medium: return "Medium"
+        case .large: return "Large"
+        case .xLarge: return "X-Large"
+        }
+    }
+}
+
+
+
+
 
 class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPickerViewDataSource {
     
@@ -26,19 +77,8 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     var selectedVoicePitchIndex: Int = 2 // Default to "Medium"
     var selectedNoteRangeIndex: Int = 1 // Default to "Medium (2 Octaves)"
 
-    let voicePitchOptions: [(label: String, centerMIDINote: Int)] = [
-        ("Very High", 84),
-        ("High", 72),
-        ("Medium", 60),
-        ("Low", 48),
-        ("Very Low", 36)
-    ]
-    let noteRangeOptions: [(label: String, rangeSize: Int)] = [
-        ("Small", 12),
-        ("Medium", 24),
-        ("Large", 48),
-        ("X-Large", 128)
-    ]
+    let voicePitchOptions = VoicePitchLevel.allCases
+    let noteRangeOptions = NoteRangeSize.allCases
     
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
     let chordTypes = MusicBrain.ChordType.allCases
@@ -197,23 +237,20 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         selectedNumOfVoices = Int(conductor.numOfVoices)
         voicesPicker.selectRow(selectedNumOfVoices - 1, inComponent: 0, animated: false)
         
-        // Set default selections for new pickers based on current lowest/highest notes, if possible
-        // Try to infer closest pitch/range
-        let currentLowest = conductor.lowestNote
-        let currentHighest = conductor.highestNote
-        let currentCenter = (currentLowest + currentHighest) / 2
-        let currentRange = currentHighest - currentLowest
-        // Find closest match for center
-        if let idx = voicePitchOptions.enumerated().min(by: { abs($0.element.centerMIDINote - currentCenter) < abs($1.element.centerMIDINote - currentCenter) })?.offset {
+        // Use saved pitch and range if available
+        let savedPitch = patchSettings.voicePitchLevel
+        if let idx = voicePitchOptions.firstIndex(of: savedPitch) {
             selectedVoicePitchIndex = idx
         }
-        // Find closest match for range
-        if let idx = noteRangeOptions.enumerated().min(by: { abs($0.element.rangeSize - currentRange) < abs($1.element.rangeSize - currentRange) })?.offset {
+        let savedRange = patchSettings.noteRangeSize
+        if let idx = noteRangeOptions.firstIndex(of: savedRange) {
             selectedNoteRangeIndex = idx
         }
+        
         voicePitchPicker.selectRow(selectedVoicePitchIndex, inComponent: 0, animated: false)
         noteRangePicker.selectRow(selectedNoteRangeIndex, inComponent: 0, animated: false)
-    
+        // Ensure the conductor applies the patch settings immediately to sync computed properties
+        VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
         
         // Update piano highlighting after configuring pickers
         let reversedNotesArr = Array(MusicBrain.NoteName.allCases.reversed())
@@ -291,13 +328,10 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
         let selectedKey = reversedNotes[keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
         let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
-        let center = voicePitchOptions[selectedVoicePitchIndex].centerMIDINote
-        let halfRange = noteRangeOptions[selectedNoteRangeIndex].rangeSize / 2
-        let lowestNote = max(0, center - halfRange)
-        let highestNote = min(127, center + halfRange)
-
-        patchSettings.lowestNote = lowestNote
-        patchSettings.highestNote = highestNote
+        
+        patchSettings.voicePitchLevel = voicePitchOptions[selectedVoicePitchIndex]
+        patchSettings.noteRangeSize = noteRangeOptions[selectedNoteRangeIndex]
+        
         patchSettings.numOfVoices = selectedNumOfVoices
         patchSettings.key = selectedKey
         patchSettings.chordType = selectedChordType

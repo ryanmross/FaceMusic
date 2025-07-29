@@ -22,6 +22,8 @@ class PatchSelectorViewModel: ObservableObject {
     @Published var patches: [PatchItem] = []
     @Published var selectedPatchID: String?
 
+    private var currentEditedDefaultPatchID: String?
+
     func loadPatches() {
         let defaultPatches: [PatchItem] = VoiceConductorRegistry.all.flatMap { descriptor in
             descriptor.defaultPatches.map {
@@ -30,8 +32,10 @@ class PatchSelectorViewModel: ObservableObject {
             }
         }
 
+        let defaultPatchIDs = Set(defaultPatches.map { $0.id })
         let savedPatches = PatchManager.shared.listPatches().compactMap { patchID -> PatchItem? in
-            guard let patch = PatchManager.shared.getPatchData(forID: patchID) else { return nil }
+            guard !defaultPatchIDs.contains(String(patchID)),
+                  let patch = PatchManager.shared.getPatchData(forID: patchID) else { return nil }
             let image = patch.imageName.flatMap { UIImage(named: $0) } ?? UIImage()
             // For saved patches, conductorID is not available, so set to empty string
             return PatchItem(id: String(patch.id), name: patch.name ?? "Custom", image: image, isDefault: false, conductorID: "")
@@ -55,16 +59,30 @@ class PatchSelectorViewModel: ObservableObject {
     func selectPatch(_ patch: PatchItem) {
         selectedPatchID = patch.id
         if patch.isDefault {
+            if patch.id != currentEditedDefaultPatchID {
+                if let oldID = currentEditedDefaultPatchID {
+                    PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
+                }
+                currentEditedDefaultPatchID = patch.id
+            }
             if let descriptor = VoiceConductorRegistry.descriptor(for: patch.conductorID) {
                 if let settings = descriptor.defaultPatches.first(where: { String($0.id) == patch.id }) {
-                    print("🎯 Selected default patch: \(settings.name ?? "") with conductorID: \(settings.conductorID)")
+                    print("🎯 Selected default patch: \(settings.name ?? "") (ID: \(settings.id)) with conductorID: \(settings.conductorID) ")
+                    print("🎯 Patch Settings: \(settings)")
                     //PatchManager.shared.save(settings: settings)
                     VoiceConductorManager.shared.setActiveConductor(settings: settings)
                     PatchManager.shared.currentPatchID = settings.id
                 }
             }
         } else {
+            if let oldID = currentEditedDefaultPatchID {
+                PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
+                currentEditedDefaultPatchID = nil
+            }
             if let patchID = Int(patch.id), let patch = PatchManager.shared.getPatchData(forID: patchID) {
+                
+                print("🎯 Selected saved patch: \(patch.name ?? "") (ID: \(patchID))")
+                print("🎯 Patch Settings: \(patch)")
                 PatchManager.shared.save(settings: patch)
                 VoiceConductorManager.shared.setActiveConductor(settings: patch)
             }
@@ -253,7 +271,7 @@ class PatchCell: UICollectionViewCell {
 
         contentView.insertSubview(selectionIndicatorView, belowSubview: imageView)
         selectionIndicatorView.layer.borderColor = UIColor.white.cgColor
-        selectionIndicatorView.layer.borderWidth = 2
+        selectionIndicatorView.layer.borderWidth = 4
         selectionIndicatorView.layer.cornerRadius = 26
         selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = false
         selectionIndicatorView.isHidden = true
@@ -266,8 +284,8 @@ class PatchCell: UICollectionViewCell {
 
             selectionIndicatorView.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
             selectionIndicatorView.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
-            selectionIndicatorView.widthAnchor.constraint(equalToConstant: 52),
-            selectionIndicatorView.heightAnchor.constraint(equalToConstant: 52),
+            selectionIndicatorView.widthAnchor.constraint(equalToConstant: 56),
+            selectionIndicatorView.heightAnchor.constraint(equalToConstant: 56),
 
             nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 4),
             nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),

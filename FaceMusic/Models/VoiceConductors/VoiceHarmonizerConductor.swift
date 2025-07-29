@@ -34,8 +34,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 chordType: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
-                lowestNote: 48,
-                highestNote: 72,
+                voicePitchLevel: VoicePitchLevel.medium,
+                noteRangeSize: NoteRangeSize.medium,
                 version: 1,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_1",
@@ -52,8 +52,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 chordType: .minor,
                 numOfVoices: 4,
                 glissandoSpeed: 25.0,
-                lowestNote: 50,
-                highestNote: 74,
+                voicePitchLevel: VoicePitchLevel.medium,
+                noteRangeSize: NoteRangeSize.medium,
                 version: 1,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_2",
@@ -78,8 +78,23 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    var lowestNote: Int
-    var highestNote: Int
+    var voicePitchLevel: VoicePitchLevel
+    
+    var noteRangeSize: NoteRangeSize
+    
+    
+    var lowestNote: Int {
+        let centerNote = voicePitchLevel.centerMIDINote
+        let halfRange = NoteRangeSize.medium.rangeSize / 2
+        return centerNote - halfRange
+    }
+
+    var highestNote: Int {
+        let centerNote = voicePitchLevel.centerMIDINote
+        let halfRange = noteRangeSize.rangeSize / 2
+        return centerNote + halfRange
+    }
+    
     var glissandoSpeed: Float
 
     // vibratoAmount is always scaled 0–100; scale to 0–1 semitone in getter/setter
@@ -127,12 +142,13 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         // get default key from defaultSettings
         let defaultSettings = PatchManager.shared.defaultPatchSettings
         self.chordType = defaultSettings.chordType
-        self.lowestNote = defaultSettings.lowestNote
-        self.highestNote = defaultSettings.highestNote
+        
         self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
         self.audioState = .waitingForFaceData
+        self.voicePitchLevel = defaultSettings.voicePitchLevel
+        self.noteRangeSize = defaultSettings.noteRangeSize
 
     }
     
@@ -379,14 +395,10 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     func applySettings(_ settings: PatchSettings) {
         self.numOfVoices = settings.numOfVoices
         self.chordType = settings.chordType
-        self.lowestNote = settings.lowestNote
-        self.highestNote = settings.highestNote
         self.glissandoSpeed = settings.glissandoSpeed
+        self.voicePitchLevel = settings.voicePitchLevel
+        self.noteRangeSize = settings.noteRangeSize
         self.currentSettings = settings
-
-        self.numOfVoices = settings.numOfVoices
-        
-
         applyConductorSpecificSettings(from: settings)
     }
     
@@ -415,8 +427,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
             chordType: self.chordType,
             numOfVoices: self.numOfVoices,
             glissandoSpeed: self.glissandoSpeed,
-            lowestNote: self.lowestNote,
-            highestNote: self.highestNote,
+            voicePitchLevel: self.voicePitchLevel,
+            noteRangeSize: self.noteRangeSize,
             version: 1,
             conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }

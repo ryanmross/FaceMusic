@@ -19,8 +19,8 @@ struct PatchSettings: Codable {
     var numOfVoices: Int
     var glissandoSpeed: Float
     
-    var lowestNote: Int
-    var highestNote: Int
+    var voicePitchLevel: VoicePitchLevel
+    var noteRangeSize: NoteRangeSize
     
     var scaleMask: UInt16? // nil -> derive from chordType; non-nil -> custom scale membership
     
@@ -54,7 +54,7 @@ class PatchManager {
         set {
             if let id = newValue {
                 UserDefaults.standard.set(id, forKey: "currentPatchID")
-                print("💾 Saved currentPatchID to UserDefaults: \(id)")
+                print("💾 Saved (\(id)) to UserDefaults under currentID ")
             } else {
                 UserDefaults.standard.removeObject(forKey: "currentPatchID")
                 print("🧹 Removed currentPatchID from UserDefaults")
@@ -90,19 +90,19 @@ class PatchManager {
     }
     
     // Migrate a patch to fix old/invalid VoiceConductor IDs, etc.
-    private func migratePatch(_ patch: inout PatchSettings) {
-        let validIDs = VoiceConductorRegistry.voiceConductorIDs
-        if !validIDs().contains(patch.conductorID) {
-            print("⚠️ Invalid VoiceConductor ID '\(patch.conductorID)' found. Resetting to default.")
-            patch.conductorID = VoiceConductorRegistry.defaultID
-        }
-    }
+//    private func migratePatch(_ patch: inout PatchSettings) {
+//        let validIDs = VoiceConductorRegistry.voiceConductorIDs
+//        if !validIDs().contains(patch.conductorID) {
+//            print("⚠️ Invalid VoiceConductor ID '\(patch.conductorID)' found. Resetting to default.")
+//            patch.conductorID = VoiceConductorRegistry.defaultID
+//        }
+//    }
 
     // Load a patch by ID
     func getPatchData(forID id: Int) -> PatchSettings? {
-        print("PatchManager.getPatchData(\(id)).")
+        print("PatchManager.getPatchData(\(id)).  Patch data: \(patches[id] as Any)")
         if var patch = patches[id] {
-            migratePatch(&patch)
+            //migratePatch(&patch)
             return patch
         }
         return nil
@@ -134,6 +134,11 @@ class PatchManager {
         settings.name = newName
         patches[id] = settings
         saveToStorage()
+    }
+    
+    func clearEditedDefaultPatch(forID id: String) {
+        patches.removeValue(forKey: Int(id) ?? -999)
+        print("🧹 Cleared edited default patch with ID \(id)")
     }
 
 
@@ -174,8 +179,8 @@ extension PatchSettings {
             chordType: .major,
             numOfVoices: 1,
             glissandoSpeed: 50,
-            lowestNote: 30,
-            highestNote: 100,
+            voicePitchLevel: .medium,
+            noteRangeSize: .medium,
             scaleMask: nil,
             version: 1,
             conductorID: "VocalTractConductor"

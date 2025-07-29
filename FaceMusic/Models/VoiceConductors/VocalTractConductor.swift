@@ -15,6 +15,7 @@ import AnyCodable
 
 class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProtocol {
     
+    
 
     static var id: String { "VocalTractConductor" }
     static var displayName: String = "Vocal Tract"
@@ -34,13 +35,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 chordType: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
-                lowestNote: 48,
-                highestNote: 72,
+                voicePitchLevel: VoicePitchLevel.medium,
+                noteRangeSize: NoteRangeSize.medium,
                 version: 1,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_classic",
                 conductorSpecificSettings: [
-                    "vibratoAmount": AnyCodable(50.0)
+                    "vibratoAmount": AnyCodable(20.0)
                 ]
             ),
             PatchSettings(
@@ -50,8 +51,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 chordType: .minor,
                 numOfVoices: 4,
                 glissandoSpeed: 30.0,
-                lowestNote: 45,
-                highestNote: 69,
+                voicePitchLevel: VoicePitchLevel.medium,
+                noteRangeSize: NoteRangeSize.medium,
                 version: 1,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_widevibrato",
@@ -74,8 +75,23 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    var lowestNote: Int
-    var highestNote: Int
+    var voicePitchLevel: VoicePitchLevel
+    
+    var noteRangeSize: NoteRangeSize
+    
+    
+    var lowestNote: Int {
+        let centerNote = voicePitchLevel.centerMIDINote
+        let halfRange = NoteRangeSize.medium.rangeSize / 2
+        return centerNote - halfRange
+    }
+
+    var highestNote: Int {
+        let centerNote = voicePitchLevel.centerMIDINote
+        let halfRange = noteRangeSize.rangeSize / 2
+        return centerNote + halfRange
+    }
+    
     var glissandoSpeed: Float
 
     // vibratoAmount is always scaled 0–100; scale to 0–1 semitone in getter/setter
@@ -123,13 +139,12 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         // get default key from defaultSettings
         let defaultSettings = PatchManager.shared.defaultPatchSettings
         self.chordType = defaultSettings.chordType
-        self.lowestNote = defaultSettings.lowestNote
-        self.highestNote = defaultSettings.highestNote
         self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
         self.audioState = .waitingForFaceData
-
+        self.voicePitchLevel = defaultSettings.voicePitchLevel
+        self.noteRangeSize = defaultSettings.noteRangeSize
     }
     
     internal func updateVoiceCount() {
@@ -375,14 +390,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     func applySettings(_ settings: PatchSettings) {
         self.numOfVoices = settings.numOfVoices
         self.chordType = settings.chordType
-        self.lowestNote = settings.lowestNote
-        self.highestNote = settings.highestNote
         self.glissandoSpeed = settings.glissandoSpeed
+        self.voicePitchLevel = settings.voicePitchLevel
+        self.noteRangeSize = settings.noteRangeSize
         self.currentSettings = settings
-
-        self.numOfVoices = settings.numOfVoices
-        
-
         applyConductorSpecificSettings(from: settings)
     }
     
@@ -404,6 +415,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     
     func exportCurrentSettings() -> PatchSettings {
+        let lowestNote = self.lowestNote
+        let highestNote = self.highestNote
         return PatchSettings(
             id: currentSettings?.id ?? -1,
             name: currentSettings?.name ?? "Untitled Patch",
@@ -411,8 +424,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             chordType: self.chordType,
             numOfVoices: self.numOfVoices,
             glissandoSpeed: self.glissandoSpeed,
-            lowestNote: self.lowestNote,
-            highestNote: self.highestNote,
+            voicePitchLevel: self.voicePitchLevel,
+            noteRangeSize: self.noteRangeSize,
             version: 1,
             conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }

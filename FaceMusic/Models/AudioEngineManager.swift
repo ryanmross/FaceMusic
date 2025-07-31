@@ -113,7 +113,7 @@ class AudioEngineManager {
     func addToMixer(node: Node, caller: String = #function) {
         let nodeID = ObjectIdentifier(node)
 
-        print("AudioEngineManager: 🎛 [Mixer] addInput called from \(caller). Node: \(node) [\(nodeID)]")
+        //print("AudioEngineManager: 🎛 [Mixer] addInput called from \(caller). Node: \(node) [\(nodeID)]")
 
         /*
         print("AudioEngineManager: 🔬 [Mixer Debug] Current mixer connections:")

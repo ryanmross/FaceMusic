@@ -160,6 +160,24 @@ class MusicBrain {
         self.nearestNoteTable = []
         //updateKeyAndScale(key: key, chordType: .major)
     }
+    
+    static func pitchClasses(fromMask mask: UInt16) -> [Int] {
+        var result: [Int] = []
+        for i in 0..<12 {
+            if (mask & (1 << i)) != 0 {
+                result.append(i)
+            }
+        }
+        return result
+    }
+    
+    static func mask(fromPitchClasses classes: Set<Int>) -> UInt16 {
+        return classes.reduce(0) { $0 | (1 << $1) }
+    }
+
+    func scaleMaskFromCurrentPitchClasses() -> UInt16 {
+        return UInt16(currentScalePitchClasses.reduce(0) { $0 | (1 << ($1 % 12)) })
+    }
 
     
     func updateKeyAndScale(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
@@ -257,29 +275,4 @@ class MusicBrain {
 
 
     
-
-extension MusicBrain {
-    static func mask(fromPitchClasses classes: Set<Int>) -> UInt16 {
-        return classes.reduce(0) { $0 | (1 << $1) }
-    }
-}
-
-extension MusicBrain {
-    static func pitchClasses(fromMask mask: UInt16) -> [Int] {
-        var result: [Int] = []
-        for i in 0..<12 {
-            if (mask & (1 << i)) != 0 {
-                result.append(i)
-            }
-        }
-        return result
-    }
-}
-
-    
-extension MusicBrain {
-    func scaleMaskFromCurrentPitchClasses() -> UInt16 {
-        return UInt16(currentScalePitchClasses.reduce(0) { $0 | (1 << ($1 % 12)) })
-    }
-}
 

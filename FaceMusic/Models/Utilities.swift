@@ -135,3 +135,80 @@ func FloatValue(from any: Any) -> Float? {
     if let i = any as? Int { return Float(i) }
     return nil
 }
+
+
+// MARK: - Patch Logging
+/// Print a readable summary of one or more PatchSettings objects.
+func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
+    let patches: [PatchSettings]
+
+    if let dict = patchInput as? [Int: PatchSettings] {
+        patches = dict.values.sorted { $0.id < $1.id }
+    } else if let array = patchInput as? [PatchSettings] {
+        patches = array.sorted { $0.id < $1.id }
+    } else if let single = patchInput as? PatchSettings {
+        patches = [single]
+    } else {
+        print("⚠️ logPatches: Unsupported input type")
+        return
+    }
+
+    print("\(label):")
+
+    let columnWidths: [String: Int] = [
+        "ID": 4,
+        "Name": 16,
+        "Conductor": 16,
+        "Key": 4,
+        "Chord": 7,
+        "Voices": 7,
+        "Gliss": 6,
+        "Pitch": 9,
+        "Range": 7,
+        "ScaleMask": 10,
+        "Image": 11,
+        "Version": 7
+    ]
+
+    func pad(_ text: String, to column: String) -> String {
+        let width = columnWidths[column] ?? text.count
+        return text.padding(toLength: width, withPad: " ", startingAt: 0)
+    }
+
+    let headers = [
+        pad("ID", to: "ID"),
+        pad("Name", to: "Name"),
+        pad("Conductor", to: "Conductor"),
+        pad("Key", to: "Key"),
+        pad("Chord", to: "Chord"),
+        pad("Voices", to: "Voices"),
+        pad("Gliss", to: "Gliss"),
+        pad("Pitch", to: "Pitch"),
+        pad("Range", to: "Range"),
+        pad("ScaleMask", to: "ScaleMask"),
+        pad("Image", to: "Image"),
+        pad("Version", to: "Version")
+    ].joined(separator: " | ")
+
+    print(headers)
+    print(String(repeating: "-", count: headers.count))
+
+    for patch in patches {
+        let row = [
+            pad("\(patch.id)", to: "ID"),
+            pad(patch.name ?? "Unnamed", to: "Name"),
+            pad(patch.conductorID, to: "Conductor"),
+            pad(patch.key.displayName, to: "Key"),
+            pad(patch.chordType.rawValue, to: "Chord"),
+            pad("\(patch.numOfVoices)", to: "Voices"),
+            pad(String(format: "%.1f", patch.glissandoSpeed), to: "Gliss"),
+            pad("\(patch.voicePitchLevel)", to: "Pitch"),
+            pad("\(patch.noteRangeSize)", to: "Range"),
+            pad(patch.scaleMask.map { MusicBrain.pitchClasses(fromMask: $0).map(String.init).joined(separator: ",") } ?? "nil", to: "ScaleMask"),
+            pad(patch.imageName ?? "nil", to: "Image"),
+            pad("\(patch.version)", to: "Version")
+        ].joined(separator: " | ")
+
+        print(row)
+    }
+}

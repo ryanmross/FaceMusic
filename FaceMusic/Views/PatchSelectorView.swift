@@ -10,7 +10,7 @@ import Combine
 import SwiftUI
 
 struct PatchItem {
-    let id: String
+    let id: Int
     let name: String
     let image: UIImage
     let isDefault: Bool
@@ -20,32 +20,37 @@ struct PatchItem {
 class PatchSelectorViewModel: ObservableObject {
     var onPatchSelected: ((PatchItem) -> Void)?
     @Published var patches: [PatchItem] = []
-    @Published var selectedPatchID: String?
+    @Published var selectedPatchID: Int?
 
-    private var currentEditedDefaultPatchID: String?
+    private var currentEditedDefaultPatchID: Int?
 
     func loadPatches() {
+        print("🏛️ PatchSelectorViewModel.loadPatches() started.  Loading defaultPatches")
         let defaultPatches: [PatchItem] = VoiceConductorRegistry.all.flatMap { descriptor in
             descriptor.defaultPatches.map {
                 let image = $0.imageName.flatMap { UIImage(named: $0) } ?? UIImage()
-                return PatchItem(id: String($0.id), name: $0.name ?? "Default", image: image, isDefault: true, conductorID: $0.conductorID)
+                return PatchItem(id: $0.id, name: $0.name ?? "Default", image: image, isDefault: true, conductorID: $0.conductorID)
             }
         }
-
+        
+        print("🏛️ PatchSelectorViewModel.loadPatches() loading savedPatches")
+        
         let defaultPatchIDs = Set(defaultPatches.map { $0.id })
         let savedPatches = PatchManager.shared.listPatches().compactMap { patchID -> PatchItem? in
-            guard !defaultPatchIDs.contains(String(patchID)),
+            guard !defaultPatchIDs.contains(patchID),
                   let patch = PatchManager.shared.getPatchData(forID: patchID) else { return nil }
             let image = patch.imageName.flatMap { UIImage(named: $0) } ?? UIImage()
             // For saved patches, conductorID is not available, so set to empty string
-            return PatchItem(id: String(patch.id), name: patch.name ?? "Custom", image: image, isDefault: false, conductorID: "")
+            return PatchItem(id: patch.id, name: patch.name ?? "Custom", image: image, isDefault: false, conductorID: "")
         }
-
+        
+        print("🏛️ PatchSelectorViewModel.loadPatches(): Loaded \(defaultPatches.count) default patches and \(savedPatches.count) saved patches into self.patches.  selectedPatchID: \(String(describing: selectedPatchID))")
+        
         self.patches = defaultPatches + savedPatches
 
         if selectedPatchID == nil {
             if let currentID = PatchManager.shared.currentPatchID {
-                selectedPatchID = String(currentID)
+                selectedPatchID = currentID
                 if let patch = (defaultPatches + savedPatches).first(where: { $0.id == selectedPatchID }) {
                     selectPatch(patch)
                 }
@@ -66,22 +71,29 @@ class PatchSelectorViewModel: ObservableObject {
                 currentEditedDefaultPatchID = patch.id
             }
             if let descriptor = VoiceConductorRegistry.descriptor(for: patch.conductorID) {
-                if let settings = descriptor.defaultPatches.first(where: { String($0.id) == patch.id }) {
-                    print("🎯 Selected default patch: \(settings.name ?? "") (ID: \(settings.id)) with conductorID: \(settings.conductorID) ")
-                    print("🎯 Patch Settings: \(settings)")
+                if let settings = descriptor.defaultPatches.first(where: { $0.id == patch.id }) {
+                    print("🏛️ PatchSelectorViewModel.selectPatch() 🎯 patch.isDefault = True.  Selected default patch: \(settings.name ?? "") (ID: \(settings.id)) with conductorID: \(settings.conductorID) ")
+                    if let scaleMask = settings.scaleMask {
+                        let scaleNotes = MusicBrain.pitchClasses(fromMask: scaleMask)
+                        print("🎯 scaleMask scale notes: \(scaleNotes)")
+                    } else {
+                        print("🎯 scaleMask is nil")
+                    }
+                    logPatches(settings, label: "PatchSelectorViewModel.selectPatch() 📥🎯 Patch Settings that we're putting into VoiceConductorManager.shared.setActiveConductor")
                     //PatchManager.shared.save(settings: settings)
                     VoiceConductorManager.shared.setActiveConductor(settings: settings)
                     PatchManager.shared.currentPatchID = settings.id
                 }
             }
         } else {
+            print("🏛️ PatchSelectorViewModel.selectPatch() 🎯 patch.isDefault = False")
             if let oldID = currentEditedDefaultPatchID {
+                print("🎯 calling PatchManager.shared.clearEditedDefaultPatch for oldID: \(oldID)")
                 PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
                 currentEditedDefaultPatchID = nil
             }
-            if let patchID = Int(patch.id), let patch = PatchManager.shared.getPatchData(forID: patchID) {
-                
-                print("🎯 Selected saved patch: \(patch.name ?? "") (ID: \(patchID))")
+            if let patch = PatchManager.shared.getPatchData(forID: patch.id) {
+                print("🎯 Selected saved patch: \(patch.name ?? "") (ID: \(patch.id))")
                 print("🎯 Patch Settings: \(patch)")
                 PatchManager.shared.save(settings: patch)
                 VoiceConductorManager.shared.setActiveConductor(settings: patch)
@@ -165,7 +177,7 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
         // Scroll the selected patch to the center after reload
         if let selectedIndexPath = selectedIndexPath {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                print("🔄 updatePatches centering selected patch at indexPath: \(selectedIndexPath)")
+                print("🏛️ PatchSelectorViewModel.updatePatches() 🔄 updatePatches centering selected patch at indexPath: \(selectedIndexPath)")
                 self.collectionView.selectItem(at: selectedIndexPath, animated: false, scrollPosition: [])
                 self.centerItem(at: selectedIndexPath, animated: false)
                 self.collectionView.reloadItems(at: [selectedIndexPath])
@@ -189,7 +201,7 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        print("👉 PatchSelectorView didSelectItemAt: \(indexPath), named \(patchItems[indexPath.item].name)")
+        print("🏛️ PatchSelectorViewModel.collectionView didSelectItemAt indexPath: \(indexPath)")
 
         let selectedItem = patchItems[indexPath.item]
         onPatchSelected?(selectedItem)

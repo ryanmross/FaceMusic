@@ -47,6 +47,7 @@ class PatchManager {
     var currentPatchID: Int? {
         get {
             if let stored = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
+                print("📥 PatchManager.currentPatchID get. 💾 Loaded (\(stored)) from UserDefaults under currentID")
                 return stored
             }
             return nil
@@ -54,10 +55,10 @@ class PatchManager {
         set {
             if let id = newValue {
                 UserDefaults.standard.set(id, forKey: "currentPatchID")
-                print("💾 Saved (\(id)) to UserDefaults under currentID ")
+                print("📥 PatchManager.currentPatchID set. 💾 Saved (\(id)) to UserDefaults under currentID ")
             } else {
                 UserDefaults.standard.removeObject(forKey: "currentPatchID")
-                print("🧹 Removed currentPatchID from UserDefaults")
+                print("📥 PatchManager.currentPatchID set. 🧹 Removed currentPatchID from UserDefaults")
             }
         }
     }
@@ -66,20 +67,21 @@ class PatchManager {
     private var patches: [Int: PatchSettings] = [:]
     
     private init() {
-        loadFromStorage()
-        //print("PatchManager initialized. 📦UserDefaults snapshot: \(UserDefaults.standard.dictionaryRepresentation())")
+        print("📥 PatchManager.init. Calling loadFromStorage()")
+        loadFromStorage() // loading from storage on app start
         
         if let storedID = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
             currentPatchID = storedID
-            print("📥 Restored currentPatchID from UserDefaults: \(storedID)")
+            print("📥 PatchManager.init. Restored currentPatchID from UserDefaults: \(storedID)")
+            
         } else {
-            print("⚠️ No currentPatchID found in UserDefaults — may be first launch or unset.")
+            print("⚠️ PatchManager.init. No currentPatchID found in UserDefaults — may be first launch or unset.")
         }
     }
     
     /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
     func save(settings: PatchSettings, forID: Int? = nil) {
-        print("💾 PatchManager.save(settings:), id: \(settings.id), isDefault: \(settings.id < 1000)")
+        print("💾 PatchManager.save(settings:), id: \(settings.id)")
         
         var settingsToSave = settings
         let patchID = forID ?? (settingsToSave.id != 0 ? settingsToSave.id : generateNewPatchID())
@@ -100,7 +102,7 @@ class PatchManager {
 
     // Load a patch by ID
     func getPatchData(forID id: Int) -> PatchSettings? {
-        print("PatchManager.getPatchData(\(id)).  Patch data: \(patches[id] as Any)")
+        print("PatchManager.getPatchData(\(id)).")
         if var patch = patches[id] {
             //migratePatch(&patch)
             return patch
@@ -136,9 +138,9 @@ class PatchManager {
         saveToStorage()
     }
     
-    func clearEditedDefaultPatch(forID id: String) {
-        patches.removeValue(forKey: Int(id) ?? -999)
-        print("🧹 Cleared edited default patch with ID \(id)")
+    func clearEditedDefaultPatch(forID id: Int) {
+        patches.removeValue(forKey: id)
+        print("🧹 PatchManager.clearEditedDefaultPatch.  Cleared edited default patch with ID \(id)")
     }
 
 
@@ -146,11 +148,13 @@ class PatchManager {
     // Load everything from UserDefaults
     private func loadFromStorage() {
         guard let data = UserDefaults.standard.data(forKey: patchesKey) else {
-            print("📭 No saved patch data found in UserDefaults for key: \(patchesKey)")
+            print("📭 PatchManager.loadFromStorage().  No saved patch data found in UserDefaults for key: \(patchesKey)")
             return
         }
         if let decoded = try? JSONDecoder().decode([Int: PatchSettings].self, from: data) {
             patches = decoded
+            
+            logPatches(patches, label: "📥 PatchManager.loadFromStorage(). Loaded patchesKey data from UserDefaults and put into PatchManager.patch variable:")
         }
     }
     

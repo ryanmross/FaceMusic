@@ -91,9 +91,16 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             hostingController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             hostingController.view.heightAnchor.constraint(equalToConstant: 100)
         ])
+        
+        print("😮 FaceTrackerViewController.viewDidLoad calling patchSelectorViewModel.loadPatches()")
         patchSelectorViewModel.loadPatches()
+        
+       
+        
         patchSelectorViewModel.onPatchSelected = { [weak self] patch in
             guard let self = self else { return }
+            
+            print("😮 FaceTrackerViewController.viewDidLoad calling patchSelectorViewModel.onPatchSelected() to call loadPatchByID() for patch: \(patch)")
             self.loadPatchByID(Int(patch.id) ?? -1)
         }
     }
@@ -163,7 +170,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // If the current patch has no name or is untitled, prompt to save
         let conductor = VoiceConductorManager.shared.activeConductor
         if conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch" {
-            print("FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
+            print("😮 FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
             AlertHelper.promptToSavePatch(
                 presenter: self,
                 saveHandler: { [weak self] patchName in
@@ -204,7 +211,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         patchListVC.onPatchSelected = { [weak self] patchID, settings in
             guard let self = self else { return }
             guard let settings = settings else {
-                print("Could not load settings for patch ID \(patchID)")
+                print("😮 FaceTrackerViewController.openPatchTapped. Could not load settings for patch ID \(patchID)")
                 return
             }
             self.loadAndApplyPatch(settings: settings, patchID: patchID)
@@ -216,9 +223,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
     // initializes it, applies the settings, and assigns it to self.conductor.
     func loadPatchByID(_ id: Int) {
-        print("FaceTrackerViewController.loadPatchById(\(id))")
+        print("😮 FaceTrackerViewController.loadPatchById(\(id))")
         guard let settings = PatchManager.shared.getPatchData(forID: id) else {
-            print("FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
+            print("😮 FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
             return
         }
         self.loadAndApplyPatch(settings: settings, patchID: id)
@@ -232,7 +239,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let settings = conductor.exportCurrentSettings()
         voiceSettingsViewController.patchSettings = settings
         
-        print("FaceTrackerViewController.voiceSettingsButtonTapped  settings: \(settings)")
+        print("😮 FaceTrackerViewController.voiceSettingsButtonTapped  settings: \(settings)")
         
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
@@ -251,6 +258,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
     // MARK: - Note Settings Button
     @objc private func noteSettingsButtonTapped() {
+        
+        print("👉 FaceTrackerViewController.noteSettingsButtonTapped()")
         let noteSettingsViewController = NoteSettingsViewController()
 
         let conductor = VoiceConductorManager.shared.activeConductor
@@ -287,46 +296,48 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        if UserDefaults.standard.object(forKey: "currentPatchID") == nil {
-            print("🧠 UserDefaults: currentPatchID not set")
-        } else {
-            print("🧠 UserDefaults currentPatchID:", UserDefaults.standard.integer(forKey: "currentPatchID"))
-        }
-        
-        
-        print("📀 PatchManager currentPatchID:", PatchManager.shared.currentPatchID ?? -999)
-        PatchManager.shared.listPatches().forEach { id in
-            if let patch = PatchManager.shared.getPatchData(forID: id) {
-                print("📦 ID \(id):", patch.name ?? "Unnamed")
-            } else {
-                print("⚠️ No patch found for ID \(id)")
-            }
-        }
+//        if UserDefaults.standard.object(forKey: "currentPatchID") == nil {
+//            print("😮 FaceTrackerViewController.viewWillAppear. 🧠 UserDefaults: currentPatchID not set")
+//        } else {
+//            print("😮 FaceTrackerViewController.viewWillAppear. 🧠 UserDefaults currentPatchID:", UserDefaults.standard.integer(forKey: "currentPatchID"))
+//        }
+//        
+//        
+//        print("😮 FaceTrackerViewController.viewWillAppear. 📀 PatchManager currentPatchID:", PatchManager.shared.currentPatchID ?? -999)
+//        PatchManager.shared.listPatches().forEach { id in
+//            if let patch = PatchManager.shared.getPatchData(forID: id) {
+//                print("😮 FaceTrackerViewController.viewWillAppear. 📀 PatchManager:📦 ID \(id):", patch.name ?? "Unnamed")
+//            } else {
+//                print("😮 FaceTrackerViewController.viewWillAppear. PatchManager: ⚠️ No patch found for ID \(id)")
+//            }
+//        }
         
         UIApplication.shared.isIdleTimerDisabled = true
         resetTracking()
 
-        let patchManager = PatchManager.shared
-        if !PatchManager.shared.listPatches().isEmpty {
-            if let lastID = patchManager.currentPatchID {
-                print("FaceTrackerViewController.viewWillAppear: Loading last patch ID with loadPatchByID(\(lastID))")
-                if let settings = patchManager.getPatchData(forID: lastID) {
-                    self.loadAndApplyPatch(settings: settings, patchID: lastID)
-                }
-            } else if let firstID = patchManager.listPatches().first {
-                print("FaceTrackerViewController.viewWillAppear: Loading first patch ID with loadPatchByID(\(firstID))")
-                if let settings = patchManager.getPatchData(forID: firstID) {
-                    self.loadAndApplyPatch(settings: settings, patchID: firstID)
-                }
-            }
-        } else {
-            let defaultSettings = patchManager.defaultPatchSettings
-            let newID = patchManager.generateNewPatchID()
-            patchManager.save(settings: defaultSettings, forID: newID)
-            UserDefaults.standard.set(newID, forKey: "LastPatchID")
-            print("FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
-            self.loadAndApplyPatch(settings: defaultSettings, patchID: newID)
-        }
+//        let patchManager = PatchManager.shared
+//        if !PatchManager.shared.listPatches().isEmpty {
+//            if let lastID = patchManager.currentPatchID {
+//                print("😮 FaceTrackerViewController.viewWillAppear: Loading last patch ID with loadPatchByID(\(lastID))")
+//                if let settings = patchManager.getPatchData(forID: lastID) {
+//                    self.loadAndApplyPatch(settings: settings, patchID: lastID)
+//                }
+//            } else if let firstID = patchManager.listPatches().first {
+//                print("😮 FaceTrackerViewController.viewWillAppear: Loading first patch ID with loadPatchByID(\(firstID))")
+//                if let settings = patchManager.getPatchData(forID: firstID) {
+//                    self.loadAndApplyPatch(settings: settings, patchID: firstID)
+//                }
+//            }
+//        } else {
+//            let defaultSettings = patchManager.defaultPatchSettings
+//            let newID = patchManager.generateNewPatchID()
+//            patchManager.save(settings: defaultSettings, forID: newID)
+//            UserDefaults.standard.set(newID, forKey: "LastPatchID")
+//            print("😮 FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
+//            self.loadAndApplyPatch(settings: defaultSettings, patchID: newID)
+//        }
+        
+        
         // Create a session configuration
         //let configuration = ARWorldTrackingConfiguration()
         // Run the view's session
@@ -335,7 +346,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
 
     // MARK: - Patch Loading Helper
     private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
-        print("FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
+        print("😮 FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
 
         VoiceConductorManager.shared.setActiveConductor(settings: settings)
 
@@ -356,7 +367,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("FaceTrackerViewController: viewDidAppear")
+        print("😮 FaceTrackerViewController: viewDidAppear")
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -365,7 +376,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Pause the view's session
         sceneView.session.pause()
         
-        print("FaceTrackerViewController.viewWillDisappear: Removing all inputs mixer")
+        print("😮 FaceTrackerViewController.viewWillDisappear: Removing all inputs mixer")
         AudioEngineManager.shared.removeAllInputsFromMixer()
         // conductor = nil
     }
@@ -404,7 +415,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
         
-        print("FaceTrackerViewController.SessionWasInterrupted.")
+        print("😮 FaceTrackerViewController.SessionWasInterrupted.")
         //AudioEngineManager.shared.removeAllInputsFromMixer()
         //conductor = nil
 
@@ -413,7 +424,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         
-        print("FaceTrackerViewController.sessionInterruptionEnded.")
+        print("😮 FaceTrackerViewController.sessionInterruptionEnded.")
         //AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
         //resetTracking()
     }
@@ -494,7 +505,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         guard let faceAnchor = anchor as? ARFaceAnchor else { return }
         // Handle the removal of an ARFaceAnchor.
 
-        print("FaceTrackerViewController.renderer.didRemove: REMOVED AR ANCHOR")
+        print("😮 FaceTrackerViewController.renderer.didRemove: REMOVED AR ANCHOR")
         
         faceAnchorsAndContentControllers[faceAnchor] = nil
         // Remove the face anchor from the dictionary.

@@ -112,6 +112,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         NotificationCenter.default.removeObserver(self)
     }
     private func setupUI() {
+        print("👉 NoteSettingsViewController.setupUI()")
         // --- Voice Pitch Container ---
         let (voicePitchContainer, voicePitchPickerInstance) = createLabeledPicker(title: "Voice Pitch", tag: 10, delegate: self)
         self.voicePitchPicker = voicePitchPickerInstance
@@ -215,6 +216,8 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     }
     
     private func configurePickersWithConductorSettings() {
+        
+        print("👉 NoteSettingsViewController.configurePickersWithConductorSettings()")
         // Use the current key from MusicBrain
         let currentKey = MusicBrain.shared.currentKey
         

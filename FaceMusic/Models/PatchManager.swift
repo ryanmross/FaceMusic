@@ -142,6 +142,7 @@ class PatchManager {
     
     func clearEditedDefaultPatch(forID id: Int) {
         patches.removeValue(forKey: id)
+        saveToStorage()
         print("🧹 PatchManager.clearEditedDefaultPatch.  Cleared patch ID \(id) from patches variable (we are not saving the default patch)")
     }
 

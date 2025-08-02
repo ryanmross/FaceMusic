@@ -157,7 +157,7 @@ func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
     print("\(label):")
 
     let columnWidths: [String: Int] = [
-        "ID": 4,
+        "ID": 5,
         "Name": 16,
         "Conductor": 16,
         "Key": 4,

@@ -388,6 +388,11 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
+        if let scaleMask = settings.scaleMask {
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: scaleMask)
+        } else {
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
+        }
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
     }

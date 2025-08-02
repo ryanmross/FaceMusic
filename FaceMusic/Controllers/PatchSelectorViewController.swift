@@ -11,47 +11,69 @@ import SwiftUI
 
 
 class PatchSelectorViewModel: ObservableObject {
-    struct PatchBarItem {
-        let patchBarID: Int
-        let isDefault: Bool
+    // Cache all default patches at the top level for reuse
+    private static let allDefaultPatches: [PatchSettings] = VoiceConductorRegistry.all.flatMap { $0.defaultPatches }
+    enum PatchType {
+        case defaultOriginal
+        case defaultEdited
+        case saved
+    }
+    struct PatchBarItem: Identifiable {
+        let id: Int
+        let type: PatchType
         let patchID: Int
     }
 
     var onPatchSelected: ((PatchSettings) -> Void)?
     @Published var patchBarItems: [PatchBarItem] = []
 
+    @Published var selectedPatchBarItemID: Int?
+
     private var currentEditedDefaultPatchID: Int?
 
     private func generatePatchBarItems() -> [PatchBarItem] {
-        let defaultPatches = VoiceConductorRegistry.all.flatMap { $0.defaultPatches }
         let savedPatchIDs = PatchManager.shared.listPatches()
         let savedPatches = savedPatchIDs.compactMap { PatchManager.shared.getPatchData(forID: $0) }
+        let savedPatchMap = Dictionary(uniqueKeysWithValues: savedPatches.map { ($0.id, $0) })
 
         var items: [PatchBarItem] = []
-        var patchBarID = 0
-        for patch in defaultPatches {
-            items.append(PatchBarItem(patchBarID: patchBarID, isDefault: true, patchID: patch.id))
-            patchBarID += 1
+        var id = 0
+
+        let defaultPatches = PatchSelectorViewModel.allDefaultPatches
+        for defaultPatch in defaultPatches {
+            let patchID = defaultPatch.id
+            let type: PatchType = savedPatchMap[patchID] != nil ? .defaultEdited : .defaultOriginal
+            items.append(PatchBarItem(id: id, type: type, patchID: patchID))
+            id += 1
         }
-        for patch in savedPatches {
-            items.append(PatchBarItem(patchBarID: patchBarID, isDefault: false, patchID: patch.id))
-            patchBarID += 1
+
+        for savedPatch in savedPatches where savedPatch.id >= 0 {
+            items.append(PatchBarItem(id: id, type: .saved, patchID: savedPatch.id))
+            id += 1
+        }
+
+        for (index, item) in items.enumerated() {
+            print("🏛️ PatchSelectorViewModel generated patch bar item \(index): \(item) ")
         }
         return items
     }
 
     func patch(for item: PatchBarItem) -> PatchSettings? {
-        return item.isDefault
-            ? VoiceConductorRegistry.all.flatMap { $0.defaultPatches }.first(where: { $0.id == item.patchID })
-            : PatchManager.shared.getPatchData(forID: item.patchID)
+        switch item.type {
+        case .saved, .defaultEdited:
+            return PatchManager.shared.getPatchData(forID: item.patchID)
+        case .defaultOriginal:
+            return PatchSelectorViewModel.allDefaultPatches.first(where: { $0.id == item.patchID })
+        }
     }
+
 
     func loadPatches() {
         self.patchBarItems = generatePatchBarItems()
 
         for (index, item) in patchBarItems.enumerated() {
             let patch = patch(for: item)
-            print("🏛️ PatchSelectorViewModel - Loaded patchBarItem \(index+1)/(\(patchBarItems.count)): \(String(describing: patch?.name)). id: \(item.patchID).  isDefault: \(item.isDefault)")
+            print("🏛️ PatchSelectorViewModel - Loaded patchBarItem \(index+1)/(\(patchBarItems.count)): \(String(describing: patch?.name)). id: \(item.patchID).  type: \(item.type)")
         }
 
         // Select current patch if found, otherwise select the first
@@ -71,7 +93,8 @@ class PatchSelectorViewModel: ObservableObject {
         // Retrieve the actual PatchSettings
         guard let patchSettings = patch(for: item) else { return }
 
-        if item.isDefault {
+        switch item.type {
+        case .defaultOriginal, .defaultEdited:
             if patchSettings.id != currentEditedDefaultPatchID {
                 if let oldID = currentEditedDefaultPatchID {
                     print("🏛️ PatchSelectorViewModel.selectPatch - Calling PatchManager.clearEditedDefaultPatch(forID:) for \(oldID).")
@@ -83,7 +106,7 @@ class PatchSelectorViewModel: ObservableObject {
             print("🏛️ PatchSelectorViewModel.selectPatch calling VoiceConductorManager.setActiveConductor(settings:) and PatchManager.currentPatchID set to \(patchSettings.id).")
             VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
             PatchManager.shared.currentPatchID = patchSettings.id
-        } else {
+        case .saved:
             if let oldID = currentEditedDefaultPatchID {
                 print("🏛️ PatchSelectorViewModel.selectPatch calling PatchManager.clearEditedDefaultPatch(forID:) and currentEditedDefaultPatchID set to nil.")
                 PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
@@ -93,14 +116,16 @@ class PatchSelectorViewModel: ObservableObject {
             VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
             PatchManager.shared.currentPatchID = patchSettings.id
         }
+        self.selectedPatchBarItemID = item.id
         onPatchSelected?(patchSettings)
     }
 
-    /// Call this to explicitly clear or save edits to the current default patch, if needed.
-    func finalizeCurrentPatchEdits() {
+    /// Call this to explicitly reset the current default patch back to its defaults
+    func resetDefaultPatch() {
         if let oldID = currentEditedDefaultPatchID {
-            print("🏛️ PatchSelectorViewModel.finalizeCurrentPatchEdits - Clearing edited default patch for \(oldID)")
+            print("🏛️ PatchSelectorViewModel.resetDefaultPatch - Clearing edited default patch for \(oldID)")
             PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
+            
             currentEditedDefaultPatchID = nil
         }
     }
@@ -124,7 +149,6 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
     private var savedStartIndex: Int?
     private var savedPatchRange: Range<Int>?
     private let collectionView: UICollectionView
-    private var selectedIndexPath: IndexPath?
 
     // Store the current PatchBarItems for display
     private var patchBarItems: [PatchSelectorViewModel.PatchBarItem] = []
@@ -169,23 +193,19 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
 
     func updatePatches(_ items: [PatchSelectorViewModel.PatchBarItem]) {
         self.patchBarItems = items
-        savedStartIndex = items.firstIndex(where: { !$0.isDefault })
+        savedStartIndex = items.firstIndex(where: { $0.type == .saved })
         if let start = savedStartIndex {
             savedPatchRange = start..<items.count
         } else {
             savedPatchRange = nil
         }
-        if let selectedID = PatchManager.shared.currentPatchID,
-           let index = items.firstIndex(where: { $0.patchID == selectedID }) {
-            selectedIndexPath = IndexPath(item: index, section: 0)
-        }
         collectionView.reloadData()
 
         // Scroll the selected patch to the center after reload
-        
-        if let selectedIndexPath = selectedIndexPath {
+        if let selectedID = viewModel?.selectedPatchBarItemID,
+           let index = items.firstIndex(where: { $0.id == selectedID }) {
+            let selectedIndexPath = IndexPath(item: index, section: 0)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                print("🏛️ PatchSelectorViewModel.updatePatches() 🔄 updatePatches centering selected patch at indexPath: \(selectedIndexPath)")
                 self.collectionView.selectItem(at: selectedIndexPath, animated: false, scrollPosition: [])
                 self.centerItem(at: selectedIndexPath, animated: false)
                 self.collectionView.reloadItems(at: [selectedIndexPath])
@@ -202,17 +222,15 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
             return UICollectionViewCell()
         }
         let item = patchBarItems[indexPath.item]
-        let patch = viewModel?.patch(for: item) ?? {
-            if item.isDefault {
-                return VoiceConductorRegistry.all.flatMap { $0.defaultPatches }.first(where: { $0.id == item.patchID })
-            } else {
-                return PatchManager.shared.getPatchData(forID: item.patchID)
-            }
-        }()
+        let patch = viewModel?.patch(for: item)
         if let patch = patch {
             cell.configure(with: patch)
         }
-        cell.setSelected(indexPath == selectedIndexPath)
+        if let selectedID = viewModel?.selectedPatchBarItemID {
+            cell.setSelected(item.id == selectedID)
+        } else {
+            cell.setSelected(false)
+        }
         cell.backgroundColor = .clear
         return cell
     }
@@ -220,36 +238,33 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         print("👉 🏛️ PatchSelectorViewModel.collectionView didSelectItemAt indexPath: \(indexPath)")
         let item = patchBarItems[indexPath.item]
-        let patch = viewModel?.patch(for: item) ?? {
-            if item.isDefault {
-                return VoiceConductorRegistry.all.flatMap { $0.defaultPatches }.first(where: { $0.id == item.patchID })
-            } else {
-                return PatchManager.shared.getPatchData(forID: item.patchID)
-            }
-        }()
+        let patch = viewModel?.patch(for: item)
         if let patch = patch {
             if let selectedID = PatchManager.shared.currentPatchID,
                let currentPatch = PatchManager.shared.getPatchData(forID: selectedID) {
-                if !currentPatch.isDefault {
-                    PatchManager.shared.save(settings: currentPatch)
-                } else if let vm = viewModel, let currentItem = patchBarItems.first(where: { $0.patchID == selectedID }), currentItem.isDefault {
-                    // Save or clear edits to the default patch, if needed
-                    vm.finalizeCurrentPatchEdits()
+                // Find the current PatchBarItem for the selectedID
+                if let vm = viewModel, let currentItem = patchBarItems.first(where: { $0.patchID == selectedID }) {
+                    switch currentItem.type {
+                    case .saved:
+                        // the patch we're switching from is a saved (non-default) patch
+                        print("🏛️ PatchSelectorViewModel.didSelectItemAt saving currentPatch (we're saving a non-default patch)")
+                        PatchManager.shared.save(settings: currentPatch)
+                    case .defaultOriginal, .defaultEdited:
+                        // the patch we're switching from is a default patch
+                        // Reset current patch back to default
+                        vm.resetDefaultPatch()
+                    }
                 }
             }
             print("🏛️ PatchSelectorViewModel.didSelectItemAt calling onPatchSelected?()")
             onPatchSelected?(patch)
             logPatches(patch, label: "🏛️ PatchSelectorViewModel.didSelectItemAt calling viewModel?.selectPatch()")
             viewModel?.selectPatch(item)
+            viewModel?.selectedPatchBarItemID = item.id
         }
 
-        let previouslySelected = selectedIndexPath
-        selectedIndexPath = indexPath
-        var indexPathsToReload = [indexPath]
-        if let previous = previouslySelected, previous != indexPath {
-            indexPathsToReload.append(previous)
-        }
-        collectionView.reloadItems(at: indexPathsToReload)
+        // Reload cells to update selection
+        collectionView.reloadData()
 
         // Center the selected item in the collection view
         centerItem(at: indexPath, animated: true)

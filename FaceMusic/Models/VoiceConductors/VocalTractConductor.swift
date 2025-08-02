@@ -29,7 +29,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: 1001,
+                id: -1001,
                 name: "Classic Tract",
                 key: .C,
                 chordType: .major,
@@ -45,7 +45,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 ]
             ),
             PatchSettings(
-                id: 1002,
+                id: -1002,
                 name: "Wide Vibrato",
                 key: .C,
                 chordType: .minor,
@@ -393,12 +393,17 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
+        if let scaleMask = settings.scaleMask {
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: scaleMask)
+        } else {
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
+        }
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        logPatches(patch, label: "😮 VocalTractConductor.applyConductorSpecificSettings called with patch.conductorSpecificSettings \(String(describing: patch.conductorSpecificSettings))")
+        //logPatches(patch, label: "😮 VocalTractConductor.applyConductorSpecificSettings called with patch.conductorSpecificSettings \(String(describing: patch.conductorSpecificSettings))")
 
 
         if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {

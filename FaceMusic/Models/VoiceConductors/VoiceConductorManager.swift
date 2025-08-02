@@ -85,7 +85,7 @@ class VoiceConductorManager {
         conductors[id] = newConductor
         activeConductorID = id
         newConductor.applySettings(settings)
-        print("👨‍✈️VoiceConductorManager.setActiveConductor applySettings() called with settings: \(settings)")
+        print("👨‍✈️VoiceConductorManager.setActiveConductor FINISHED.")
     }
     
     /// Passthrough method to stop all voices on active conductor

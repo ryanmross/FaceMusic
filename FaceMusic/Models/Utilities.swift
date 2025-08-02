@@ -140,6 +140,7 @@ func FloatValue(from any: Any) -> Float? {
 // MARK: - Patch Logging
 /// Print a readable summary of one or more PatchSettings objects.
 func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
+    
     let patches: [PatchSettings]
 
     if let dict = patchInput as? [Int: PatchSettings] {
@@ -163,11 +164,12 @@ func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
         "Chord": 7,
         "Voices": 7,
         "Gliss": 6,
-        "Pitch": 9,
+        "Pitch": 5,          // was 9
         "Range": 7,
         "ScaleMask": 10,
         "Image": 11,
-        "Version": 7
+        "Version": 4,        // was 7
+        "Settings": 30       // was 15
     ]
 
     func pad(_ text: String, to column: String) -> String {
@@ -187,7 +189,8 @@ func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
         pad("Range", to: "Range"),
         pad("ScaleMask", to: "ScaleMask"),
         pad("Image", to: "Image"),
-        pad("Version", to: "Version")
+        pad("Vers", to: "Version"),
+        pad("Settings", to: "Settings")
     ].joined(separator: " | ")
 
     print(headers)
@@ -206,7 +209,8 @@ func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
             pad("\(patch.noteRangeSize)", to: "Range"),
             pad(patch.scaleMask.map { MusicBrain.pitchClasses(fromMask: $0).map(String.init).joined(separator: ",") } ?? "nil", to: "ScaleMask"),
             pad(patch.imageName ?? "nil", to: "Image"),
-            pad("\(patch.version)", to: "Version")
+            pad("\(patch.version)", to: "Version"),
+            pad(patch.conductorSpecificSettings.map { $0.map { "\($0.key)=\($0.value)" }.joined(separator: ",") } ?? "nil", to: "Settings")
         ].joined(separator: " | ")
 
         print(row)

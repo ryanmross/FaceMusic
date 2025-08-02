@@ -20,7 +20,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: 2001,
+                id: -2001,
                 name: "Osc Saw Lead",
                 key: .C,
                 chordType: .major,
@@ -36,7 +36,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 ]
             ),
             PatchSettings(
-                id: 2002,
+                id: -2002,
                 name: "Osc Smooth Sine",
                 key: .C,
                 chordType: .minor,
@@ -393,7 +393,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        print("OscillatorConductor.applyConductorSpecificSettings called with patch: \(patch)")
+        logPatches(patch, label: "〰️ OscillatorConductor.applyConductorSpecificSettings called with patch")
 
         if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
             if let vibrato = FloatValue(from: anyValue) {

@@ -365,12 +365,14 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     @objc private func glissandoSliderChanged() {
         let intValue = Int(glissandoSlider.value)
         glissandoValueLabel.text = "\(intValue) ms"
+        
     }
 
     @objc private func glissandoSliderDidEndSliding() {
         patchSettings.glissandoSpeed = glissandoSlider.value
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
         VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
+        print("👉 🎵 NoteSettingsViewController: glissandoSliderDidEndSliding() - Set glissando speed to \(glissandoSlider.value) ms")
     }
     
     // MARK: - Piano Keyboard Setup

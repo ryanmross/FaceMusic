@@ -25,11 +25,11 @@ class VoiceSettingsViewController: UIViewController {
         super.viewDidLoad()
         
         guard patchSettings != nil else {
-            print("⚠️ VoiceSettingsViewController.viewDidLoad(): patchSettings is nil.")
+            print(" 💬 ⚠️ VoiceSettingsViewController.viewDidLoad(): patchSettings is nil.")
             return
         }
         
-        print("VoiceSettingsViewController.viewDidLoad() PatchSettings: \(self.patchSettings!)")
+        print(" 💬 VoiceSettingsViewController.viewDidLoad() PatchSettings: \(self.patchSettings!)")
         
         let blurEffect = UIBlurEffect(style: .light)
         let blurView = UIVisualEffectView(effect: blurEffect)
@@ -109,6 +109,7 @@ class VoiceSettingsViewController: UIViewController {
         let activeConductor = VoiceConductorManager.shared.activeConductor
         if let fieldKey = sender.accessibilityIdentifier {
             
+            //print("👉 💬 VoiceSettingsViewController: handleConductorSettingUpdate() finished, calling PatchManager.save and called applyConductorSpecificSettings ")
             
             var updatedSettings: [String: AnyCodable] = patchSettings.conductorSpecificSettings ?? [:]
             updatedSettings[fieldKey] = AnyCodable(sender.value)

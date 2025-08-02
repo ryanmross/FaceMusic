@@ -28,7 +28,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     static var defaultPatches: [PatchSettings] {
         return [
             PatchSettings(
-                id: 3001,
+                id: -3001,
                 name: "Harmonizer 1",
                 key: .C,
                 chordType: .major,
@@ -46,7 +46,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 
             ),
             PatchSettings(
-                id: 3002,
+                id: -3002,
                 name: "Harmonizer 2",
                 key: .D,
                 chordType: .minor,
@@ -403,7 +403,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
-        print("OscillatorConductor.applyConductorSpecificSettings called with patch: \(patch)")
+        logPatches(patch, label: "👥 VocalHarmonizerConductor.applyConductorSpecificSettings called with patch")
 
         if let anyValue = patch.conductorSpecificSettings?["vibratoAmount"]?.value {
             if let vibrato = FloatValue(from: anyValue) {

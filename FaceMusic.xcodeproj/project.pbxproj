@@ -8,9 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		8D13C51A2E29BB9A00B6649F /* PianoKeyboard in Frameworks */ = {isa = PBXBuildFile; productRef = 8D13C5192E29BB9A00B6649F /* PianoKeyboard */; };
-		8D17BF2A2E36EB5E0056C2BE /* PatchSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */; };
+		8D17BF2A2E36EB5E0056C2BE /* PatchSelectorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D17BF292E36EB5A0056C2BE /* PatchSelectorViewController.swift */; };
 		8D199A9A2C190F6300BD63A8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199A992C190F6300BD63A8 /* AppDelegate.swift */; };
-		8D199A9C2C190F6300BD63A8 /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D199A9B2C190F6300BD63A8 /* art.scnassets */; };
 		8D199A9E2C190F6300BD63A8 /* FaceTrackerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199A9D2C190F6300BD63A8 /* FaceTrackerViewController.swift */; };
 		8D199AA12C190F6300BD63A8 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = 8D199AA02C190F6300BD63A8 /* Base */; };
 		8D199AA32C190F6400BD63A8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D199AA22C190F6400BD63A8 /* Assets.xcassets */; };
@@ -50,10 +49,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchSelectorView.swift; sourceTree = "<group>"; };
+		8D17BF292E36EB5A0056C2BE /* PatchSelectorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchSelectorViewController.swift; sourceTree = "<group>"; };
 		8D199A962C190F6300BD63A8 /* FaceMusic.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FaceMusic.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D199A992C190F6300BD63A8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		8D199A9B2C190F6300BD63A8 /* art.scnassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.scnassets; path = art.scnassets; sourceTree = "<group>"; };
 		8D199A9D2C190F6300BD63A8 /* FaceTrackerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceTrackerViewController.swift; sourceTree = "<group>"; };
 		8D199AA02C190F6300BD63A8 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		8D199AA22C190F6400BD63A8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -136,7 +134,6 @@
 				8D199ACB2C19202200BD63A8 /* Views */,
 				8D199ACC2C19202D00BD63A8 /* Controllers */,
 				8DCC213D2C19371200225D5F /* Face Overlay Content */,
-				8D199A9B2C190F6300BD63A8 /* art.scnassets */,
 				8D199AA22C190F6400BD63A8 /* Assets.xcassets */,
 				8D199AA42C190F6400BD63A8 /* LaunchScreen.storyboard */,
 			);
@@ -164,7 +161,6 @@
 			isa = PBXGroup;
 			children = (
 				8D199A9F2C190F6300BD63A8 /* Main.storyboard */,
-				8D17BF292E36EB5A0056C2BE /* PatchSelectorView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -172,6 +168,7 @@
 		8D199ACC2C19202D00BD63A8 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
+				8D17BF292E36EB5A0056C2BE /* PatchSelectorViewController.swift */,
 				8DCEDA5F2E1DBCD300565677 /* PatchListViewController.swift */,
 				8DEBE5962D262CBE004F4EDD /* NoteSettingsViewController.swift */,
 				8DECF9212E34040300D05F8D /* UIHelpers.swift */,
@@ -313,7 +310,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8D199A9C2C190F6300BD63A8 /* art.scnassets in Resources */,
 				8D199AA32C190F6400BD63A8 /* Assets.xcassets in Resources */,
 				8D199AA12C190F6300BD63A8 /* Base in Resources */,
 				8D199AA62C190F6400BD63A8 /* Base in Resources */,
@@ -343,7 +339,7 @@
 			files = (
 				8D199A9E2C190F6300BD63A8 /* FaceTrackerViewController.swift in Sources */,
 				8DCEDA602E1DBCD300565677 /* PatchListViewController.swift in Sources */,
-				8D17BF2A2E36EB5E0056C2BE /* PatchSelectorView.swift in Sources */,
+				8D17BF2A2E36EB5E0056C2BE /* PatchSelectorViewController.swift in Sources */,
 				8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */,
 				8DECF9222E34040500D05F8D /* UIHelpers.swift in Sources */,
 				8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */,

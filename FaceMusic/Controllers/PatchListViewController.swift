@@ -66,6 +66,26 @@ class PatchListViewController: UIViewController, UITableViewDataSource, UITableV
         let cell = tableView.dequeueReusableCell(withIdentifier: "PatchCell") ?? UITableViewCell(style: .subtitle, reuseIdentifier: "PatchCell")
         if let settings = patchManager.getPatchData(forID: id) {
             cell.textLabel?.text = settings.name
+            
+            let iconSize: CGFloat = 40
+            let iconView = UIImageView()
+            iconView.translatesAutoresizingMaskIntoConstraints = false
+            iconView.contentMode = .scaleAspectFit
+            iconView.clipsToBounds = true
+            iconView.layer.cornerRadius = iconSize / 2
+            iconView.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+
+            if let imageName = settings.imageName {
+                iconView.image = UIImage(named: imageName)
+            }
+
+            cell.contentView.addSubview(iconView)
+            NSLayoutConstraint.activate([
+                iconView.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+                iconView.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 15),
+                iconView.widthAnchor.constraint(equalToConstant: iconSize),
+                iconView.heightAnchor.constraint(equalToConstant: iconSize)
+            ])
         } else {
             cell.textLabel?.text = "Patch \(id)"
         }

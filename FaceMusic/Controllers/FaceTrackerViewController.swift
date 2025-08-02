@@ -100,8 +100,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         patchSelectorViewModel.onPatchSelected = { [weak self] patch in
             guard let self = self else { return }
             
-            print("😮 FaceTrackerViewController.viewDidLoad calling patchSelectorViewModel.onPatchSelected() to call loadPatchByID() for patch: \(patch)")
-            self.loadPatchByID(Int(patch.id) ?? -1)
+            print("😮 FaceTrackerViewController.viewDidLoad onPatchSelected() callback fired")
+            //self.loadPatchByID(Int(patch.id) ?? -1)
         }
     }
 

@@ -7,6 +7,7 @@
 
 import Foundation
 import AnyCodable
+import UIKit
 
 /// Simple PatchSettings model to store user settings for each patch.
 struct PatchSettings: Codable {
@@ -47,7 +48,7 @@ class PatchManager {
     var currentPatchID: Int? {
         get {
             if let stored = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
-                print("📥 PatchManager.currentPatchID get. 💾 Loaded (\(stored)) from UserDefaults under currentID")
+                print("📥 PatchManager.currentPatchID get. 💾 Loaded (\(stored)) from UserDefaults.currentPatchID")
                 return stored
             }
             return nil
@@ -55,7 +56,7 @@ class PatchManager {
         set {
             if let id = newValue {
                 UserDefaults.standard.set(id, forKey: "currentPatchID")
-                print("📥 PatchManager.currentPatchID set. 💾 Saved (\(id)) to UserDefaults under currentID ")
+                print("📥 PatchManager.currentPatchID set. 💾 Saved (\(id)) to UserDefaults.currentPatchID ")
             } else {
                 UserDefaults.standard.removeObject(forKey: "currentPatchID")
                 print("📥 PatchManager.currentPatchID set. 🧹 Removed currentPatchID from UserDefaults")
@@ -70,13 +71,14 @@ class PatchManager {
         print("📥 PatchManager.init. Calling loadFromStorage()")
         loadFromStorage() // loading from storage on app start
         
-        if let storedID = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
-            currentPatchID = storedID
-            print("📥 PatchManager.init. Restored currentPatchID from UserDefaults: \(storedID)")
-            
-        } else {
-            print("⚠️ PatchManager.init. No currentPatchID found in UserDefaults — may be first launch or unset.")
-        }
+        // removed this as currentPatchID does this in the getter
+//        if let storedID = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
+//            currentPatchID = storedID
+//            print("📥 PatchManager.init. Restored currentPatchID from UserDefaults: \(storedID)")
+//
+//        } else {
+//            print("⚠️ PatchManager.init. No currentPatchID found in UserDefaults — may be first launch or unset.")
+//        }
     }
     
     /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
@@ -88,7 +90,7 @@ class PatchManager {
         settingsToSave.id = patchID
         patches[patchID] = settingsToSave
         saveToStorage()
-        currentPatchID = patchID
+        //currentPatchID = patchID
     }
     
     // Migrate a patch to fix old/invalid VoiceConductor IDs, etc.
@@ -102,8 +104,8 @@ class PatchManager {
 
     // Load a patch by ID
     func getPatchData(forID id: Int) -> PatchSettings? {
-        print("PatchManager.getPatchData(\(id)).")
-        if var patch = patches[id] {
+        print("📥 PatchManager.getPatchData(\(id)) called.")
+        if let patch = patches[id] {
             //migratePatch(&patch)
             return patch
         }
@@ -112,7 +114,7 @@ class PatchManager {
     
     // List all saved IDs
     func listPatches() -> [Int] {
-        print("PatchManager: listPatches.  currentPatchID is: \(currentPatchID as Any)")
+        print("📥 PatchManager: listPatches() called.  \(patches.keys.count) saved patches.")
         return Array(patches.keys).sorted()
     }
     
@@ -140,7 +142,7 @@ class PatchManager {
     
     func clearEditedDefaultPatch(forID id: Int) {
         patches.removeValue(forKey: id)
-        print("🧹 PatchManager.clearEditedDefaultPatch.  Cleared edited default patch with ID \(id)")
+        print("🧹 PatchManager.clearEditedDefaultPatch.  Cleared patch ID \(id) from patches variable (we are not saving the default patch)")
     }
 
 
@@ -154,14 +156,14 @@ class PatchManager {
         if let decoded = try? JSONDecoder().decode([Int: PatchSettings].self, from: data) {
             patches = decoded
             
-            logPatches(patches, label: "📥 PatchManager.loadFromStorage(). Loaded patchesKey data from UserDefaults and put into PatchManager.patch variable:")
+            logPatches(patches, label: "📥 PatchManager.loadFromStorage(). Loaded saved patch data from UserDefaults and put into PatchManager.patch variable")
         }
     }
     
     // Save everything to UserDefaults
     private func saveToStorage() {
         if let encoded = try? JSONEncoder().encode(patches) {
-            print("💾 PatchManager: saveToStorage. patches \(patches)")
+            logPatches(patches, label: "💾 PatchManager: saveToStorage")
             UserDefaults.standard.set(encoded, forKey: patchesKey)
         }
     }
@@ -189,5 +191,17 @@ extension PatchSettings {
             version: 1,
             conductorID: "VocalTractConductor"
         )
+    }
+
+    var displayName: String {
+        name ?? (id < 0 ? "Default" : "Custom")
+    }
+
+    var image: UIImage {
+        imageName.flatMap { UIImage(named: $0) } ?? UIImage()
+    }
+
+    var isDefault: Bool {
+        id < 0
     }
 }

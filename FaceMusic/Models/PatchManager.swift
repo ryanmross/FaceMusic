@@ -68,6 +68,9 @@ class PatchManager {
     private var patches: [Int: PatchSettings] = [:]
     
     private init() {
+        // TEMPORARY WHILE WE WORK ON THE APP
+        //deleteAllPatches()
+        
         print("📥 PatchManager.init. Calling loadFromStorage()")
         loadFromStorage() // loading from storage on app start
         
@@ -82,7 +85,8 @@ class PatchManager {
     }
     
     /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
-    func save(settings: PatchSettings, forID: Int? = nil) {
+    @discardableResult
+    func save(settings: PatchSettings, forID: Int? = nil) -> Int {
         print("💾 PatchManager.save(settings:), id: \(settings.id)")
         
         var settingsToSave = settings
@@ -91,6 +95,7 @@ class PatchManager {
         patches[patchID] = settingsToSave
         saveToStorage()
         //currentPatchID = patchID
+        return patchID
     }
     
     // Migrate a patch to fix old/invalid VoiceConductor IDs, etc.
@@ -169,10 +174,20 @@ class PatchManager {
         }
     }
     
-    // Generate a new unique ID (increments highest existing ID)
+    // Generate a new unique ID (increments highest existing positive ID)
     func generateNewPatchID() -> Int {
-        return (patches.keys.max() ?? 0) + 1
+        let newID = (patches.keys.filter { $0 > 0 }.max() ?? 0) + 1
+        print("💾 PatchManager.generatedNewPatchID(): Generating new ID: \(newID)")
+        return newID
     }
+    
+    /// ⚠️ TEMPORARY: Deletes all saved patches on app launch.
+    private func deleteAllPatches() {
+        print("⚠️ TEMPORARY: Deleting all saved patches on init.")
+        patches.removeAll()
+        saveToStorage()
+    }
+
     
     
 }
@@ -206,3 +221,5 @@ extension PatchSettings {
         id < 0
     }
 }
+
+    

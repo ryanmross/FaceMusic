@@ -21,7 +21,6 @@
 		8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */; };
 		8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC213E2C19372B00225D5F /* VirtualContent.swift */; };
 		8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC21402C19373C00225D5F /* TexturedFace.swift */; };
-		8DCEDA602E1DBCD300565677 /* PatchListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCEDA5F2E1DBCD300565677 /* PatchListViewController.swift */; };
 		8DCEDA8C2E25D1A100565677 /* AudioKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8DCEDA8B2E25D1A100565677 /* AudioKitUI */; };
 		8DD9D14E2D29DC3E008C418E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DD9D14C2D29DC3B008C418E /* AppSettings.swift */; };
 		8DEBE5932D262C40004F4EDD /* SwiftEntryKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8DEBE5922D262C40004F4EDD /* SwiftEntryKit */; };
@@ -64,7 +63,6 @@
 		8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSettingsViewController.swift; sourceTree = "<group>"; };
 		8DCC213E2C19372B00225D5F /* VirtualContent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VirtualContent.swift; sourceTree = "<group>"; };
 		8DCC21402C19373C00225D5F /* TexturedFace.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TexturedFace.swift; sourceTree = "<group>"; };
-		8DCEDA5F2E1DBCD300565677 /* PatchListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatchListViewController.swift; sourceTree = "<group>"; };
 		8DD9D14C2D29DC3B008C418E /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		8DEBE5962D262CBE004F4EDD /* NoteSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSettingsViewController.swift; sourceTree = "<group>"; };
 		8DECF9212E34040300D05F8D /* UIHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UIHelpers.swift; sourceTree = "<group>"; };
@@ -169,7 +167,6 @@
 			isa = PBXGroup;
 			children = (
 				8D17BF292E36EB5A0056C2BE /* PatchSelectorViewController.swift */,
-				8DCEDA5F2E1DBCD300565677 /* PatchListViewController.swift */,
 				8DEBE5962D262CBE004F4EDD /* NoteSettingsViewController.swift */,
 				8DECF9212E34040300D05F8D /* UIHelpers.swift */,
 				8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */,
@@ -338,7 +335,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				8D199A9E2C190F6300BD63A8 /* FaceTrackerViewController.swift in Sources */,
-				8DCEDA602E1DBCD300565677 /* PatchListViewController.swift in Sources */,
 				8D17BF2A2E36EB5E0056C2BE /* PatchSelectorViewController.swift in Sources */,
 				8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */,
 				8DECF9222E34040500D05F8D /* UIHelpers.swift in Sources */,

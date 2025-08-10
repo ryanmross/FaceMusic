@@ -1,10 +1,52 @@
 import Foundation
+import UIKit
 
+// Heuristic device capability probe for voice limits
+private struct DeviceCapability {
+    static func suggestedMaxVoices() -> Int {
+        let ramGB = Double(ProcessInfo.processInfo.physicalMemory) / (1024.0 * 1024.0 * 1024.0)
+        let cores = ProcessInfo.processInfo.activeProcessorCount
+        
+        var suggested: Int
+        switch ramGB {
+        case 8...:         suggested = 8
+        case 6..<8:        suggested = 7
+        case 4..<6:        suggested = 6
+        default:           suggested = 4
+        }
+        
+        if cores <= 2 {
+            suggested = min(suggested, 6)
+        } else if cores <= 4 {
+            suggested = min(suggested, 8)
+        }
+        
+        // If the device is already thermally constrained, keep extra headroom.
+        /*
+        let therm = ProcessInfo.processInfo.thermalState
+        if therm == .serious || therm == .critical {
+            suggested = max(4, suggested - 2)
+        }
+         */
+        
+        // Clamp suggested to between 4 and 8
+        suggested = max(4, min(suggested, 8))
+        
+        // Log once at launch for visibility
+        let ramStr = String(format: "%.1f", ramGB)
+        print("AppSettings: suggested max voices = \(suggested) (RAM=\(ramStr)GB cores=\(cores))")
+        return suggested
+    }
+}
 
 class AppSettings {
 
     // MARK: - Settings
   
+    // Derived at launch based on device RAM/cores/thermal state
+    //let maxNumOfVoices: Int = 128
+    let maxNumOfVoices: Int = DeviceCapability.suggestedMaxVoices()
+    
     // Define keys as an array of tuples
     let keyOptions: [(string: String, key: MusicBrain.NoteName)] = [
         ("C", .C), ("C#", .CSharp), ("D", .D), ("D#", .DSharp),

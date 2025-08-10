@@ -33,6 +33,7 @@ class VoiceConductorManager {
     
     /// Computed property for the active conductor, returns a default if not found
     var activeConductor: VoiceConductorProtocol {
+        //print("####################### VoiceConductorManager.activeConductor getter called, activeConductorID: \(activeConductorID ?? "nil"), conductors[id]: \(String(describing: conductors[activeConductorID ?? "nil"]))")
         if let id = activeConductorID, let conductor = conductors[id] {
             return conductor
         }

@@ -280,7 +280,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         } else if pickerView.tag == 1 { // Chord Type picker
             return chordTypes.count
         } else if pickerView.tag == 2 { // Number of Voices picker
-            return 8 // Number of voices options (1-8)
+            return AppSettings().maxNumOfVoices // Number of voices options
         } else if pickerView.tag == 10 { // Voice Pitch
             return voicePitchOptions.count
         } else if pickerView.tag == 11 { // Note Range

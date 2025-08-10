@@ -9,7 +9,6 @@ import UIKit
 import Combine
 import SwiftUI
 
-
 class PatchSelectorViewModel: ObservableObject {
     // Cache all default patches at the top level for reuse
     private static let allDefaultPatches: [PatchSettings] = VoiceConductorRegistry.all.flatMap { $0.defaultPatches }
@@ -36,18 +35,23 @@ class PatchSelectorViewModel: ObservableObject {
         let savedPatches = savedPatchIDs.compactMap { PatchManager.shared.getPatchData(forID: $0) }
         let savedPatchMap = Dictionary(uniqueKeysWithValues: savedPatches.map { ($0.id, $0) })
 
+        
         var items: [PatchBarItem] = []
         var id = 0
 
         let defaultPatches = PatchSelectorViewModel.allDefaultPatches
         for defaultPatch in defaultPatches {
+            //print("🏛️ PatchSelectorViewModel loading default patch \(defaultPatch.id)")
             let patchID = defaultPatch.id
             let type: PatchType = savedPatchMap[patchID] != nil ? .defaultEdited : .defaultOriginal
             items.append(PatchBarItem(id: id, type: type, patchID: patchID))
             id += 1
         }
+        
+        
 
         for savedPatch in savedPatches where savedPatch.id >= 0 {
+            //print("🏛️ PatchSelectorViewModel loading saved patch \(savedPatch.id)")
             items.append(PatchBarItem(id: id, type: .saved, patchID: savedPatch.id))
             id += 1
         }
@@ -87,6 +91,9 @@ class PatchSelectorViewModel: ObservableObject {
     }
 
     func selectPatch(_ item: PatchBarItem) {
+        // remember that item has item.id which is it's id in the patch bar, and patch.id which is it's PatchManager id
+        print("🏛️ PatchSelectorViewModel.selectPatch - patchID: \(item.patchID)")
+        
         // Refresh patchBarItems from latest data
         self.patchBarItems = generatePatchBarItems()
 
@@ -177,6 +184,10 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
         collectionView.showsHorizontalScrollIndicator = false
         collectionView.register(PatchCell.self, forCellWithReuseIdentifier: "PatchCell")
 
+        // Add long press gesture recognizer for deleting patches
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        collectionView.addGestureRecognizer(longPressGesture)
+
         addSubview(collectionView)
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -198,6 +209,10 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
             savedPatchRange = start..<items.count
         } else {
             savedPatchRange = nil
+        }
+        // Remove any lingering saved background before reload
+        if let savedBackground = collectionView.viewWithTag(999) {
+            savedBackground.removeFromSuperview()
         }
         collectionView.reloadData()
 
@@ -298,20 +313,107 @@ class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionViewDel
 
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         if let savedRange = savedPatchRange, savedRange.contains(indexPath.item) {
-            if let savedBackground = collectionView.viewWithTag(999) {
-                savedBackground.removeFromSuperview()
+            DispatchQueue.main.async {
+                if let savedBackground = collectionView.viewWithTag(999) {
+                    savedBackground.removeFromSuperview()
+                }
+                let firstCellFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: savedRange.lowerBound, section: 0))?.frame ?? .zero
+                let lastCellFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: savedRange.upperBound - 1, section: 0))?.frame ?? .zero
+                let backgroundFrame = firstCellFrame.union(lastCellFrame).insetBy(dx: -6, dy: -6)
+                let bgView = UIView(frame: backgroundFrame)
+                bgView.backgroundColor = UIColor.white.withAlphaComponent(0.3)
+                bgView.layer.cornerRadius = 8
+                bgView.clipsToBounds = true
+                bgView.tag = 999
+                collectionView.insertSubview(bgView, at: 0)
             }
+        }
+    }
+    
+    @objc private func handleLongPress(_ gestureRecognizer: UILongPressGestureRecognizer) {
+        guard gestureRecognizer.state == .began else { return }
 
-            let firstCellFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: savedRange.lowerBound, section: 0))?.frame ?? .zero
-            let lastCellFrame = collectionView.layoutAttributesForItem(at: IndexPath(item: savedRange.upperBound - 1, section: 0))?.frame ?? .zero
+        let point = gestureRecognizer.location(in: collectionView)
+        guard let indexPath = collectionView.indexPathForItem(at: point) else { return }
 
-            let backgroundFrame = firstCellFrame.union(lastCellFrame).insetBy(dx: -6, dy: -6)
-            let bgView = UIView(frame: backgroundFrame)
-            bgView.backgroundColor = UIColor.white.withAlphaComponent(0.3)
-            bgView.layer.cornerRadius = 8
-            bgView.clipsToBounds = true
-            bgView.tag = 999
-            collectionView.insertSubview(bgView, at: 0)
+        print("👉 🏛️ PatchSelectorViewModel long press on \(indexPath.item)")
+        let item = patchBarItems[indexPath.item]
+
+        let canRenameAndDelete: Bool
+
+        switch item.type {
+        case .defaultOriginal, .defaultEdited:
+            let title = "Default Patch Options"
+            canRenameAndDelete = false
+        case .saved:
+            let title = "Saved Patch Options"
+            canRenameAndDelete = true
+        }
+
+        if let viewController = self.window?.rootViewController {
+            guard let cell = collectionView.cellForItem(at: indexPath) else { return }
+            AlertHelper.showPatchOptionsMenu(
+                presenter: viewController,
+                sourceView: cell,
+                isDefault: !canRenameAndDelete,
+                onRename: {
+                    AlertHelper.promptForPatchName(presenter: viewController) { newName in
+                        guard let newName = newName,
+                              var patch = self.viewModel?.patch(for: item) else { return }
+                        patch.name = newName
+                        PatchManager.shared.save(settings: patch)
+                        DispatchQueue.main.async {
+                            self.viewModel?.loadPatches()
+                        }
+                    }
+                },
+                onSaveAs: {
+                    AlertHelper.promptForPatchName(presenter: viewController) { newName in
+                        guard let newName = newName,
+                              let currentID = PatchManager.shared.currentPatchID,
+                              let patch = PatchManager.shared.getPatchData(forID: currentID) else { return }
+
+                        var duplicated = patch
+                        duplicated.id = 0
+                        duplicated.name = newName
+                        let newID = PatchManager.shared.save(settings: duplicated)
+                        PatchManager.shared.currentPatchID = newID
+
+                        DispatchQueue.main.async {
+                            self.viewModel?.loadPatches()
+                            if let newItem = self.patchBarItems.first(where: { $0.patchID == newID }),
+                               let index = self.patchBarItems.firstIndex(where: { $0.patchID == newID }) {
+                                print("🏛️ PatchSelectorViewModel: Duplicated patch, selecting new one... newID: \(newID), newItem: \(newItem), newIndex: \(index)")
+                                self.viewModel?.selectPatch(newItem)
+                                let newIndexPath = IndexPath(item: index, section: 0)
+                                self.collectionView.selectItem(at: newIndexPath, animated: true, scrollPosition: [])
+                                self.centerItem(at: newIndexPath, animated: true)
+                            }
+                        }
+                    }
+                },
+                onDelete: {
+                    PatchManager.shared.deletePatch(forID: item.patchID)
+                    DispatchQueue.main.async {
+                        let deletedPatchID = item.patchID
+                        let isDeletingCurrentPatch = PatchManager.shared.currentPatchID == deletedPatchID
+
+                        self.viewModel?.loadPatches()
+
+                        if isDeletingCurrentPatch {
+                            print("🏛️ PatchSelectorViewModel - Deleted current patch; selecting previous one if possible.")
+                            if let deletedIndex = self.patchBarItems.firstIndex(where: { $0.patchID == deletedPatchID }) {
+                                let fallbackIndex = max(0, deletedIndex - 1)
+                                guard self.patchBarItems.indices.contains(fallbackIndex) else { return }
+                                let fallbackItem = self.patchBarItems[fallbackIndex]
+                                self.viewModel?.selectPatch(fallbackItem)
+                            } else if let fallbackItem = self.patchBarItems.first {
+                                self.viewModel?.selectPatch(fallbackItem)
+                            }
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -383,6 +485,8 @@ class PatchCell: UICollectionViewCell {
     func setSelected(_ selected: Bool) {
         selectionIndicatorView.isHidden = !selected
     }
+    
+    
 }
 
 // SwiftUI bridge for PatchSelectorView
@@ -399,3 +503,5 @@ struct PatchSelectorViewRepresentable: UIViewRepresentable {
         // Nothing needed here yet
     }
 }
+
+    

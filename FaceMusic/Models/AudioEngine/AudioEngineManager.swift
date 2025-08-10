@@ -8,6 +8,7 @@
 import AudioKit
 import AVFoundation
 import UIKit
+import os.log
 
 var session: AVAudioSession {
     print("🔧 AVAudioSession initialized")
@@ -21,6 +22,7 @@ class AudioEngineManager {
     let engine = AudioEngine()
     private(set) var mixer: Mixer!
     private var addedFaderIDs = Set<ObjectIdentifier>()
+    private var didAttachWatchdog = false
     
     private init() {
     }
@@ -39,19 +41,22 @@ class AudioEngineManager {
         
         engine.output = mixer
         
+        // Reset watchdog attach flag when creating a fresh mixer
+        didAttachWatchdog = false
+        
         do {
             try engine.start()
             print("AudioEngineManager: AudioEngine started")
             //print(engine.avEngine)
             print("AudioEngineManager: 🔧 Mixer initialized with format: \(mixer.avAudioNode.outputFormat(forBus: 0))")
+            // Attach render watchdog tap once, after engine has started and mixer is valid
+            if !didAttachWatchdog {
+                RenderWatchdog.shared.attach(to: mixer.avAudioNode, engine: engine.avEngine)
+                didAttachWatchdog = true
+            }
         } catch {
             Log("AudioEngineManager: AudioEngine start error: \(error)")
         }
-        
-        
-        
-        
-        
     }
     
     private func configureAVAudioSession() {
@@ -76,7 +81,7 @@ class AudioEngineManager {
                         chosenBufferLength = .short
                     } else if major >= 13 {
                         // iPhone 13–15
-                        chosenBufferLength = .medium  //RYAN: should make sure this is right
+                        chosenBufferLength = .short  //RYAN: should make sure this is right
                     } else {
                         // Older iPhones
                         chosenBufferLength = .long
@@ -107,6 +112,10 @@ class AudioEngineManager {
     }
     
     func stopEngine() {
+        if didAttachWatchdog, let _ = mixer {
+            RenderWatchdog.shared.detach()
+            didAttachWatchdog = false
+        }
         engine.stop()
     }
     

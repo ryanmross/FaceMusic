@@ -33,10 +33,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
     
+    private var didStartAR = false
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        print("😮 FaceTrackerViewController: ARVC viewDidLoad  bounds:", sceneView.bounds, "scale:", sceneView.contentScaleFactor)
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -113,23 +116,17 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private func createButtons() {
         // Create buttons with SF Symbols and consistent tint
+        let savePatchButton = UIButton(type: .system)
+        savePatchButton.setImage(UIImage(systemName: "plus.circle"), for: .normal)
+        savePatchButton.tintColor = .white
+        savePatchButton.translatesAutoresizingMaskIntoConstraints = false
+        savePatchButton.addTarget(self, action: #selector(savePatchButtonTapped), for: .touchUpInside)
+
         let gearButton = UIButton(type: .system)
         gearButton.setImage(UIImage(systemName: "pianokeys"), for: .normal)
         gearButton.tintColor = .white
         gearButton.translatesAutoresizingMaskIntoConstraints = false
         gearButton.addTarget(self, action: #selector(noteSettingsButtonTapped), for: .touchUpInside)
-
-        let folderButton = UIButton(type: .system)
-        folderButton.setImage(UIImage(systemName: "folder.fill"), for: .normal)
-        folderButton.tintColor = .white
-        folderButton.translatesAutoresizingMaskIntoConstraints = false
-        folderButton.addTarget(self, action: #selector(openPatchTapped), for: .touchUpInside)
-
-        let plusButton = UIButton(type: .system)
-        plusButton.setImage(UIImage(systemName: "plus.circle.fill"), for: .normal)
-        plusButton.tintColor = .white
-        plusButton.translatesAutoresizingMaskIntoConstraints = false
-        plusButton.addTarget(self, action: #selector(newPatchTapped), for: .touchUpInside)
 
         let voiceSettingsButton = UIButton(type: .system)
         voiceSettingsButton.setImage(UIImage(systemName: "waveform.path.ecg.rectangle.fill"), for: .normal)
@@ -143,8 +140,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         resetButton.translatesAutoresizingMaskIntoConstraints = false
         resetButton.addTarget(self, action: #selector(resetTrackingTapped), for: .touchUpInside)
 
-        // Stack the buttons vertically: plus at top, then folder, then voiceSettings, then gear, then reset at bottom
-        let buttonStack = UIStackView(arrangedSubviews: [plusButton, folderButton, voiceSettingsButton, gearButton, resetButton])
+        // Stack the buttons vertically: savePatch, voiceSettings, gear, reset
+        let buttonStack = UIStackView(arrangedSubviews: [voiceSettingsButton, gearButton, resetButton, savePatchButton])
         buttonStack.axis = .vertical
         buttonStack.alignment = .center
         buttonStack.spacing = 10
@@ -157,68 +154,13 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             buttonStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
         ])
         // Set fixed size for all buttons
-        [gearButton, folderButton, plusButton, voiceSettingsButton, resetButton].forEach { btn in
+        [savePatchButton, gearButton, voiceSettingsButton, resetButton].forEach { btn in
             btn.widthAnchor.constraint(equalToConstant: 40).isActive = true
             btn.heightAnchor.constraint(equalToConstant: 40).isActive = true
         }
     }
     
     
-    // MARK: - Plus Button / New Patch
-    @objc private func newPatchTapped() {
-        //let defaults = PatchSettings.default()
-        // If the current patch has no name or is untitled, prompt to save
-        let conductor = VoiceConductorManager.shared.activeConductor
-        if conductor.exportCurrentSettings().name == nil || conductor.exportCurrentSettings().name == "Untitled Patch" {
-            print("😮 FaceTrackerViewController.newPatchTapped(): Prompting to save patch")
-            AlertHelper.promptToSavePatch(
-                presenter: self,
-                saveHandler: { [weak self] patchName in
-                    guard let self = self else { return }
-                    let newID = PatchManager.shared.generateNewPatchID()
-                    let currentSettings = PatchSettings(
-                        id: newID,
-                        name: patchName ?? "Untitled Patch",
-                        key: MusicBrain.shared.currentKey,
-                        chordType: conductor.chordType,
-                        numOfVoices: conductor.numOfVoices,
-                        glissandoSpeed: conductor.glissandoSpeed,
-                        voicePitchLevel: conductor.voicePitchLevel,
-                        noteRangeSize: conductor.noteRangeSize,
-                        scaleMask: nil,
-                        version: 1,
-                        conductorID: VoiceConductorManager.shared.activeConductorID ?? VoiceConductorRegistry.defaultID,
-                        imageName: nil,
-                        conductorSpecificSettings: nil
-                    )
-                    PatchManager.shared.save(settings: currentSettings, forID: newID)
-                    NotificationCenter.default.post(name: NSNotification.Name("PatchDidChange"), object: nil)
-                    self.createAndLoadNewPatch()
-                },
-                skipHandler: { [weak self] in
-                    self?.createAndLoadNewPatch()
-                }
-            )
-        } else {
-            // Otherwise, create and load a new patch immediately
-            self.createAndLoadNewPatch()
-        }
-    }
-
-    // MARK: - Folder Button / Load Patch
-    @objc private func openPatchTapped() {
-        let patchListVC = PatchListViewController()
-        patchListVC.onPatchSelected = { [weak self] patchID, settings in
-            guard let self = self else { return }
-            guard let settings = settings else {
-                print("😮 FaceTrackerViewController.openPatchTapped. Could not load settings for patch ID \(patchID)")
-                return
-            }
-            self.loadAndApplyPatch(settings: settings, patchID: patchID)
-        }
-        let nav = UINavigationController(rootViewController: patchListVC)
-        present(nav, animated: true)
-    }
 
     // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
     // initializes it, applies the settings, and assigns it to self.conductor.
@@ -229,6 +171,36 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             return
         }
         self.loadAndApplyPatch(settings: settings, patchID: id)
+    }
+    
+    // MARK: - Save Patch Button
+    @objc private func savePatchButtonTapped() {
+        print("👉 FaceTrackerViewController.savePatchButtonTapped")
+        let alert = UIAlertController(title: "Save Patch", message: "Enter name to save patch:", preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.placeholder = "Patch name"
+        }
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: { _ in
+            guard let name = alert.textFields?.first?.text, !name.isEmpty else { return }
+
+            let currentSettings = VoiceConductorManager.shared.activeConductor.exportCurrentSettings()
+            var newSettings = currentSettings
+            newSettings.id = PatchManager.shared.generateNewPatchID()
+            newSettings.name = name
+
+            PatchManager.shared.save(settings: newSettings)
+            PatchManager.shared.currentPatchID = newSettings.id
+            // Refresh patch selector and select new patch
+            self.patchSelectorViewModel.loadPatches()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if let newItem = self.patchSelectorViewModel.patchBarItems.first(where: { $0.patchID == newSettings.id }) {
+                    self.patchSelectorViewModel.selectPatch(newItem)
+                }
+            }
+            print("💾 New patch saved with ID \(newSettings.id) and name '\(name)'")
+        }))
+        present(alert, animated: true, completion: nil)
     }
 
     // MARK: - Voice Settings Button
@@ -296,78 +268,22 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-//        if UserDefaults.standard.object(forKey: "currentPatchID") == nil {
-//            print("😮 FaceTrackerViewController.viewWillAppear. 🧠 UserDefaults: currentPatchID not set")
-//        } else {
-//            print("😮 FaceTrackerViewController.viewWillAppear. 🧠 UserDefaults currentPatchID:", UserDefaults.standard.integer(forKey: "currentPatchID"))
-//        }
-//        
-//        
-//        print("😮 FaceTrackerViewController.viewWillAppear. 📀 PatchManager currentPatchID:", PatchManager.shared.currentPatchID ?? -999)
-//        PatchManager.shared.listPatches().forEach { id in
-//            if let patch = PatchManager.shared.getPatchData(forID: id) {
-//                print("😮 FaceTrackerViewController.viewWillAppear. 📀 PatchManager:📦 ID \(id):", patch.name ?? "Unnamed")
-//            } else {
-//                print("😮 FaceTrackerViewController.viewWillAppear. PatchManager: ⚠️ No patch found for ID \(id)")
-//            }
-//        }
         
         UIApplication.shared.isIdleTimerDisabled = true
-        resetTracking()
-
-//        let patchManager = PatchManager.shared
-//        if !PatchManager.shared.listPatches().isEmpty {
-//            if let lastID = patchManager.currentPatchID {
-//                print("😮 FaceTrackerViewController.viewWillAppear: Loading last patch ID with loadPatchByID(\(lastID))")
-//                if let settings = patchManager.getPatchData(forID: lastID) {
-//                    self.loadAndApplyPatch(settings: settings, patchID: lastID)
-//                }
-//            } else if let firstID = patchManager.listPatches().first {
-//                print("😮 FaceTrackerViewController.viewWillAppear: Loading first patch ID with loadPatchByID(\(firstID))")
-//                if let settings = patchManager.getPatchData(forID: firstID) {
-//                    self.loadAndApplyPatch(settings: settings, patchID: firstID)
-//                }
-//            }
-//        } else {
-//            let defaultSettings = patchManager.defaultPatchSettings
-//            let newID = patchManager.generateNewPatchID()
-//            patchManager.save(settings: defaultSettings, forID: newID)
-//            UserDefaults.standard.set(newID, forKey: "LastPatchID")
-//            print("😮 FaceTrackerViewController.viewWillAppear: Creating new patch ID with loadPatchByID(\(newID))")
-//            self.loadAndApplyPatch(settings: defaultSettings, patchID: newID)
-//        }
         
-        
-        // Create a session configuration
-        //let configuration = ARWorldTrackingConfiguration()
-        // Run the view's session
-        //sceneView.session.run(configuration)
     }
 
-    // MARK: - Patch Loading Helper
-    private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
-        print("😮 FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
 
-        VoiceConductorManager.shared.setActiveConductor(settings: settings)
-
-        let activeConductor = VoiceConductorManager.shared.activeConductor
-        activeConductor.applyConductorSpecificSettings(from: settings)
-
-        MusicBrain.shared.updateKeyAndScale(
-            key: settings.key,
-            chordType: settings.chordType,
-            scaleMask: settings.scaleMask
-        )
-
-
-        if let id = patchID {
-            UserDefaults.standard.set(id, forKey: "LastPatchID")
-        }
-    }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("😮 FaceTrackerViewController: viewDidAppear")
+        print("😮 FaceTrackerVC didAppear bounds:", sceneView.bounds, "scale:", sceneView.contentScaleFactor)
+        guard !didStartAR else { return }
+        didStartAR = true
+        DispatchQueue.main.async { [weak self] in
+            self?.resetTracking() // same ARFaceTrackingConfiguration, just started later
+        }
+
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -394,6 +310,28 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         DispatchQueue.main.async {
             self.displayErrorMessage(title: "The AR session failed.", message: errorMessage)
+        }
+    }
+    
+    
+    // MARK: - Patch Loading Helper
+    private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
+        print("😮 FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
+
+        VoiceConductorManager.shared.setActiveConductor(settings: settings)
+
+        let activeConductor = VoiceConductorManager.shared.activeConductor
+        activeConductor.applyConductorSpecificSettings(from: settings)
+
+        MusicBrain.shared.updateKeyAndScale(
+            key: settings.key,
+            chordType: settings.chordType,
+            scaleMask: settings.scaleMask
+        )
+
+
+        if let id = patchID {
+            UserDefaults.standard.set(id, forKey: "LastPatchID")
         }
     }
     
@@ -517,3 +455,5 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
 
 
 
+
+   

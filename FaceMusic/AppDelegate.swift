@@ -26,7 +26,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             Prewarm.prewarmAllIfNeeded(in: self.window)
-            Prewarm.prewarmTextEntryAlertIfNeeded(on: self.window?.rootViewController)
+            Prewarm.prewarmTextEntryAlertIfNeeded(in: self.window)
             // Use new action sheet prewarm method that presents and dismisses to warm up properly
             Prewarm.prewarmActionSheetIfNeeded(on: self.window?.rootViewController)
             AudioEngineManager.shared.startEngine()
@@ -93,6 +93,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 private enum Prewarm {
     private static var didPrewarm = false
     private static var didPrewarmTextAlert = false
+    private static var occlusionWindow: UIWindow?
 
     static func prewarmAllIfNeeded(in window: UIWindow?) {
         guard !didPrewarm else { return }
@@ -186,17 +187,69 @@ private enum Prewarm {
         selection.prepare()
     }
 
-    static func prewarmTextEntryAlertIfNeeded(on viewController: UIViewController?) {
+    static func prewarmTextEntryAlertIfNeeded(in mainWindow: UIWindow?) {
         guard !didPrewarmTextAlert else { return }
         didPrewarmTextAlert = true
-        // Build the alert and its view hierarchy for prewarming only, without showing it.
+        print("!!! AppDelegate prewarming text entry alert (behind loading screen)")
+
+        // Build the alert for prewarming.
         let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
         alert.addTextField { $0.placeholder = " " }
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        // Force the view to load and layout to trigger UIKit setup
-        _ = alert.view
-        alert.view.setNeedsLayout()
-        alert.view.layoutIfNeeded()
+
+        guard let mainWindow = mainWindow else {
+            // Fallback: Force the view to load and layout to initialize UIKit internals
+            _ = alert.view
+            alert.view.setNeedsLayout()
+            alert.view.layoutIfNeeded()
+            return
+        }
+
+        // Create a temporary window behind the loading screen to occlude the alert.
+        let bgWindow = UIWindow(frame: mainWindow.bounds)
+        if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
+            bgWindow.windowScene = scene
+        }
+        // Ensure this window is visually behind the loading screen window.
+        bgWindow.windowLevel = mainWindow.windowLevel - 1
+        bgWindow.isHidden = false
+        bgWindow.alpha = 0.01 // extra safety to avoid any flash if layering changes
+        let hostVC = UIViewController()
+        hostVC.view.backgroundColor = .clear
+        bgWindow.rootViewController = hostVC
+
+        // Keep a strong reference until we're done.
+        occlusionWindow = bgWindow
+
+        hostVC.present(alert, animated: false) {
+            // Warm the text field's first responder path without showing the system keyboard
+            if let tf = alert.textFields?.first {
+                // Reduce heavyweight text services for this warmup
+                tf.autocorrectionType = .no
+                tf.spellCheckingType = .no
+                if #available(iOS 11.0, *) {
+                    tf.smartDashesType = .no
+                    tf.smartQuotesType = .no
+                    tf.smartInsertDeleteType = .no
+                }
+                tf.textContentType = .none
+                // Use a dummy inputView so the system keyboard doesn't appear during warmup
+                tf.inputView = UIView(frame: .zero)
+                tf.becomeFirstResponder()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    tf.resignFirstResponder()
+                }
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                alert.dismiss(animated: false) {
+                    // Clean up the temporary window
+                    occlusionWindow?.isHidden = true
+                    occlusionWindow?.rootViewController = nil
+                    occlusionWindow = nil
+                }
+            }
+        }
     }
     
     /// Presents and immediately dismisses an action sheet to warm up the action sheet UI subsystem.

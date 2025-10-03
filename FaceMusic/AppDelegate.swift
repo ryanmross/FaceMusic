@@ -129,10 +129,20 @@ private enum Prewarm {
         print("!!! AppDelegate prewarming keyboard")
         let tf = UITextField(frame: .zero)
         tf.isHidden = true
+        // Reduce heavyweight text services and avoid showing the system keyboard
+        tf.autocorrectionType = .no
+        tf.spellCheckingType = .no
+        if #available(iOS 11.0, *) {
+            tf.smartDashesType = .no
+            tf.smartQuotesType = .no
+            tf.smartInsertDeleteType = .no
+        }
+        tf.textContentType = .none
+        tf.inputView = UIView(frame: .zero)
         view.addSubview(tf)
         DispatchQueue.main.async {
             _ = tf.becomeFirstResponder()
-            DispatchQueue.main.async {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 tf.resignFirstResponder()
                 tf.removeFromSuperview()
             }
@@ -196,10 +206,11 @@ private enum Prewarm {
         let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
         alert.addTextField { $0.placeholder = " " }
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        alert.loadViewIfNeeded()
 
         guard let mainWindow = mainWindow else {
             // Fallback: Force the view to load and layout to initialize UIKit internals
-            _ = alert.view
+            alert.loadViewIfNeeded()
             alert.view.setNeedsLayout()
             alert.view.layoutIfNeeded()
             return
@@ -236,12 +247,12 @@ private enum Prewarm {
                 // Use a dummy inputView so the system keyboard doesn't appear during warmup
                 tf.inputView = UIView(frame: .zero)
                 tf.becomeFirstResponder()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     tf.resignFirstResponder()
                 }
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 alert.dismiss(animated: false) {
                     // Clean up the temporary window
                     occlusionWindow?.isHidden = true

@@ -17,14 +17,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Prewarm on launch so the first presentation doesn't glitch audio
+        // Set up and show the loading screen immediately
+        window = window ?? UIWindow(frame: UIScreen.main.bounds)
+        window?.rootViewController = LoadingViewController()
+        window?.makeKeyAndVisible()
+
+        // Prewarm UI and audio on the main queue, then transition to the main app UI
         DispatchQueue.main.async { [weak self] in
-            Prewarm.prewarmAllIfNeeded(in: self?.window)
+            guard let self = self else { return }
+            Prewarm.prewarmAllIfNeeded(in: self.window)
+            Prewarm.prewarmTextEntryAlertIfNeeded(on: self.window?.rootViewController)
+            // Use new action sheet prewarm method that presents and dismisses to warm up properly
+            Prewarm.prewarmActionSheetIfNeeded(on: self.window?.rootViewController)
+            AudioEngineManager.shared.startEngine()
+            // After prewarming, transition to FaceTrackerViewController
+            let storyboard = UIStoryboard(name: "Main", bundle: nil)
+            let faceTrackerVC = storyboard.instantiateViewController(withIdentifier: "FaceTrackerViewController")
+            if let window = self.window {
+                UIView.transition(with: window,
+                                  duration: 0.3,
+                                  options: .transitionCrossDissolve,
+                                  animations: {
+                                      window.rootViewController = faceTrackerVC
+                                  },
+                                  completion: nil)
+            } else {
+                self.window?.rootViewController = faceTrackerVC
+            }
         }
-        AudioEngineManager.shared.startEngine()
-
-
-
         return true
     }
     
@@ -72,6 +92,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 // MARK: - One-shot UI/Haptics/Keyboard prewarmer
 private enum Prewarm {
     private static var didPrewarm = false
+    private static var didPrewarmTextAlert = false
 
     static func prewarmAllIfNeeded(in window: UIWindow?) {
         guard !didPrewarm else { return }
@@ -85,7 +106,9 @@ private enum Prewarm {
             prewarmKeyboard(on: view)
             prewarmUIEffects(on: view)
             prewarmHaptics()
-            prewarmActionSheet(in: window)
+            // Removed old prewarmActionSheet call to avoid double prewarming,
+            // replaced by prewarmActionSheetIfNeeded in main launch sequence
+            // prewarmActionSheet(in: window)
         }
 
         if let rootView = window.rootViewController?.view {
@@ -162,6 +185,33 @@ private enum Prewarm {
         impact.prepare()
         selection.prepare()
     }
+
+    static func prewarmTextEntryAlertIfNeeded(on viewController: UIViewController?) {
+        guard !didPrewarmTextAlert else { return }
+        didPrewarmTextAlert = true
+        // Build the alert and its view hierarchy for prewarming only, without showing it.
+        let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
+        alert.addTextField { $0.placeholder = " " }
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        // Force the view to load and layout to trigger UIKit setup
+        _ = alert.view
+        alert.view.setNeedsLayout()
+        alert.view.layoutIfNeeded()
+    }
+    
+    /// Presents and immediately dismisses an action sheet to warm up the action sheet UI subsystem.
+    /// This avoids visible UI since the loading screen is still covering the window.
+    static func prewarmActionSheetIfNeeded(on viewController: UIViewController?) {
+        guard let vc = viewController else { return }
+        let alert = UIAlertController(title: "Warmup", message: nil, preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: "A", style: .default, handler: nil))
+        alert.addAction(UIAlertAction(title: "B", style: .cancel, handler: nil))
+        vc.present(alert, animated: false) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                alert.dismiss(animated: false, completion: nil)
+            }
+        }
+    }
 }
 
 extension UIDevice {
@@ -176,3 +226,4 @@ extension UIDevice {
         return identifier
     }
 }
+

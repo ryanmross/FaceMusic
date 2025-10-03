@@ -81,7 +81,7 @@ class AudioEngineManager {
                         chosenBufferLength = .short
                     } else if major >= 13 {
                         // iPhone 13–15
-                        chosenBufferLength = .short  //RYAN: should make sure this is right
+                        chosenBufferLength = .medium  //RYAN: should make sure this is right
                     } else {
                         // Older iPhones
                         chosenBufferLength = .long

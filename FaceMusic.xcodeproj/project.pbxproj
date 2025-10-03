@@ -19,6 +19,7 @@
 		8D199ABC2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199ABB2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift */; };
 		8D199ACA2C190FD500BD63A8 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8D199AC92C190FD500BD63A8 /* AudioKit */; };
 		8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */; };
+		8D9F31D82E8F7F7100367C72 /* LoadingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D9F31D72E8F7F6D00367C72 /* LoadingViewController.swift */; };
 		8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC213E2C19372B00225D5F /* VirtualContent.swift */; };
 		8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC21402C19373C00225D5F /* TexturedFace.swift */; };
 		8DCEDA8C2E25D1A100565677 /* AudioKitUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8DCEDA8B2E25D1A100565677 /* AudioKitUI */; };
@@ -61,6 +62,7 @@
 		8D199AB92C190F6400BD63A8 /* FaceMusicUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMusicUITests.swift; sourceTree = "<group>"; };
 		8D199ABB2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMusicUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSettingsViewController.swift; sourceTree = "<group>"; };
+		8D9F31D72E8F7F6D00367C72 /* LoadingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingViewController.swift; sourceTree = "<group>"; };
 		8DCC213E2C19372B00225D5F /* VirtualContent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VirtualContent.swift; sourceTree = "<group>"; };
 		8DCC21402C19373C00225D5F /* TexturedFace.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TexturedFace.swift; sourceTree = "<group>"; };
 		8DD9D14C2D29DC3B008C418E /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -166,6 +168,7 @@
 		8D199ACC2C19202D00BD63A8 /* Controllers */ = {
 			isa = PBXGroup;
 			children = (
+				8D9F31D72E8F7F6D00367C72 /* LoadingViewController.swift */,
 				8D17BF292E36EB5A0056C2BE /* PatchSelectorViewController.swift */,
 				8DEBE5962D262CBE004F4EDD /* NoteSettingsViewController.swift */,
 				8DECF9212E34040300D05F8D /* UIHelpers.swift */,
@@ -343,6 +346,7 @@
 				8D199A9A2C190F6300BD63A8 /* AppDelegate.swift in Sources */,
 				8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */,
 				8DEBE5972D262CBE004F4EDD /* NoteSettingsViewController.swift in Sources */,
+				8D9F31D82E8F7F7100367C72 /* LoadingViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -529,7 +533,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
+				INFOPLIST_KEY_UILaunchStoryboardName = "";
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
@@ -560,7 +564,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen.storyboard;
+				INFOPLIST_KEY_UILaunchStoryboardName = "";
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
 				INFOPLIST_KEY_UIRequiredDeviceCapabilities = arkit;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;

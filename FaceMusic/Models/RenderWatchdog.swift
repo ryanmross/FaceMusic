@@ -18,6 +18,9 @@ import QuartzCore
 /// 2) Time spent inside the tap closure (as a proxy for per-buffer work on that thread).
 /// 3) Emits signposts readable in Instruments (Logging/System Trace) and prints to console.
 final class RenderWatchdog {
+    /// Set to true to disable RenderWatchdog globally
+    static var disableWatch: Bool = false
+
     static let shared = RenderWatchdog()
 
     // MARK: - Logging
@@ -78,6 +81,7 @@ final class RenderWatchdog {
     /// Attach a tap to the given node (typically the engine's mixer or output node)
     /// and start emitting signposts/console logs.
     func attach(to node: AVAudioNode, engine: AVAudioEngine) {
+        guard !Self.disableWatch else { return } // No-op if watchdog is disabled
         guard !isAttached else { return }
         isAttached = true
         tappedNode = node
@@ -125,7 +129,7 @@ final class RenderWatchdog {
             // Inter-buffer gap check (use render timestamp when.hostTime if available)
             let nowHost: UInt64 = (when.hostTime != 0) ? when.hostTime : mach_absolute_time()
             self.sampleCounter &+= 1
-            defer { 
+            defer {
                 self.lastHostTime = nowHost
                 self.lastWhenHost = nowHost
             }
@@ -232,7 +236,9 @@ final class RenderWatchdog {
         }
     }
 
+    /// Detach the tap from the node and stop emitting signposts/logs.
     func detach() {
+        guard !Self.disableWatch else { return } // No-op if watchdog is disabled
         guard let node = tappedNode, isAttached else { return }
         node.removeTap(onBus: 0)
         tappedNode = nil

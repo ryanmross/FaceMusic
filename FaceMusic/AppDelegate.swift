@@ -94,8 +94,40 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 private enum Prewarm {
     private static var didPrewarm = false
     private static var didPrewarmTextAlert = false
-    private static var occlusionWindow: UIWindow?
+    private static var coverWindow: UIWindow?
     private static var prewarmHostWindow: UIWindow?
+    
+    private static let textWarmupDelay: TimeInterval = 0.7
+
+    private static func makeWindow(matching mainWindow: UIWindow, level: UIWindow.Level, alpha: CGFloat = 1.0, backgroundColor: UIColor = .clear) -> (UIWindow, UIViewController) {
+        let w = UIWindow(frame: mainWindow.bounds)
+        if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
+            w.windowScene = scene
+        }
+        w.windowLevel = level
+        w.alpha = alpha
+        let vc = UIViewController()
+        vc.view.backgroundColor = backgroundColor
+        w.rootViewController = vc
+        w.isHidden = false
+        return (w, vc)
+    }
+
+    private static func addSnapshot(of mainWindow: UIWindow, to container: UIView) {
+        if let snapshot = mainWindow.snapshotView(afterScreenUpdates: false) {
+            snapshot.frame = container.bounds
+            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            container.addSubview(snapshot)
+        } else {
+            container.backgroundColor = mainWindow.rootViewController?.view.backgroundColor ?? .black
+        }
+    }
+
+    private static func destroyWindow(_ window: inout UIWindow?) {
+        window?.isHidden = true
+        window?.rootViewController = nil
+        window = nil
+    }
 
     static func prewarmAllIfNeeded(in window: UIWindow?) {
         guard !didPrewarm else { return }
@@ -103,7 +135,7 @@ private enum Prewarm {
 
         guard let window = window else { return }
         
-        print("!!! AppDelegate prewarming UI/Haptics/Keyboard")
+        print("🧍‍♂️ AppDelegate prewarming UI/Haptics/Keyboard")
 
         func doPrewarm(on view: UIView) {
             prewarmKeyboard(on: view)
@@ -128,7 +160,7 @@ private enum Prewarm {
 
     // Trigger keyboard subsystem warmup without showing it
     private static func prewarmKeyboard(on view: UIView) {
-        print("!!! AppDelegate prewarming keyboard")
+        print("🧍‍♂️ AppDelegate prewarming keyboard")
         let tf = UITextField(frame: .zero)
         tf.isHidden = true
         // Reduce heavyweight text services and avoid showing the system keyboard
@@ -154,7 +186,7 @@ private enum Prewarm {
     // Warm up blur/material effects rendering path
     private static func prewarmUIEffects(on view: UIView) {
         
-        print("!!! AppDelegate prewarming UI effects")
+        print("🧍‍♂️ AppDelegate prewarming UI effects")
         let blur = UIBlurEffect(style: .systemChromeMaterial)
         let v = UIVisualEffectView(effect: blur)
         v.frame = CGRect(x: -1, y: -1, width: 1, height: 1)
@@ -163,36 +195,9 @@ private enum Prewarm {
         DispatchQueue.main.async { v.removeFromSuperview() }
     }
 
-    // Build the UIAlertController(actionSheet) view hierarchy once without presenting
-    private static func prewarmActionSheet(in window: UIWindow?) {
-        print("!!! AppDelegate prewarming action sheet")
-        let alert = UIAlertController(title: "Warmup", message: nil, preferredStyle: .actionSheet)
-        alert.addAction(UIAlertAction(title: "A", style: .default, handler: nil))
-        alert.addAction(UIAlertAction(title: "B", style: .cancel, handler: nil))
-
-        // Tiny host view to satisfy popover requirements on iPad without ever presenting
-        let host = UIView(frame: CGRect(x: -1, y: -1, width: 1, height: 1))
-        host.isHidden = true
-        if let window = window {
-            window.addSubview(host)
-        }
-
-        if let pop = alert.popoverPresentationController {
-            pop.sourceView = host
-            pop.sourceRect = host.bounds
-        }
-
-        // Force the view hierarchy to load and layout once
-        _ = alert.view
-        alert.view.setNeedsLayout()
-        alert.view.layoutIfNeeded()
-
-        DispatchQueue.main.async { host.removeFromSuperview() }
-    }
-
     // Warm up haptic generators
     private static func prewarmHaptics() {
-        print("!!! AppDelegate prewarming haptics")
+        print("🧍‍♂️ AppDelegate prewarming haptics")
         let impact = UIImpactFeedbackGenerator(style: .medium)
         let selection = UISelectionFeedbackGenerator()
         impact.prepare()
@@ -202,9 +207,8 @@ private enum Prewarm {
     static func prewarmTextEntryAlertIfNeeded(in mainWindow: UIWindow?, completion: (() -> Void)? = nil) {
         guard !didPrewarmTextAlert else { completion?(); return }
         didPrewarmTextAlert = true
-        print("!!! AppDelegate FULL prewarm (real keyboard) with dedicated host window + high-level cover")
+        print("🧍‍♂️ AppDelegate FULL prewarm (real keyboard) using host + cover windows")
 
-        // Ensure we have a window/scene to work with.
         guard let mainWindow = mainWindow else {
             // Fallback: Force UIKit internals to initialize.
             let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
@@ -217,76 +221,34 @@ private enum Prewarm {
             return
         }
 
-        // Build a high-level cover window ABOVE the keyboard window to hide any visual changes.
-        let coverWindow = UIWindow(frame: mainWindow.bounds)
-        if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
-            coverWindow.windowScene = scene
-        }
-        // Use a very high window level to ensure we sit above the keyboard UI.
-        coverWindow.windowLevel = UIWindow.Level(rawValue: 10_000)
-        coverWindow.isOpaque = true
-        let coverVC = UIViewController()
-        coverVC.view.backgroundColor = .clear
-        if let snapshot = mainWindow.snapshotView(afterScreenUpdates: false) {
-            snapshot.frame = coverVC.view.bounds
-            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            coverVC.view.addSubview(snapshot)
-        } else {
-            // Fallback to a solid color if we can't snapshot.
-            coverVC.view.backgroundColor = mainWindow.rootViewController?.view.backgroundColor ?? .black
-        }
-        coverWindow.rootViewController = coverVC
-        coverWindow.isHidden = false
+        // High-level cover window fully hides any visual changes (including keyboard).
+        let (cWindow, cVC) = makeWindow(matching: mainWindow, level: UIWindow.Level(rawValue: 10_000), alpha: 1.0, backgroundColor: .clear)
+        addSnapshot(of: mainWindow, to: cVC.view)
+        coverWindow = cWindow
 
-        // Keep a strong reference to the cover window until cleanup.
-        occlusionWindow = coverWindow
+        // Dedicated host window for presenting the alert so main UI layout is unaffected.
+        let (hWindow, hVC) = makeWindow(matching: mainWindow, level: .normal, alpha: 1.0, backgroundColor: .clear)
+        prewarmHostWindow = hWindow
 
-        // Create a dedicated host window to present the alert so the main window's layout is unaffected.
-        let hostWindow = UIWindow(frame: mainWindow.bounds)
-        if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
-            hostWindow.windowScene = scene
-        }
-        hostWindow.windowLevel = .normal
-        let hostVC = UIViewController()
-        hostVC.view.backgroundColor = .clear
-        hostWindow.rootViewController = hostVC
-        hostWindow.isHidden = false
-        prewarmHostWindow = hostWindow
-
-        // Build the alert for prewarming with default text services (no disabling).
+        // Build the alert with default text services (no disabling) to warm heavy paths.
         let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
         alert.addTextField { _ in }
         alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
         alert.loadViewIfNeeded()
 
-        // Alert can be transparent; it's fully covered by the high-level cover window.
-        alert.view.alpha = 1.0
-
-        // Optionally block interactions very briefly while we cover/uncover.
-        UIApplication.shared.beginIgnoringInteractionEvents()
-
-        hostVC.present(alert, animated: false) {
+        hVC.present(alert, animated: false) {
             // Bring up the real keyboard and full text services.
             alert.textFields?.first?.becomeFirstResponder()
 
             // Give the system time to spin up keyboard, predictive bar, dictation, etc.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + textWarmupDelay) {
                 if let tf = alert.textFields?.first, tf.isFirstResponder {
                     tf.resignFirstResponder()
                 }
                 alert.dismiss(animated: false) {
-                    // Tear down the host window and cover, then resume.
-                    prewarmHostWindow?.isHidden = true
-                    prewarmHostWindow?.rootViewController = nil
-                    prewarmHostWindow = nil
-
-                    occlusionWindow?.isHidden = true
-                    occlusionWindow?.rootViewController = nil
-                    occlusionWindow = nil
-
-                    if UIApplication.shared.isIgnoringInteractionEvents {
-                        UIApplication.shared.endIgnoringInteractionEvents()
-                    }
+                    // Clean up both windows and call completion.
+                    destroyWindow(&prewarmHostWindow)
+                    destroyWindow(&coverWindow)
                     completion?()
                 }
             }

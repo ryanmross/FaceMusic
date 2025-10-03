@@ -116,16 +116,16 @@ final class AudioEngineManager {
         let model = UIDevice.current.modelIdentifier
         print("AudioEngineManager: Detected device: \(model)")
 
-        var chosen: Settings.BufferLength = .medium
+        var chosen: Settings.BufferLength = .longest
         if model.hasPrefix("iPhone") {
             let parts = model.replacingOccurrences(of: "iPhone", with: "").split(separator: ",")
             if let majorString = parts.first, let major = Int(majorString) {
                 if major >= 16 {
-                    chosen = .short
-                } else if major >= 13 {
-                    chosen = .medium
-                } else {
                     chosen = .long
+                } else if major >= 13 {
+                    chosen = .huge
+                } else {
+                    chosen = .longest
                 }
             }
         }

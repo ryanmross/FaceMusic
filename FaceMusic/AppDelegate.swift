@@ -26,23 +26,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             Prewarm.prewarmAllIfNeeded(in: self.window)
-            Prewarm.prewarmTextEntryAlertIfNeeded(in: self.window)
-            // Use new action sheet prewarm method that presents and dismisses to warm up properly
-            Prewarm.prewarmActionSheetIfNeeded(on: self.window?.rootViewController)
-            AudioEngineManager.shared.startEngine()
-            // After prewarming, transition to FaceTrackerViewController
-            let storyboard = UIStoryboard(name: "Main", bundle: nil)
-            let faceTrackerVC = storyboard.instantiateViewController(withIdentifier: "FaceTrackerViewController")
-            if let window = self.window {
-                UIView.transition(with: window,
-                                  duration: 0.3,
-                                  options: .transitionCrossDissolve,
-                                  animations: {
-                                      window.rootViewController = faceTrackerVC
-                                  },
-                                  completion: nil)
-            } else {
-                self.window?.rootViewController = faceTrackerVC
+            Prewarm.prewarmTextEntryAlertIfNeeded(in: self.window) {
+                // Use new action sheet prewarm method that presents and dismisses to warm up properly
+                Prewarm.prewarmActionSheetIfNeeded(on: self.window?.rootViewController)
+                AudioEngineManager.shared.startEngine()
+                // After prewarming, transition to FaceTrackerViewController
+                let storyboard = UIStoryboard(name: "Main", bundle: nil)
+                let faceTrackerVC = storyboard.instantiateViewController(withIdentifier: "FaceTrackerViewController")
+                if let window = self.window {
+                    UIView.transition(with: window,
+                                      duration: 0.3,
+                                      options: .transitionCrossDissolve,
+                                      animations: {
+                                          window.rootViewController = faceTrackerVC
+                                      },
+                                      completion: nil)
+                } else {
+                    self.window?.rootViewController = faceTrackerVC
+                }
             }
         }
         return true
@@ -94,6 +95,7 @@ private enum Prewarm {
     private static var didPrewarm = false
     private static var didPrewarmTextAlert = false
     private static var occlusionWindow: UIWindow?
+    private static var prewarmHostWindow: UIWindow?
 
     static func prewarmAllIfNeeded(in window: UIWindow?) {
         guard !didPrewarm else { return }
@@ -197,67 +199,95 @@ private enum Prewarm {
         selection.prepare()
     }
 
-    static func prewarmTextEntryAlertIfNeeded(in mainWindow: UIWindow?) {
-        guard !didPrewarmTextAlert else { return }
+    static func prewarmTextEntryAlertIfNeeded(in mainWindow: UIWindow?, completion: (() -> Void)? = nil) {
+        guard !didPrewarmTextAlert else { completion?(); return }
         didPrewarmTextAlert = true
-        print("!!! AppDelegate prewarming text entry alert (behind loading screen)")
+        print("!!! AppDelegate FULL prewarm (real keyboard) with dedicated host window + high-level cover")
 
-        // Build the alert for prewarming.
-        let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
-        alert.addTextField { $0.placeholder = " " }
-        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-        alert.loadViewIfNeeded()
-
+        // Ensure we have a window/scene to work with.
         guard let mainWindow = mainWindow else {
-            // Fallback: Force the view to load and layout to initialize UIKit internals
+            // Fallback: Force UIKit internals to initialize.
+            let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
+            alert.addTextField { _ in }
+            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             alert.loadViewIfNeeded()
             alert.view.setNeedsLayout()
             alert.view.layoutIfNeeded()
+            completion?()
             return
         }
 
-        // Create a temporary window behind the loading screen to occlude the alert.
-        let bgWindow = UIWindow(frame: mainWindow.bounds)
+        // Build a high-level cover window ABOVE the keyboard window to hide any visual changes.
+        let coverWindow = UIWindow(frame: mainWindow.bounds)
         if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
-            bgWindow.windowScene = scene
+            coverWindow.windowScene = scene
         }
-        // Ensure this window is visually behind the loading screen window.
-        bgWindow.windowLevel = mainWindow.windowLevel - 1
-        bgWindow.isHidden = false
-        bgWindow.alpha = 0.01 // extra safety to avoid any flash if layering changes
+        // Use a very high window level to ensure we sit above the keyboard UI.
+        coverWindow.windowLevel = UIWindow.Level(rawValue: 10_000)
+        coverWindow.isOpaque = true
+        let coverVC = UIViewController()
+        coverVC.view.backgroundColor = .clear
+        if let snapshot = mainWindow.snapshotView(afterScreenUpdates: false) {
+            snapshot.frame = coverVC.view.bounds
+            snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            coverVC.view.addSubview(snapshot)
+        } else {
+            // Fallback to a solid color if we can't snapshot.
+            coverVC.view.backgroundColor = mainWindow.rootViewController?.view.backgroundColor ?? .black
+        }
+        coverWindow.rootViewController = coverVC
+        coverWindow.isHidden = false
+
+        // Keep a strong reference to the cover window until cleanup.
+        occlusionWindow = coverWindow
+
+        // Create a dedicated host window to present the alert so the main window's layout is unaffected.
+        let hostWindow = UIWindow(frame: mainWindow.bounds)
+        if #available(iOS 13.0, *), let scene = mainWindow.windowScene {
+            hostWindow.windowScene = scene
+        }
+        hostWindow.windowLevel = .normal
         let hostVC = UIViewController()
         hostVC.view.backgroundColor = .clear
-        bgWindow.rootViewController = hostVC
+        hostWindow.rootViewController = hostVC
+        hostWindow.isHidden = false
+        prewarmHostWindow = hostWindow
 
-        // Keep a strong reference until we're done.
-        occlusionWindow = bgWindow
+        // Build the alert for prewarming with default text services (no disabling).
+        let alert = UIAlertController(title: "\u{200B}", message: nil, preferredStyle: .alert)
+        alert.addTextField { _ in }
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        alert.loadViewIfNeeded()
+
+        // Alert can be transparent; it's fully covered by the high-level cover window.
+        alert.view.alpha = 1.0
+
+        // Optionally block interactions very briefly while we cover/uncover.
+        UIApplication.shared.beginIgnoringInteractionEvents()
 
         hostVC.present(alert, animated: false) {
-            // Warm the text field's first responder path without showing the system keyboard
-            if let tf = alert.textFields?.first {
-                // Reduce heavyweight text services for this warmup
-                tf.autocorrectionType = .no
-                tf.spellCheckingType = .no
-                if #available(iOS 11.0, *) {
-                    tf.smartDashesType = .no
-                    tf.smartQuotesType = .no
-                    tf.smartInsertDeleteType = .no
-                }
-                tf.textContentType = .none
-                // Use a dummy inputView so the system keyboard doesn't appear during warmup
-                tf.inputView = UIView(frame: .zero)
-                tf.becomeFirstResponder()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            // Bring up the real keyboard and full text services.
+            alert.textFields?.first?.becomeFirstResponder()
+
+            // Give the system time to spin up keyboard, predictive bar, dictation, etc.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                if let tf = alert.textFields?.first, tf.isFirstResponder {
                     tf.resignFirstResponder()
                 }
-            }
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 alert.dismiss(animated: false) {
-                    // Clean up the temporary window
+                    // Tear down the host window and cover, then resume.
+                    prewarmHostWindow?.isHidden = true
+                    prewarmHostWindow?.rootViewController = nil
+                    prewarmHostWindow = nil
+
                     occlusionWindow?.isHidden = true
                     occlusionWindow?.rootViewController = nil
                     occlusionWindow = nil
+
+                    if UIApplication.shared.isIgnoringInteractionEvents {
+                        UIApplication.shared.endIgnoringInteractionEvents()
+                    }
+                    completion?()
                 }
             }
         }

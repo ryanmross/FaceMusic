@@ -237,8 +237,10 @@ private enum Prewarm {
         alert.loadViewIfNeeded()
 
         hVC.present(alert, animated: false) {
-            // Bring up the real keyboard and full text services.
-            alert.textFields?.first?.becomeFirstResponder()
+            // Bring up the real keyboard and full text services after one run loop to ensure a valid session.
+            DispatchQueue.main.async {
+                alert.textFields?.first?.becomeFirstResponder()
+            }
 
             // Give the system time to spin up keyboard, predictive bar, dictation, etc.
             DispatchQueue.main.asyncAfter(deadline: .now() + textWarmupDelay) {

@@ -98,6 +98,26 @@ class PatchManager {
         return patchID
     }
     
+    /// Duplicate an existing patch (default or saved) and save it under a new ID with a new name.
+/// - Parameters:
+///   - sourceID: The ID of the patch to duplicate. Can be a default (negative) or saved (positive) ID.
+///   - newName: The name to assign to the duplicated patch.
+/// - Returns: The newly assigned patch ID, or nil if the source patch could not be found.
+    @discardableResult
+    func duplicatePatch(from sourceID: Int, as newName: String) -> Int? {
+        print("💾 PatchManager.duplicatePatch(from: \(sourceID), as: \(newName)) called.")
+        guard var base = getPatchData(forID: sourceID) else {
+            print("⚠️ PatchManager.duplicatePatch - Source patch not found for ID: \(sourceID)")
+            return nil
+        }
+        // Force a new ID and assign the requested name
+        base.id = 0
+        base.name = newName
+        let newID = save(settings: base)
+        print("💾 PatchManager.duplicatePatch - Duplicated patch from \(sourceID) to new ID: \(newID)")
+        return newID
+    }
+    
     // Migrate a patch to fix old/invalid VoiceConductor IDs, etc.
 //    private func migratePatch(_ patch: inout PatchSettings) {
 //        let validIDs = VoiceConductorRegistry.voiceConductorIDs
@@ -111,10 +131,22 @@ class PatchManager {
     func getPatchData(forID id: Int) -> PatchSettings? {
         print("📥 PatchManager.getPatchData(\(id)) called.")
         if let patch = patches[id] {
-            //migratePatch(&patch)
+            print("📥 PatchManager.getPatchData(\(id)) found in saved patches. \(patch)")
             return patch
         }
+        // If not saved and this is a default patch ID, return the default definition from the registry
+        if id < 0, let defaultPatch = defaultPatch(forID: id) {
+            print("📥 PatchManager.getPatchData(\(id)) returning default patch from registry.")
+            return defaultPatch
+        }
+        print("📥 PatchManager.getPatchData(\(id)) not found.")
         return nil
+    }
+    
+    /// Lookup a default patch definition by ID from the VoiceConductorRegistry
+    private func defaultPatch(forID id: Int) -> PatchSettings? {
+        let defaults = VoiceConductorRegistry.all.flatMap { $0.defaultPatches }
+        return defaults.first(where: { $0.id == id })
     }
     
     // List all saved IDs
@@ -123,18 +155,38 @@ class PatchManager {
         return Array(patches.keys).sorted()
     }
     
+    /// Sorted list of saved (custom) patch IDs
+    private func savedPatchIDsSorted() -> [Int] {
+        patches.keys.filter { $0 > 0 }.sorted()
+    }
+    
     // Delete a patch
     func deletePatch(forID id: Int) {
+        let wasCurrent = (currentPatchID == id)
+        let savedIDsBefore = savedPatchIDsSorted()
+        let deletedIndex = savedIDsBefore.firstIndex(of: id)
+
+        // Perform deletion and persist
         patches.removeValue(forKey: id)
         saveToStorage()
-        if patches.isEmpty {
-            currentPatchID = nil
-        } else {
-            if let nextID = patches.keys.sorted().first {
-                currentPatchID = nextID
-                _ = getPatchData(forID: nextID)
-            }
+
+        // If nothing left at all, clear current selection
+        guard !patches.isEmpty else { currentPatchID = nil; return }
+
+        // Only adjust selection if we deleted the currently selected custom patch
+        guard wasCurrent, id > 0 else { return }
+
+        let savedIDsAfter = savedPatchIDsSorted()
+        guard !savedIDsAfter.isEmpty else { currentPatchID = nil; return }
+
+        // Prefer the item that slid into the deleted index; otherwise the new last
+        if let idx = deletedIndex {
+            currentPatchID = (idx < savedIDsAfter.count) ? savedIDsAfter[idx] : savedIDsAfter.last
+            return
         }
+
+        // Fallback: closest by value (next greater, otherwise last smaller)
+        currentPatchID = savedIDsAfter.first(where: { $0 > id }) ?? savedIDsAfter.last
     }
     
     /// Rename a patch by its ID

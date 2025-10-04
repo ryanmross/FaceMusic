@@ -347,20 +347,15 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
                 onSaveAs: {
                     AlertHelper.promptForPatchName(presenter: presenterVC) { newName in
                         guard let newName = newName,
-                              let currentID = PatchManager.shared.currentPatchID,
-                              let patch = PatchManager.shared.getPatchData(forID: currentID) else { return }
+                              let newID = PatchManager.shared.duplicatePatch(from: item.patchID, as: newName) else { return }
 
-                        var duplicated = patch
-                        duplicated.id = 0
-                        duplicated.name = newName
-                        let newID = PatchManager.shared.save(settings: duplicated)
                         PatchManager.shared.currentPatchID = newID
 
                         DispatchQueue.main.async {
                             self.viewModel?.loadPatches()
                             if let newItem = self.patchBarItems.first(where: { $0.patchID == newID }),
                                let index = self.patchBarItems.firstIndex(where: { $0.patchID == newID }) {
-                                print("🏛️ PatchSelectorViewModel: Duplicated patch, selecting new one... newID: \(newID), newItem: \(newItem), newIndex: \(index)")
+                                print("🏛️ PatchSelectorViewModel: Duplicated long-pressed patch via PatchManager, selecting new one... newID: \(newID), newItem: \(newItem), newIndex: \(index)")
                                 self.viewModel?.selectPatch(newItem)
                                 let newIndexPath = IndexPath(item: index, section: 0)
                                 self.collectionView.selectItem(at: newIndexPath, animated: true, scrollPosition: [])
@@ -489,5 +484,6 @@ extension UIViewController {
         return top
     }
 }
+
 
     

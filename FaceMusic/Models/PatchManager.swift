@@ -129,9 +129,9 @@ class PatchManager {
 
     // Load a patch by ID
     func getPatchData(forID id: Int) -> PatchSettings? {
-        print("📥 PatchManager.getPatchData(\(id)) called.")
+        //print("📥 PatchManager.getPatchData(\(id)) called.")
         if let patch = patches[id] {
-            print("📥 PatchManager.getPatchData(\(id)) found in saved patches. \(patch)")
+            print("📥 PatchManager.getPatchData(\(id)) found in saved patches. \(String(describing: patch.name))")
             return patch
         }
         // If not saved and this is a default patch ID, return the default definition from the registry

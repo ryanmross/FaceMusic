@@ -189,14 +189,14 @@ class MusicBrain {
             // if scaleMask contains a custom scale
             
             let scaleNotes = Self.pitchClasses(fromMask: mask)
-            print("MusicBrain.updateKeyAndScale: Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
+            print("🧠 MusicBrain.updateKeyAndScale: Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
             rebuildQuantization(withScaleClasses: scaleNotes)
         } else {
             // if scaleMask is nil and we want to use default key and scale
             
             let scale = ScaleType.scaleForChordType(chordType)
             self.currentScale = scale
-            print("MusicBrain.updateKeyAndScale: Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
+            print("🧠 MusicBrain.updateKeyAndScale: Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
             rebuildQuantization(withScaleClasses: scale.intervals.map { ($0 + key.rawValue) % 12 })
         }
     }
@@ -235,7 +235,7 @@ class MusicBrain {
     }
     
     func rebuildQuantization(withScaleClasses scaleClasses: [Int]) {
-        print("MusicBrain: rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
+        print("🧠 MusicBrain: rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
         var result: [Int] = []
         for midiNote in 0...127 where scaleClasses.contains(midiNote % 12) {
             result.append(midiNote)

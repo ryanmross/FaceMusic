@@ -11,7 +11,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var id: String { "OscillatorConductor" }
     static var displayName: String = "Oscillator"
     
-    private var voiceBundles: [(voice: MorphingOscillator, fader: Fader)] = []
+    // Chain per voice: MorphingOscillator -> VocalTractFilter -> LowPassButterworthFilter -> Fader
+    private var voiceBundles: [(voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter, fader: Fader)] = []
     
     var faceData: FaceData?
     let engine = AudioEngineManager.shared.engine
@@ -101,6 +102,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     var vibratoRate: Float = 5.0
     private var vibratoPhase: Float = 0.0
     private var vibratoActivationTime: [TimeInterval] = []
+
+    @Published var lowPassCutoff: AUValue = 10000.0 // Hz, Butterworth LPF cutoff
     
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
@@ -155,17 +158,17 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         } else if currentCount < desiredCount {
             print("OscillatorConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
-                let voc = MorphingOscillator(waveformArray: [Table(.triangle), Table(.square), Table(.sine), Table(.sawtooth)])
-
-                
-                let fader = Fader(voc, gain: 0.0)
-                //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
+                let osc = MorphingOscillator(waveformArray: [Table(.triangle), Table(.square), Table(.sine), Table(.sawtooth)])
+                let filter = VocalTractFilter(osc)
+                let lowpass = LowPassButterworthFilter(filter)
+                lowpass.cutoffFrequency = lowPassCutoff
+                let fader = Fader(lowpass, gain: 0.0)
                 AudioEngineManager.shared.addToMixer(node: fader)
-                voiceBundles.append((voice: voc, fader: fader))
+                voiceBundles.append((voice: osc, filter: filter, lowpass: lowpass, fader: fader))
                 vibratoActivationTime.append(0.0)
                 if audioState == .playing {
                     print("OscillatorConductor.updateVoiceCount(): Starting new voice.")
-                    startVoice(fader, voice: voc)
+                    startVoice(fader, voice: osc, filter: filter, lowpass: lowpass)
                 }
             }
         } else {
@@ -173,7 +176,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     print("OscillatorConductor.updateVoiceCount(): Stopping voice.")
-                    stopVoice(last.fader, voice: last.voice)
+                    stopVoice(last.fader, voice: last.voice, filter: last.filter, lowpass: last.lowpass)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                     vibratoActivationTime.removeLast()
                 }
@@ -184,26 +187,30 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
 
-    private func startVoice(_ fader: Fader, voice: MorphingOscillator) {
+    private func startVoice(_ fader: Fader, voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         fader.gain = 0.0
         print("OscillatorConductor.startVoice()")
         voice.start()
+        filter.start()
+        lowpass.cutoffFrequency = lowPassCutoff
+        lowpass.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
     }
 
-    private func stopVoice(_ fader: Fader, voice: MorphingOscillator) {
+    private func stopVoice(_ fader: Fader, voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         print("OscillatorConductor.stopVoice()")
+        lowpass.stop()
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
+        filter.stop()
         voice.stop()
-        
     }
     
     func stopAllVoices() {
         print("OscillatorConductor.stopAllVoices()")
         for bundle in voiceBundles {
-            stopVoice(bundle.fader, voice: bundle.voice)
+            stopVoice(bundle.fader, voice: bundle.voice, filter: bundle.filter, lowpass: bundle.lowpass)
         }
     }
     
@@ -216,8 +223,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         print("OscillatorConductor: 🔌 Disconnecting voices from mixer...")
         voiceBundles.forEach { bundle in
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
-            // Extra safeguard to prevent duplicate stops
             if audioState == .playing {
+                bundle.lowpass.stop()
+                bundle.filter.stop()
                 bundle.voice.stop()
             }
         }
@@ -227,14 +235,10 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     func connectToMixer() {
         print("OscillatorConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
         for bundle in voiceBundles {
-            // Always try removing first (safe even if not connected)
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
-
-            // Then re-add
             AudioEngineManager.shared.addToMixer(node: bundle.fader)
-
             if audioState == .playing {
-                startVoice(bundle.fader, voice: bundle.voice)
+                startVoice(bundle.fader, voice: bundle.voice, filter: bundle.filter, lowpass: bundle.lowpass)
             }
         }
     }
@@ -310,6 +314,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         for (index, harmony) in harmonies.enumerated() {
             if index < voiceBundles.count {
                 let voice = voiceBundles[index].voice
+                let filter = voiceBundles[index].filter
+                let lowpass = voiceBundles[index].lowpass
+                if lowpass.cutoffFrequency != lowPassCutoff { lowpass.cutoffFrequency = lowPassCutoff }
                 let currentFrequency = midiNoteToFrequency(harmony)
                 let previousTargetFrequency = Self.lastTargetFrequency[index]
 
@@ -344,10 +351,12 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     voice.frequency = vibratoFreq
                 }
 
-                
-                voice.index = interpolatedJawOpen
-                //voice.lipShape = interpolatedMouthClose
-
+                // Apply vocal tract filter parameters from face data
+                filter.jawOpen = interpolatedJawOpen
+                filter.lipShape = interpolatedMouthClose
+                filter.tongueDiameter = 0.5
+                filter.tonguePosition = 0.5
+                filter.nasality = 0.0
             }
         }
 
@@ -360,7 +369,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
                 let delay = Double(index) * 0.1
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    self.startVoice(voiceBundle.fader, voice: voiceBundle.voice)
+                    self.startVoice(voiceBundle.fader, voice: voiceBundle.voice, filter: voiceBundle.filter, lowpass: voiceBundle.lowpass)
                 }
             }
         }

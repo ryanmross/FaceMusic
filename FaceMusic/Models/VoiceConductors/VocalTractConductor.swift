@@ -20,7 +20,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     static var id: String { "VocalTractConductor" }
     static var displayName: String = "Vocal Tract"
     
-    private var voiceBundles: [(voice: VocalTract, fader: Fader)] = []
+    // Each voice bundle: (glottis, filter, lowpass, fader)
+    private var voiceBundles: [(glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter, fader: Fader)] = []
     
     var faceData: FaceData?
     let engine = AudioEngineManager.shared.engine
@@ -106,6 +107,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     var vibratoRate: Float = 5.0
     private var vibratoPhase: Float = 0.0
     private var vibratoActivationTime: [TimeInterval] = []
+
+    @Published var lowPassCutoff: AUValue = 4000.0  // Hz
     
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
@@ -148,27 +151,25 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     internal func updateVoiceCount() {
-        
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
-        
         print("😮 VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
-        
         if currentCount == desiredCount {
             print("😮 VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
-
         } else if currentCount < desiredCount {
             print("😮 VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
-                let voc = VocalTract()
-                let fader = Fader(voc, gain: 0.0)
-                //AudioEngineManager.shared.removeFromMixer(node: fader) // Ensure node isn't already in mixer
+                let glottis = VocalGlottis()
+                let filter = VocalTractFilter(glottis)
+                let lowpass = LowPassButterworthFilter(filter)
+                lowpass.cutoffFrequency = lowPassCutoff
+                let fader = Fader(lowpass, gain: 0.0)
                 AudioEngineManager.shared.addToMixer(node: fader)
-                voiceBundles.append((voice: voc, fader: fader))
+                voiceBundles.append((glottis: glottis, filter: filter, lowpass: lowpass, fader: fader))
                 vibratoActivationTime.append(0.0)
                 if audioState == .playing {
                     print("😮 VocalTractConductor.updateVoiceCount(): Starting new voice.")
-                    startVoice(fader, voice: voc)
+                    startVoice(fader, glottis: glottis, filter: filter, lowpass: lowpass)
                 }
             }
         } else {
@@ -176,37 +177,39 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
                     print("VocalTractConductor.updateVoiceCount(): Stopping voice.")
-                    stopVoice(last.fader, voice: last.voice)
+                    stopVoice(last.fader, glottis: last.glottis, filter: last.filter, lowpass: last.lowpass)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                     vibratoActivationTime.removeLast()
                 }
             }
         }
-        
-        // log mixer state
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
     }
 
-    private func startVoice(_ fader: Fader, voice: VocalTract) {
+    private func startVoice(_ fader: Fader, glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         fader.gain = 0.0
         print("😮 VocalTractConductor.startVoice()")
-        voice.start()
+        glottis.start()
+        filter.start()
+        lowpass.cutoffFrequency = lowPassCutoff
+        lowpass.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
     }
 
-    private func stopVoice(_ fader: Fader, voice: VocalTract) {
+    private func stopVoice(_ fader: Fader, glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         print("😮 VocalTractConductor.stopVoice()")
+        lowpass.stop()
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
-        voice.stop()
-        
+        glottis.stop()
+        filter.stop()
     }
     
     func stopAllVoices() {
         print("😮 VocalTractConductor.stopAllVoices()")
         for bundle in voiceBundles {
-            stopVoice(bundle.fader, voice: bundle.voice)
+            stopVoice(bundle.fader, glottis: bundle.glottis, filter: bundle.filter, lowpass: bundle.lowpass)
         }
     }
     
@@ -219,9 +222,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         print("😮 VocalTractConductor: 🔌 Disconnecting voices from mixer...")
         voiceBundles.forEach { bundle in
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
-            // Extra safeguard to prevent duplicate stops
             if audioState == .playing {
-                bundle.voice.stop()
+                bundle.lowpass.stop()
+                bundle.glottis.stop()
+                bundle.filter.stop()
             }
         }
         audioState = .stopped
@@ -230,14 +234,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     func connectToMixer() {
         print("😮 VocalTractConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
         for bundle in voiceBundles {
-            // Always try removing first (safe even if not connected)
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
-
-            // Then re-add
             AudioEngineManager.shared.addToMixer(node: bundle.fader)
-
             if audioState == .playing {
-                startVoice(bundle.fader, voice: bundle.voice)
+                startVoice(bundle.fader, glottis: bundle.glottis, filter: bundle.filter, lowpass: bundle.lowpass)
             }
         }
     }
@@ -257,8 +257,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
         let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
 
-        //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
-
         // Map raw face pitch directly to nearest quantized note using MusicBrain
         let quantizedNote = MusicBrain.shared.nearestQuantizedNote(
             rawPitch: faceData.pitch,
@@ -271,7 +269,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
         let keyIndex = currentPitch % 12
         let displayNote = 60 + keyIndex // force note into C4–B4 range
-        //print("🔔 Posting HighlightPianoKey for note \(displayNote)")
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: Notification.Name("HighlightPianoKey"), object: nil, userInfo: ["midiNote": displayNote])
         }
@@ -298,7 +295,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         }
 
         while harmonies.count < numOfVoices {
-            harmonies.append(harmonies.last ?? currentPitch) // Repeat the last harmony or use `currentPitch`
+            harmonies.append(harmonies.last ?? currentPitch)
         }
 
         // Ensure arrays are sized properly
@@ -312,7 +309,13 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
         for (index, harmony) in harmonies.enumerated() {
             if index < voiceBundles.count {
-                let voice = voiceBundles[index].voice
+                let glottis = voiceBundles[index].glottis
+                let filter = voiceBundles[index].filter
+                let lowpass = voiceBundles[index].lowpass
+                // Keep lowpass cutoff in sync with published value
+                if lowpass.cutoffFrequency != lowPassCutoff {
+                    lowpass.cutoffFrequency = lowPassCutoff
+                }
                 let currentFrequency = midiNoteToFrequency(harmony)
                 let previousTargetFrequency = Self.lastTargetFrequency[index]
 
@@ -322,7 +325,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     Self.glissandoEndTime[index] = now + (Double(glissandoSpeed) / 1000)
                     vibratoActivationTime[index] = Self.glissandoEndTime[index]
                     Self.targetFrequency[index] = currentFrequency
-                    Self.frequencyStartValue[index] = voice.frequency
+                    Self.frequencyStartValue[index] = glottis.frequency
                     Self.lastTargetFrequency[index] = currentFrequency
                     Self.shouldApplyGlissando[index] = true
                 }
@@ -332,40 +335,39 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                     let glissDuration = Self.glissandoEndTime[index] - Self.glissandoStartTime[index]
                     let glissProgress = (now - Self.glissandoStartTime[index]) / glissDuration
                     let clampedProgress = max(0.0, min(1.0, glissProgress))
-                    voice.frequency = Self.frequencyStartValue[index] + Float(clampedProgress) * (Self.targetFrequency[index] - Self.frequencyStartValue[index])
-
+                    glottis.frequency = Self.frequencyStartValue[index] + Float(clampedProgress) * (Self.targetFrequency[index] - Self.frequencyStartValue[index])
                     if clampedProgress >= 1.0 {
                         Self.shouldApplyGlissando[index] = false
                     }
                 }
                 // Vibrato is applied only after glissando is finished and after vibrato activation time
                 if !Self.shouldApplyGlissando[index] && now > vibratoActivationTime[index] {
-                    let harmonyAttenuation: Float = (index == 0) ? 1.0 : 0.4 // Lead voice full vibrato, harmonies less
+                    let harmonyAttenuation: Float = (index == 0) ? 1.0 : 0.4
                     let attenuatedVibrato = vibratoAmount * harmonyAttenuation
                     let vibratoOffset = sin(vibratoPhase) * (attenuatedVibrato / 100.0)
                     let vibratoFreq = currentFrequency * pow(2.0, vibratoOffset / 12.0)
-                    voice.frequency = vibratoFreq
+                    glottis.frequency = vibratoFreq
                 }
 
-                voice.jawOpen = interpolatedJawOpen
-                voice.lipShape = interpolatedMouthClose
-                voice.tongueDiameter = 0.5
-                voice.tonguePosition = 0.5
-                voice.tenseness = 0.6
-                voice.nasality = 0.0
+                // Apply glottis parameters
+                glottis.tenseness = 0.6 // Could be parameterized
+
+                // Apply filter parameters
+                filter.jawOpen = interpolatedJawOpen
+                filter.lipShape = interpolatedMouthClose
+                filter.tongueDiameter = 0.5
+                filter.tonguePosition = 0.5
+                filter.nasality = 0.0
             }
         }
-
-        //print("audioState: \(audioState)")
 
         if audioState == .waitingForFaceData {
             print("😮 VocalTractConductor.updateWithFaceData() setting audioState to .playing")
             audioState = .playing
-
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
                 let delay = Double(index) * 0.1
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                    self.startVoice(voiceBundle.fader, voice: voiceBundle.voice)
+                    self.startVoice(voiceBundle.fader, glottis: voiceBundle.glottis, filter: voiceBundle.filter, lowpass: voiceBundle.lowpass)
                 }
             }
         }
@@ -475,11 +477,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
   
     func returnAudioStats() -> String {
         var result = "audioState: \(audioState)"
-
         for (index, bundle) in voiceBundles.enumerated() {
-            result += "\nVoice \(index + 1): Frequency: \(bundle.voice.frequency)"
+            result += "\nVoice \(index + 1): Frequency: \(bundle.glottis.frequency)"
         }
-
         return result
     }
     

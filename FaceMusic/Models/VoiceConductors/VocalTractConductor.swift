@@ -253,9 +253,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         // Use extracted interpolation method
         let interpolatedValues = interpolateFaceParameters(from: faceData)
 
-        let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
-        let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
-        let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
+        //let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
+        //let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
+        //let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
 
         // Map raw face pitch directly to nearest quantized note using MusicBrain
         let quantizedNote = MusicBrain.shared.nearestQuantizedNote(
@@ -353,10 +353,10 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 glottis.tenseness = 0.6 // Could be parameterized
 
                 // Apply filter parameters
-                filter.jawOpen = interpolatedJawOpen
-                filter.lipShape = interpolatedMouthClose
-                filter.tongueDiameter = 0.5
-                filter.tonguePosition = 0.5
+                filter.jawOpen = faceData.jawOpen
+                filter.tongueDiameter = faceData.tongueDiameter
+                filter.tonguePosition = faceData.tonguePosition
+                filter.lipShape = faceData.lipOpen
                 filter.nasality = 0.0
             }
         }

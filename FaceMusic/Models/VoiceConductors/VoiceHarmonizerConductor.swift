@@ -261,8 +261,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         let interpolatedValues = interpolateFaceParameters(from: faceData)
 
         let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
-        let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
-        let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
+        //let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
+        //let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
 
         //print("Interpolated Jaw Open: // \(interpolatedJawOpen)")
 

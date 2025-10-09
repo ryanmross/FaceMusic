@@ -28,8 +28,6 @@ class FaceStatsManager: StatsWindowManager {
             Stat(name: "Pitch", value: data.pitch, range: (-1.0, 1.0)),
             Stat(name: "Roll", value: data.roll, range: (-1.0, 1.0)),
             Stat(name: "Jaw Open", value: data.jawOpen, range: (0.0, 1.0)),
-            Stat(name: "Mouth Funnel", value: data.mouthFunnel, range: (0.0, 1.0)),
-            Stat(name: "Mouth Close", value: data.mouthClose, range: (0.0, 1.0))
         ]
         
         return stats.map { stat in

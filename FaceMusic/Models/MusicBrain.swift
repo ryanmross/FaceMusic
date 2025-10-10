@@ -125,10 +125,45 @@ class MusicBrain {
         }
     }
     
-    private enum ARDataPitchRange {
-        // the range of the data coming in from ARKit from the head that we will convert to pitch.
-        static let min: Float = -1.0
-        static let max: Float = 0.45
+    // A provider that returns the latest detected raw facial pitch (in the same units as ARDataPitchRange expects).
+    // Your AR session/update loop should set this to supply the most recent value.
+    // Example usage elsewhere:
+    // MusicBrain.currentRawPitchProvider = { latestARHeadPitch }
+    static var currentRawPitchProvider: (() -> Float?) = { nil }
+    
+    private struct ARDataPitchRange {
+        // Represents the mapping range for ARKit head rotation to pitch.
+        // `center` is the neutral resting position. `span` is half the full range.
+        // min = center - span, max = center + span
+        var center: Float = -0.275 // initial neutral center between -1.0 and 0.45
+        var span: Float = 0.725    // half of the default full range (approx (0.45 - (-1.0)) / 2)
+
+        var minValue: Float { center - span }
+        var maxValue: Float { center + span }
+
+        mutating func set(center: Float, span: Float) {
+            self.center = center
+            self.span = Swift.max(0.001, span) // avoid zero/negative span
+        }
+
+        mutating func recenter(to newCenter: Float) {
+            self.center = newCenter
+        }
+
+        mutating func calibrateCenter(from rawPitch: Float) {
+            // Set the neutral center to the provided raw pitch value
+            self.center = rawPitch
+        }
+        
+        /// Recenters to the current facial pitch using the shared provider, if available.
+        /// If no provider is set or it returns nil, this is a no-op.
+        mutating func recenterFromCurrentFacePitch() {
+            print("🧠 MusicBrain: ARDataPitchRange.recenterFromCurrentFacePitch called")
+            let provider = MusicBrain.currentRawPitchProvider
+            if let pitch = provider() {
+                self.center = pitch
+            }
+        }
     }
     
 
@@ -138,6 +173,7 @@ class MusicBrain {
     private(set) var currentChordType: ChordType = .major
     
     private(set) var customScaleMask: UInt16? // nil = no override
+    private var arPitchRange = ARDataPitchRange()
     
     var currentScalePitchClasses: [Int] {
         if let mask = customScaleMask {
@@ -207,8 +243,8 @@ class MusicBrain {
         lowestNote: Int,
         highestNote: Int
     ) -> Int {
-        let clampedRaw = min(max(rawPitch, ARDataPitchRange.min), ARDataPitchRange.max)
-        let normalized = (clampedRaw - ARDataPitchRange.min) / (ARDataPitchRange.max - ARDataPitchRange.min)
+        let clampedRaw = Swift.min(Swift.max(rawPitch, arPitchRange.minValue), arPitchRange.maxValue)
+        let normalized = (clampedRaw - arPitchRange.minValue) / (arPitchRange.maxValue - arPitchRange.minValue)
         let validNotes = nearestNoteTable.filter { $0 >= lowestNote && $0 <= highestNote }
         guard !validNotes.isEmpty else { return lowestNote }
         let index = Int(round(normalized * Float(validNotes.count - 1)))
@@ -270,9 +306,35 @@ class MusicBrain {
         rebuildQuantization(withScaleClasses: currentScalePitchClasses)
     }
 
+    /// Set the pitch mapping range by specifying a new center and span (half-range).
+    /// - Parameters:
+    ///   - center: The neutral resting raw pitch value.
+    ///   - span: Half of the full range around the center. Full range = 2*span.
+    func setPitchRange(center: Float, span: Float) {
+        arPitchRange.set(center: center, span: span)
+    }
+
+    /// Recenter the pitch mapping while preserving the current span.
+    func recenterPitchRange(to center: Float) {
+        arPitchRange.recenter(to: center)
+    }
+
+    /// Convenience: recenter the pitch mapping using the current facial pitch, if available.
+    func recenterPitchRangeFromCurrentFacePitch() {
+        arPitchRange.recenterFromCurrentFacePitch()
+    }
+
+    /// Calibrate the neutral center from a sampled raw pitch value (e.g., current head pose).
+    func calibrateCenterFrom(rawPitch: Float) {
+        arPitchRange.calibrateCenter(from: rawPitch)
+    }
     
 }
 
-
     
+
+
+
+
+
 

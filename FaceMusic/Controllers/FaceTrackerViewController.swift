@@ -29,6 +29,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
    
     
     private let faceDataBrain = FaceDataBrain()
+    private var lastFacePitch: Float?
     
     var currentFaceAnchor: ARFaceAnchor?
     var selectedVirtualContent: VirtualContentType! = .texture
@@ -258,6 +259,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // MARK: - Reset Tracking Button
     @objc private func resetTrackingTapped() {
         resetTracking()
+        resetFacePitchCenter()
     }
 
     private func createAndLoadNewPatch() {
@@ -347,7 +349,34 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         sceneView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
         
+        
+        
+        
+        
         faceAnchorsAndContentControllers.removeAll()
+        
+        
+    }
+    
+    /// - Tag: resetFacePitchCenter
+    func resetFacePitchCenter() {
+        // Recenter MusicBrain pitch range using the most recent cached face pitch if available
+        if let pitch = lastFacePitch {
+            MusicBrain.currentRawPitchProvider = { [weak self] in
+                // Prefer the freshest cached pitch; if missing, fall back to processing current anchor
+                if let latest = self?.lastFacePitch {
+                    return latest
+                } else if let current = self?.currentFaceAnchor {
+                    return self?.faceDataBrain.processFaceData(current).pitch ?? pitch
+                } else {
+                    return pitch
+                }
+            }
+            print("😮 FaceTrackerViewController.resetFacePitchCenter.recenterPitchRangeFromCurrentFacePitch")
+            MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch()
+        } else {
+            print("😮 FaceTrackerViewController.resetFacePitchCenter: No recent face pitch available yet.")
+        }
     }
     
     func sessionWasInterrupted(_ session: ARSession) {
@@ -418,6 +447,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         }
         
         let faceData = faceDataBrain.processFaceData(faceAnchor)
+        self.lastFacePitch = faceData.pitch
         
         // Update Conductor with new face data
         VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
@@ -457,3 +487,6 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
 
 
    
+
+
+

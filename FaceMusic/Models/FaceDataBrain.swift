@@ -204,9 +204,9 @@ class FaceDataBrain {
         if !probs.isEmpty {
             if let (bestLabel, bestProb) = probs.max(by: { $0.value < $1.value }) {
                 let display = Vowel(rawValue: bestLabel)?.display ?? bestLabel
-                print("🤯 Predicted vowel: \(display) (\(String(format: "%.2f", bestProb)))")
+                //print("🤯 Predicted vowel: \(display) (\(String(format: "%.2f", bestProb)))")
             } else {
-                print("🤯 No vowel prediction available")
+                //print("🤯 No vowel prediction available")
             }
         }
 

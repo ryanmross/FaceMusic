@@ -34,6 +34,9 @@ struct FaceData {
 // NOTE: yaw/pitch/roll are kept for UI/UX logic but are intentionally EXCLUDED
 // from the vowel classifier inputs to avoid confounding pose with vowel shape.
 class FaceDataBrain {
+    
+    static let shared = FaceDataBrain()
+    
     // MARK: - Vowel classifier runtime (internal)
     private var mlModel: MLModel? = nil
     private var featureOrder: [String] = [
@@ -115,7 +118,7 @@ class FaceDataBrain {
     /// Loads the default vowel classifier model and normalization statistics from the app bundle.
     /// Model is searched for in `Models/VowelClassifier/` as either `.mlpackage` or `.mlmodelc`.
     /// Normalization stats are loaded from `norm_stats.json` within the same subfolder.
-    init() {
+    private init() {
         let bundle = Bundle.main
         let modelFolder = "Models/VowelClassifier"
 
@@ -134,9 +137,11 @@ class FaceDataBrain {
         self.loadModelIfNeeded(modelURL: modelURL, normURL: normURL)
 
         if self.mlModel != nil {
-            print("🤯 FaceDataBrain: Loaded vowel classifier model. modelURL=\(String(describing: modelURL)), normURL=\(String(describing: normURL))")
+            
+            Log.line(actor: "🤯 FaceDataBrain", fn: "init", "Loaded vowel classifier model. modelURL=\(String(describing: modelURL)), normURL=\(String(describing: normURL))")
+
         } else {
-            print("🤯 FaceDataBrain: Failed to load vowel classifier model. modelURL=\(String(describing: modelURL)), normURL=\(String(describing: normURL))")
+            Log.line(actor: "🤯 FaceDataBrain", fn: "init", "Failed to load vowel classifier model. modelURL=\(String(describing: modelURL)), normURL=\(String(describing: normURL))")
         }
     }
 
@@ -314,13 +319,18 @@ class FaceDataBrain {
                     }
                     return canonical
                 } else {
-                    print("🤯 Model output missing probability dictionary. Available features: \(out.featureNames)")
+                    
+                    Log.line(actor: "🤯 FaceDataBrain", fn: "predictVowelProbs", "Model output missing probability dictionary. Available features: \(out.featureNames)")
+
                 }
             } else {
-                print("🤯 Failed to build MLDictionaryFeatureProvider for key 'seq'")
+                
+                Log.line(actor: "🤯 FaceDataBrain", fn: "predictVowelProbs", "Failed to build MLDictionaryFeatureProvider for key 'seq'")
             }
         } catch {
-            print("🤯 Model prediction threw error: \(error)")
+            
+            Log.line(actor: "🤯 FaceDataBrain", fn: "predictVowelProbs", "Model prediction threw error: \(error)")
+
         }
         return [:]
     }
@@ -346,7 +356,9 @@ class FaceDataBrain {
 
         // If we have no usable probability mass, fall back to a simple, deterministic heuristic
         guard weightSum > 1e-6 else {
-            print("🤯 Using fallbackVocalTractParams (no matching labels or zero mass). probs: \(probs)")
+            
+            //Log.line(actor: "🤯 FaceDataBrain", fn: "blendVocalTractParams", "Using fallbackVocalTractParams (no matching labels or zero mass). probs: \(probs)")
+
             let fallback = fallbackVocalTractParams()
             return (fallback.0, fallback.1, fallback.2, jawOpen)
         }

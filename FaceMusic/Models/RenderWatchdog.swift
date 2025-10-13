@@ -107,7 +107,8 @@ final class RenderWatchdog {
 
         os_signpost(.event, log: log, name: "WatchdogAttach", "rate=%{public}.0fHz sessionIO=%{public}.3fms bufCh=%{public}d",
                     sampleRate, expectedMsFromSession ?? -1, Int(fmt.channelCount))
-        print("[RenderWatchdog] attach: sr=\(sampleRate), sessionIO=\(expectedMsFromSession ?? -1)ms, ch=\(fmt.channelCount)")
+        
+        Log.line(actor: "🐶 RenderWatchdog", fn: "attach", "sr=\(sampleRate), sessionIO=\(expectedMsFromSession ?? -1)ms, ch=\(fmt.channelCount)")
 
         node.installTap(onBus: 0, bufferSize: 0, format: fmt) { [weak self] buffer, when in
             guard let self else { return }
@@ -210,7 +211,9 @@ final class RenderWatchdog {
                         os_signpost(.event, log: self.log, name: "GlitchStart",
                                     "xruns=%{public}d window=%{public}.2fs avgOverMs=%{public}.2f std=%.3f",
                                     recentXrunTimes.count, self.config.glitchWindowSeconds, avgOver, stddev)
-                        print("[RenderWatchdog] GlitchStart xruns=\(recentXrunTimes.count) avgOverMs=\(String(format: "%.2f", avgOver)) window=\(self.config.glitchWindowSeconds)s std=\(String(format: "%.3f", stddev))")
+                        
+                        Log.line(actor: "🐶 RenderWatchdog", fn: "attach", "GlitchStart xruns=\(recentXrunTimes.count) avgOverMs=\(String(format: "%.2f", avgOver)) window=\(self.config.glitchWindowSeconds)s std=\(String(format: "%.3f", stddev))")
+
                         onGlitchStateChanged?(true)
                     }
                 } else {
@@ -223,6 +226,9 @@ final class RenderWatchdog {
                             lastGlitchChangeHostTime = nowHost
                             os_signpost(.event, log: self.log, name: "GlitchEnd")
                             print("[RenderWatchdog] GlitchEnd")
+                            Log.line(actor: "🐶 RenderWatchdog", fn: "attach", "GlitchEnd")
+
+                            
                             onGlitchStateChanged?(false)
                         }
                     }
@@ -246,6 +252,8 @@ final class RenderWatchdog {
         lastHostTime = nil
         os_signpost(.event, log: log, name: "WatchdogDetach")
         print("[RenderWatchdog] detach")
+        Log.line(actor: "🐶 RenderWatchdog", fn: "detach", "")
+
     }
 
     // MARK: - Helpers

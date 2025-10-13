@@ -28,7 +28,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
    
     
-    private let faceDataBrain = FaceDataBrain()
+    private let faceDataBrain = FaceDataBrain.shared
     private var lastFacePitch: Float?
     
     var currentFaceAnchor: ARFaceAnchor?
@@ -39,8 +39,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        print("😮 FaceTrackerViewController: ARVC viewDidLoad  bounds:", sceneView.bounds, "scale:", sceneView.contentScaleFactor)
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidLoad", "ARVC viewDidLoad bounds: \(sceneView.bounds), scale: \(sceneView.contentScaleFactor)")
         
         // Set the view's delegate
         sceneView.delegate = self
@@ -95,8 +94,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             hostingController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             hostingController.view.heightAnchor.constraint(equalToConstant: 100)
         ])
-        
-        print("😮 FaceTrackerViewController.viewDidLoad calling patchSelectorViewModel.loadPatches()")
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidLoad", "calling patchSelectorViewModel.loadPatches()")
+
         patchSelectorViewModel.loadPatches()
         
        
@@ -104,7 +103,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         patchSelectorViewModel.onPatchSelected = { [weak self] patch in
             guard let self = self else { return }
             
-            print("😮 FaceTrackerViewController.viewDidLoad onPatchSelected() callback fired")
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidLoad", "onPatchSelected() callback fired but callback does nothing currently.")
+
             //self.loadPatchByID(Int(patch.id) ?? -1)
         }
     }
@@ -166,9 +166,12 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // Loads a patch by its ID, dynamically selects the VoiceConductor implementation,
     // initializes it, applies the settings, and assigns it to self.conductor.
     func loadPatchByID(_ id: Int) {
-        print("😮 FaceTrackerViewController.loadPatchById(\(id))")
+        
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "loadPatchByID", "loading patch id: \(id)")
+
+        
         guard let settings = PatchManager.shared.getPatchData(forID: id) else {
-            print("😮 FaceTrackerViewController.loadPatchByID: Patch with ID \(id) not found.")
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "loadPatchByID", "Patch with ID \(id) not found.")
             return
         }
         self.loadAndApplyPatch(settings: settings, patchID: id)
@@ -176,7 +179,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     // MARK: - Save Patch Button
     @objc private func savePatchButtonTapped() {
-        print("👉 FaceTrackerViewController.savePatchButtonTapped")
+        Log.line(actor: "👉 FaceTrackerViewController", fn: "savePatchButtonTapped", "SavePatchButtonTapped() called")
+
+        
         let alert = UIAlertController(title: "Save Patch", message: "Enter name to save patch:", preferredStyle: .alert)
         alert.addTextField { textField in
             textField.placeholder = "Patch name"
@@ -199,7 +204,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                     self.patchSelectorViewModel.selectPatch(newItem)
                 }
             }
-            print("💾 New patch saved with ID \(newSettings.id) and name '\(name)'")
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "savePatchButtonTapped", "💾 New patch saved with ID \(newSettings.id) and name '\(name)'")
+
         }))
         present(alert, animated: true, completion: nil)
     }
@@ -212,7 +218,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         let settings = conductor.exportCurrentSettings()
         voiceSettingsViewController.patchSettings = settings
         
-        print("😮 FaceTrackerViewController.voiceSettingsButtonTapped  settings: \(settings)")
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "voiceSettingsButtonTapped", "settings: \(settings)")
+
         
         var attributes = EKAttributes()
         attributes.displayDuration = .infinity
@@ -232,7 +239,10 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     // MARK: - Note Settings Button
     @objc private func noteSettingsButtonTapped() {
         
-        print("👉 FaceTrackerViewController.noteSettingsButtonTapped()")
+        Log.line(actor: "👉 FaceTrackerViewController", fn: "noteSettingsButtonTapped", "noteSettingsButtonTapped() called")
+
+        
+        
         let noteSettingsViewController = NoteSettingsViewController()
 
         let conductor = VoiceConductorManager.shared.activeConductor
@@ -279,7 +289,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        print("😮 FaceTrackerVC didAppear bounds:", sceneView.bounds, "scale:", sceneView.contentScaleFactor)
+        
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidAppear", "FaceTrackerVC didAppear bounds: \(sceneView.bounds) scale: \(sceneView.contentScaleFactor)")
+
         guard !didStartAR else { return }
         didStartAR = true
         DispatchQueue.main.async { [weak self] in
@@ -294,7 +306,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         // Pause the view's session
         sceneView.session.pause()
         
-        print("😮 FaceTrackerViewController.viewWillDisappear: Removing all inputs mixer")
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "viewWillDisappear", "Removing all inputs mixer")
         AudioEngineManager.shared.removeAllInputsFromMixer()
         // conductor = nil
     }
@@ -318,7 +330,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     // MARK: - Patch Loading Helper
     private func loadAndApplyPatch(settings: PatchSettings, patchID: Int?) {
-        print("😮 FaceTrackerViewController.loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
+        
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "loadAndApplyPatch", "loadAndApplyPatch() called for patchID: \(patchID ?? -1) with settings: \(settings)")
 
         VoiceConductorManager.shared.setActiveConductor(settings: settings)
 
@@ -372,17 +385,23 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
                     return pitch
                 }
             }
-            print("😮 FaceTrackerViewController.resetFacePitchCenter.recenterPitchRangeFromCurrentFacePitch")
+            
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "calling MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch()")
+
             MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch()
         } else {
-            print("😮 FaceTrackerViewController.resetFacePitchCenter: No recent face pitch available yet.")
+            
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "No recent face pitch available yet.")
+
         }
     }
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
         
-        print("😮 FaceTrackerViewController.SessionWasInterrupted.")
+        
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "sessionWasInterrupted", "")
+
         //AudioEngineManager.shared.removeAllInputsFromMixer()
         //conductor = nil
 
@@ -391,7 +410,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
         
-        print("😮 FaceTrackerViewController.sessionInterruptionEnded.")
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "sessionInterruptionEnded", "")
+
         //AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
         //resetTracking()
     }
@@ -473,7 +493,8 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         guard let faceAnchor = anchor as? ARFaceAnchor else { return }
         // Handle the removal of an ARFaceAnchor.
 
-        print("😮 FaceTrackerViewController.renderer.didRemove: REMOVED AR ANCHOR")
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "renderer.didRemove", "REMOVED AR ANCHOR")
+
         
         faceAnchorsAndContentControllers[faceAnchor] = nil
         // Remove the face anchor from the dictionary.

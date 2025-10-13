@@ -32,7 +32,8 @@ final class PatchSelectorViewModel: ObservableObject {
 
         for (index, item) in patchBarItems.enumerated() {
             let patch = patch(for: item)
-            print("🏛️ PatchSelectorViewModel - Loaded patchBarItem \(index+1)/(\(patchBarItems.count)): \(String(describing: patch?.name)). id: \(item.patchID).  type: \(item.type)")
+            
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "loadPatches", "Loaded patchBarItem \(index+1)/(\(patchBarItems.count)): \(String(describing: patch?.name)). id: \(item.patchID).  type: \(item.type)")
         }
 
         // Select current patch if found, otherwise select the first
@@ -47,7 +48,7 @@ final class PatchSelectorViewModel: ObservableObject {
 
     // MARK: Selection
     func selectPatch(_ item: PatchBarItem) {
-        print("🏛️ PatchSelectorViewModel.selectPatch - patchID: \(item.patchID)")
+        Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "patchID: \(item.patchID)")
 
         // Refresh from latest data so badges/types stay in sync
         patchBarItems = generatePatchBarItems()
@@ -58,23 +59,31 @@ final class PatchSelectorViewModel: ObservableObject {
         case .defaultOriginal, .defaultEdited:
             if patchSettings.id != currentEditedDefaultPatchID {
                 if let oldID = currentEditedDefaultPatchID {
-                    print("🏛️ PatchSelectorViewModel.selectPatch - Calling PatchManager.clearEditedDefaultPatch(forID:) for \(oldID).")
+                    
+                    Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "Calling PatchManager.clearEditedDefaultPatch(forID:) for \(oldID).")
                     PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
                 }
-                print("🏛️ PatchSelectorViewModel.selectPatch - setting currentEditedDefaultPatchID to \(patchSettings.id).")
+                Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "setting currentEditedDefaultPatchID to \(patchSettings.id).")
+
                 currentEditedDefaultPatchID = patchSettings.id
             }
-            print("🏛️ PatchSelectorViewModel.selectPatch calling VoiceConductorManager.setActiveConductor(settings:) and PatchManager.currentPatchID set to \(patchSettings.id).")
+            
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "calling VoiceConductorManager.setActiveConductor(settings:) and PatchManager.currentPatchID set to \(patchSettings.id).")
+
             VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
             PatchManager.shared.currentPatchID = patchSettings.id
 
         case .saved:
             if let oldID = currentEditedDefaultPatchID {
-                print("🏛️ PatchSelectorViewModel.selectPatch calling PatchManager.clearEditedDefaultPatch(forID:) and currentEditedDefaultPatchID set to nil.")
+                
+                Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "calling PatchManager.clearEditedDefaultPatch(forID:) and currentEditedDefaultPatchID set to nil.")
+
                 PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
                 currentEditedDefaultPatchID = nil
             }
-            print("🏛️ PatchSelectorViewModel.selectPatch calling PatchManager.save(settings:) and VoiceConductorManager.setActiveConductor(settings:)")
+            
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "selectPatch", "calling PatchManager.save(settings:) and VoiceConductorManager.setActiveConductor(settings:)")
+
             VoiceConductorManager.shared.setActiveConductor(settings: patchSettings)
             PatchManager.shared.currentPatchID = patchSettings.id
         }
@@ -86,7 +95,9 @@ final class PatchSelectorViewModel: ObservableObject {
     /// Call this to explicitly reset the current default patch back to its defaults
     func resetDefaultPatch() {
         if let oldID = currentEditedDefaultPatchID {
-            print("🏛️ PatchSelectorViewModel.resetDefaultPatch - Clearing edited default patch for \(oldID)")
+            
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "resetDefaultPatch", "Clearing edited default patch for \(oldID)")
+
             PatchManager.shared.clearEditedDefaultPatch(forID: oldID)
             currentEditedDefaultPatchID = nil
         }
@@ -103,6 +114,9 @@ final class PatchSelectorViewModel: ObservableObject {
     }
 
     private func generatePatchBarItems() -> [PatchBarItem] {
+        
+        // ask PatchManager for the saved patches, combine with allDefaultPatches and return an array of PatchBarItems with the patch info in it
+        
         let savedPatchIDs = PatchManager.shared.listPatches()
         let savedPatches = savedPatchIDs.compactMap { PatchManager.shared.getPatchData(forID: $0) }
         let savedPatchMap = Dictionary(uniqueKeysWithValues: savedPatches.map { ($0.id, $0) })
@@ -125,7 +139,8 @@ final class PatchSelectorViewModel: ObservableObject {
         }
 
         for (index, item) in items.enumerated() {
-            print("🏛️ PatchSelectorViewModel generated patch bar item \(index): \(item) ")
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "generatePatchBarItems", "generated patch bar item \(index): \(item.patchID)")
+
         }
         return items
     }
@@ -247,7 +262,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
 
     // MARK: UICollectionViewDelegate
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        print("👉 🏛️ PatchSelectorViewModel.collectionView didSelectItemAt indexPath: \(indexPath)")
+        
+        Log.line(actor: "👉 🏛️ PatchSelectorViewModel", fn: "didSelectItemAt", "indexPath: \(indexPath)")
+
         let item = patchBarItems[indexPath.item]
 
         if let selectedID = PatchManager.shared.currentPatchID,
@@ -256,7 +273,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
            let currentItem = patchBarItems.first(where: { $0.patchID == selectedID }) {
             switch currentItem.type {
             case .saved:
-                print("🏛️ PatchSelectorViewModel.didSelectItemAt saving currentPatch (we're saving a non-default patch)")
+                
+                Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "didSelectItemAt", "saving currentPatch (we're saving a non-default patch)")
+
                 PatchManager.shared.save(settings: currentPatch)
             case .defaultOriginal, .defaultEdited:
                 vm.resetDefaultPatch()
@@ -264,7 +283,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
         }
 
         if let patch = viewModel?.patch(for: item) {
-            print("🏛️ PatchSelectorViewModel.didSelectItemAt calling onPatchSelected?()")
+            
+            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "didSelectItemAt", "calling onPatchSelected?()")
+
             onPatchSelected?(patch)
             logPatches(patch, label: "🏛️ PatchSelectorViewModel.didSelectItemAt calling viewModel?.selectPatch()")
             viewModel?.selectPatch(item)
@@ -324,7 +345,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
         let point = gestureRecognizer.location(in: collectionView)
         guard let indexPath = collectionView.indexPathForItem(at: point) else { return }
 
-        print("👉 🏛️ PatchSelectorViewModel long press on \(indexPath.item)")
+        
+        Log.line(actor: "👉 🏛️ PatchSelectorViewModel", fn: "handleLongPress", "long press on \(indexPath.item)")
+
         let item = patchBarItems[indexPath.item]
         let canRenameAndDelete = (item.type == .saved)
 
@@ -355,7 +378,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
                             self.viewModel?.loadPatches()
                             if let newItem = self.patchBarItems.first(where: { $0.patchID == newID }),
                                let index = self.patchBarItems.firstIndex(where: { $0.patchID == newID }) {
-                                print("🏛️ PatchSelectorViewModel: Duplicated long-pressed patch via PatchManager, selecting new one... newID: \(newID), newItem: \(newItem), newIndex: \(index)")
+                                
+                                Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "handleLongPress", "Duplicated long-pressed patch via PatchManager, selecting new one... newID: \(newID), newItem: \(newItem), newIndex: \(index)")
+
                                 self.viewModel?.selectPatch(newItem)
                                 let newIndexPath = IndexPath(item: index, section: 0)
                                 self.collectionView.selectItem(at: newIndexPath, animated: true, scrollPosition: [])
@@ -373,7 +398,9 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
                         self.viewModel?.loadPatches()
 
                         if isDeletingCurrentPatch {
-                            print("🏛️ PatchSelectorViewModel - Deleted current patch; selecting previous one if possible.")
+                            
+                            Log.line(actor: "🏛️ PatchSelectorViewModel", fn: "handleLongPress", "Deleted current patch; selecting previous one if possible.")
+                            
                             if let deletedIndex = self.patchBarItems.firstIndex(where: { $0.patchID == deletedPatchID }) {
                                 let fallbackIndex = max(0, deletedIndex - 1)
                                 guard self.patchBarItems.indices.contains(fallbackIndex) else { return }

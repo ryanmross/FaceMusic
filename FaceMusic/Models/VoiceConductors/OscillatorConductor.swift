@@ -141,7 +141,10 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             let clamped = max(lpfMinHz, min(lpfMaxHz, globalLowPassCutoffHz))
             if globalLowPassCutoffHz != clamped { globalLowPassCutoffHz = clamped; return }
             
-            print ("GLOBALLOWPASSCUTOFFHZ: clamped: \(clamped), globalLowPassCutoffHz: \(globalLowPassCutoffHz)")
+            Log.line(actor: "〰️ OscillatorConductor", fn: "var globalLowPassCutoffHz", "\(globalLowPassCutoffHz)")
+
+            
+            
             // Push to all active voices in real-time
             for bundle in voiceBundles {
                 if bundle.lowpass.cutoffFrequency != clamped {
@@ -171,7 +174,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     @Published var numOfVoices: Int {
         didSet {
-            print("OscillatorConductor: numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
+            Log.line(actor: "〰️ OscillatorConductor", fn: "numOfVoices", "numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
+
             updateVoiceCount()
         }
     }
@@ -198,13 +202,15 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
         
-        print("OscillatorConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
+        Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
         
         if currentCount == desiredCount {
-            print("OscillatorConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
 
         } else if currentCount < desiredCount {
-            print("OscillatorConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            
+            Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
             for _ in currentCount..<desiredCount {
                 let osc = MorphingOscillator(waveformArray: [Table(.triangle), Table(.square), Table(.sine), Table(.sawtooth)])
                 osc.index = AUValue(waveformMorph)
@@ -216,15 +222,19 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 voiceBundles.append((voice: osc, filter: filter, lowpass: lowpass, fader: fader))
                 vibratoActivationTime.append(0.0)
                 if audioState == .playing {
-                    print("OscillatorConductor.updateVoiceCount(): Starting new voice.")
+                    Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Starting new voice.")
+
                     startVoice(fader, voice: osc, filter: filter, lowpass: lowpass)
                 }
             }
         } else {
-            print("OscillatorConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            
+            Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
-                    print("OscillatorConductor.updateVoiceCount(): Stopping voice.")
+                    Log.line(actor: "〰️ OscillatorConductor", fn: "updateVoiceCount", "Stopping voice.")
+
                     stopVoice(last.fader, voice: last.voice, filter: last.filter, lowpass: last.lowpass)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                     vibratoActivationTime.removeLast()
@@ -238,7 +248,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     private func startVoice(_ fader: Fader, voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         fader.gain = 0.0
-        print("OscillatorConductor.startVoice() with lowpass: \(globalLowPassCutoffHz)")
+        
+        Log.line(actor: "〰️ OscillatorConductor", fn: "startVoice", "with lowpass: \(globalLowPassCutoffHz)")
+
         voice.index = AUValue(waveformMorph)
         voice.start()
         filter.start()
@@ -249,7 +261,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
     private func stopVoice(_ fader: Fader, voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
-        print("OscillatorConductor.stopVoice()")
+        Log.line(actor: "〰️ OscillatorConductor", fn: "stopVoice", "")
+
         lowpass.stop()
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
@@ -258,7 +271,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func stopAllVoices() {
-        print("OscillatorConductor.stopAllVoices()")
+        Log.line(actor: "〰️ OscillatorConductor", fn: "stopAllVoices", "")
+
         for bundle in voiceBundles {
             stopVoice(bundle.fader, voice: bundle.voice, filter: bundle.filter, lowpass: bundle.lowpass)
         }
@@ -270,7 +284,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
 
     func disconnectFromMixer() {
-        print("OscillatorConductor: 🔌 Disconnecting voices from mixer...")
+        
+        Log.line(actor: "〰️ OscillatorConductor", fn: "disconnectFromMixer", "🔌 Disconnecting voices from mixer...")
+
         voiceBundles.forEach { bundle in
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
             if audioState == .playing {
@@ -283,7 +299,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
     func connectToMixer() {
-        print("OscillatorConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+        
+        Log.line(actor: "〰️ OscillatorConductor", fn: "connectToMixer", "🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+
         for bundle in voiceBundles {
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
             AudioEngineManager.shared.addToMixer(node: bundle.fader)
@@ -418,7 +436,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         //print("audioState: \(audioState)")
 
         if audioState == .waitingForFaceData {
-            print("OscillatorConductor.updateWithFaceData() setting audioState to .playing")
+            
+            Log.line(actor: "〰️ OscillatorConductor", fn: "updateWithFaceData", "setting audioState to .playing")
+
             audioState = .playing
 
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
@@ -447,7 +467,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applySettings(_ settings: PatchSettings) {
-        print("〰️ OscilatorConductor.applySettings called")
+        
+        Log.line(actor: "〰️ OscillatorConductor", fn: "applySettings", "applySettings called")
+
         
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
@@ -486,12 +508,17 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         if let anyLP = patch.conductorSpecificSettings?["lowPassCutoff"]?.value,
            let lowPassCutoffHz = FloatValue(from: anyLP) {
 
-            print("applyConductorSpecificSettings: lowPassCutoffHz: \(lowPassCutoffHz), patch.conductorSpecificSettings[lowpasscutoff]: \(String(describing: patch.conductorSpecificSettings?["lowPassCutoff"]?.value))")
+            
+            Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(lowPassCutoffHz), patch.conductorSpecificSettings[lowpasscutoff]: \(String(describing: patch.conductorSpecificSettings?["lowPassCutoff"]?.value))")
+
 
             let clamped = max(lpfMinHz, min(lpfMaxHz, lowPassCutoffHz))
             self.globalLowPassCutoffHz = clamped
             self.conductorSpecificSettings["lowPassCutoff"] = clamped
-            print("conductorSpecificSettings[lowPassCutoff]: \(clamped)")
+            
+            
+            Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(clamped)")
+
         }
     }
 

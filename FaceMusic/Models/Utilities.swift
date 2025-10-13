@@ -8,6 +8,16 @@ Convenience extensions for system types.
 import ARKit
 import SceneKit
 
+enum Log {
+    static let runID = String(UUID().uuidString.prefix(4))
+    static var start = CACurrentMediaTime()
+
+    static func line(actor: String, fn: String, _ msg: @autoclosure () -> String) {
+        let t = CACurrentMediaTime() - start
+        print(String(format: "[t=%.3f][run=%@][actor=%@][fn=%@] %@", t, runID, actor, fn, msg()))
+    }
+}
+
 
 extension SCNMatrix4 {
     /**

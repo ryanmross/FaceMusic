@@ -192,6 +192,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         
         // log mixer state
         AudioEngineManager.shared.logMixerState("after updateVoiceCount")
+
     }
 
     private func startVoice(_ fader: Fader, voice: MorphingOscillator) {

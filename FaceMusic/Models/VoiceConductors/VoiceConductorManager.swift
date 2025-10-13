@@ -57,7 +57,9 @@ class VoiceConductorManager {
     
     /// Sets the active VoiceConductor and applies its settings
     func setActiveConductor(settings: PatchSettings) {
-        print("👨‍✈️ VoiceConductorManager.setActiveConductor() called with conductorID: \(settings.conductorID)")
+        
+        Log.line(actor: "👨‍✈️ VoiceConductorManager", fn: "setActiveConductor", "setActiveConductor() called with conductorID: \(settings.conductorID)")
+
         
         let id = settings.conductorID
 
@@ -78,7 +80,9 @@ class VoiceConductorManager {
 
         // Look up the descriptor and initialize
         guard let descriptor = VoiceConductorRegistry.descriptor(for: id) else {
-            print("👨‍✈️VoiceConductorManager.  No VoiceConductorDescriptor found for ID '\(id)'")
+            
+            Log.line(actor: "👨‍✈️ VoiceConductorManager", fn: "setActiveConductor", "No VoiceConductorDescriptor found for ID '\(id)'")
+
             return
         }
 
@@ -86,7 +90,9 @@ class VoiceConductorManager {
         conductors[id] = newConductor
         activeConductorID = id
         newConductor.applySettings(settings)
-        print("👨‍✈️VoiceConductorManager.setActiveConductor FINISHED.")
+        
+        Log.line(actor: "👨‍✈️ VoiceConductorManager", fn: "setActiveConductor", "FINISHED")
+
     }
     
     /// Passthrough method to stop all voices on active conductor

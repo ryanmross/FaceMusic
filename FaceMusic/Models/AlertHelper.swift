@@ -20,7 +20,10 @@ enum AlertHelper {
         presenter: UIViewController,
         completion: @escaping (String?) -> Void
     ) {
-        print("promptForPatchName()")
+        
+        Log.line(actor: "🪟 AlertHelper", fn: "promptForPatchName", "")
+
+        
         let sp = OSSignpostID(log: poiLog)
         os_signpost(.begin, log: poiLog, name: "BuildPrompt", signpostID: sp)
 

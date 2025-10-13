@@ -11,7 +11,8 @@ import UIKit
 import os.log
 
 var session: AVAudioSession {
-    print("🔧 AVAudioSession initialized")
+    Log.line(actor: "🔧 AVAudioSession", fn: "var session", "Initialized AVAudioSession")
+    
     return AVAudioSession.sharedInstance()
 }
 
@@ -61,7 +62,7 @@ final class AudioEngineManager {
     func addToMixer(node: Node, caller: String = #function) {
         let nodeID = ObjectIdentifier(node)
         if addedFaderIDs.contains(nodeID) {
-            print("🚗 AudioEngineManager: ⚠️ Node already connected: \(node)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "addToMixer", "⚠️ Node already connected: \(node)")
             return
         }
         mixer.addInput(node)
@@ -70,27 +71,31 @@ final class AudioEngineManager {
 
     func removeFromMixer(node: Node, caller: String = #function) {
         let nodeID = ObjectIdentifier(node)
-        print("🚗 AudioEngineManager: 🧯 [Mixer] removeInput called from \(caller). Node: \(node).")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "removeFromMixer", "🧯 [Mixer] removeInput called from \(caller). Node: \(node)")
+
         mixer.removeInput(node)
         addedFaderIDs.remove(nodeID)
-        logMixerState("removeFromMixer() - after removal")
+        logMixerState("removeFromMixer()")
+
     }
 
     func removeAllInputsFromMixer(caller: String = #function) {
-        print("🚗 AudioEngineManager: 🧯 [Mixer] removeAllInputsFromMixer called from \(caller). ")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🧯 [Mixer] removeAllInputsFromMixer called from \(caller).")
         let connections = mixer.connections
         for node in connections {
             let nodeID = ObjectIdentifier(node)
             mixer.removeInput(node)
             addedFaderIDs.remove(nodeID)
         }
-        logMixerState("removeAllInputsFromMixer() - after removal")
+        logMixerState("removeAllInputsFromMixer()")
     }
 
+    
     /// Logs the current mixer state for debugging.
     func logMixerState(_ context: String) {
         let connections = mixer.connections
-        print("🚗 AudioEngineManager: 🔍 Mixer State (\(context)) — Total Inputs: \(connections.count)")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🔍 Mixer State (\(context)) — Total Inputs: \(connections.count)")
+
     }
 
     // MARK: - Private: Configuration
@@ -108,7 +113,8 @@ final class AudioEngineManager {
     private func configureBufferLength() {
         // Detect device and adjust buffer length
         let model = UIDevice.current.modelIdentifier
-        print("🚗 AudioEngineManager: Detected device: \(model)")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "configureBufferLength", "Detected device: \(model)")
+
 
         var chosen: Settings.BufferLength = .longest
         if model.hasPrefix("iPhone") {
@@ -124,19 +130,20 @@ final class AudioEngineManager {
             }
         }
         Settings.bufferLength = chosen
-        print("🚗 AudioEngineManager: Selected buffer length: \(Settings.bufferLength)")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "configureBufferLength", "Selected buffer length: \(Settings.bufferLength)")
 
         do {
             try audioSession.setPreferredIOBufferDuration(Settings.bufferLength.duration)
         } catch {
-            print("🚗 AudioEngineManager: ⚠️ setPreferredIOBufferDuration failed: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "configureBufferLength", "⚠️ setPreferredIOBufferDuration failed: \(error)")
+
         }
     }
 
     private func configureCategoryAndMode() {
         do {
             try audioSession.setCategory(
-                .playback,
+                .playAndRecord,
                 options: [
                     .mixWithOthers,
                     .allowBluetoothA2DP
@@ -144,32 +151,36 @@ final class AudioEngineManager {
             )
             try audioSession.setMode(.default)
         } catch {
-            print("🚗 AudioEngineManager: ⚠️ setCategory/setMode failed: \(error)")
+            
+            Log.line(actor: "🚗 AudioEngineManager", fn: "configureCategoryAndMode", "⚠️ setCategory/setMode failed: \(error)")
         }
     }
 
     private func applyPreferredSampleRate(_ rate: Double) {
         do { try audioSession.setPreferredSampleRate(rate) } catch {
-            print("🚗 AudioEngineManager: ⚠️ setPreferredSampleRate failed: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "applyPreferredSampleRate", "⚠️ setPreferredSampleRate failed: \(error)")
         }
     }
 
     private func activateSession() {
         do { try audioSession.setActive(true) } catch {
-            print("🚗 AudioEngineManager: ⚠️ setActive(true) failed: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "activateSession", "⚠️ setActive(true) failed: \(error)")
+
         }
     }
 
     private func logRoute(_ context: String) {
         let route = audioSession.currentRoute
-        print("🚗 AudioEngineManager: Route (\(context)) in=\(route.inputs.map { $0.portType.rawValue }) out=\(route.outputs.map { $0.portType.rawValue })")
+        
+        Log.line(actor: "🚗 AudioEngineManager", fn: "logRoute", "Route () in=\(route.inputs.map(\.portType.rawValue).joined(separator: ",")) out=\(route.outputs.map(\.portType.rawValue).joined(separator: ","))")
     }
 
     private func updateSettingsFromHardware() {
         let hwRate = audioSession.sampleRate
         Settings.sampleRate = hwRate
         Settings.audioFormat = AVAudioFormat(standardFormatWithSampleRate: hwRate, channels: 2) ?? AVAudioFormat()
-        print("🚗 AudioEngineManager: Hardware sample rate: \(hwRate)")
+
+        Log.line(actor: "🚗 AudioEngineManager", fn: "updateSettingsFromHardware", "Hardware sample rate: \(hwRate)")
     }
 
     private func setupMixerAndStartEngine() {
@@ -180,21 +191,22 @@ final class AudioEngineManager {
         do {
             try mixer.avAudioNode.auAudioUnit.outputBusses[0].setFormat(desiredFormat)
         } catch {
-            print("🚗 AudioEngineManager: ⚠️ Failed to set mixer output format: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "setupMixerAndStartEngine", "⚠️ Failed to set mixer output format: \(error)")
+
         }
         engine.output = mixer
 
         didAttachWatchdog = false
         do {
             try engine.start()
-            print("🚗 AudioEngineManager: AudioEngine started")
-            print("🚗 AudioEngineManager: 🔧 Mixer initialized with format: \(mixer.avAudioNode.outputFormat(forBus: 0))")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "setupMixerAndStartEngine", "AudioEngine started. Mixer initialized with format \(mixer.avAudioNode.outputFormat(forBus: 0))")
+            
             if !didAttachWatchdog {
                 RenderWatchdog.shared.attach(to: mixer.avAudioNode, engine: engine.avEngine)
                 didAttachWatchdog = true
             }
         } catch {
-            Log("AudioEngineManager: AudioEngine start error: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "setupMixerAndStartEngine", "AudioEngine start error: \(error)")
         }
     }
 
@@ -205,7 +217,8 @@ final class AudioEngineManager {
             let format = AVAudioFormat(standardFormatWithSampleRate: hwRate, channels: 2)!
             try mixer.avAudioNode.auAudioUnit.outputBusses[0].setFormat(format)
         } catch {
-            print("🚗 AudioEngineManager: ⚠️ Failed to update mixer format to hardware: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "updateMixerFormatToHardware", "⚠️ Failed to update mixer format to hardware: \(error)")
+
         }
     }
 
@@ -213,9 +226,11 @@ final class AudioEngineManager {
         engine.stop()
         do {
             try engine.start()
-            print("🚗 AudioEngineManager: Engine restarted")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "Engine restarted.")
+
         } catch {
-            print("🚗 AudioEngineManager: ⚠️ Engine restart failed: \(error)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⚠️ Engine restart failed: \(error)")
+
         }
     }
 
@@ -239,12 +254,14 @@ final class AudioEngineManager {
             if let prev = info[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription {
                 let prevIn = prev.inputs.map { $0.portType.rawValue }
                 let prevOut = prev.outputs.map { $0.portType.rawValue }
-                print("🚗 AudioEngineManager: Route change reason=\(reasonStr) prevIn=\(prevIn) prevOut=\(prevOut) newIn=\(inPorts) newOut=\(outPorts)")
+                Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "Route change reason=\(reasonStr) prevIn=\(prevIn) prevOut=\(prevOut) newIn=\(inPorts) newOut=\(outPorts)")
+
             } else {
-                print("🚗 AudioEngineManager: Route change reason=\(reasonStr) newIn=\(inPorts) newOut=\(outPorts)")
+                Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "Route change reason=\(reasonStr) newIn=\(inPorts) newOut=\(outPorts)")
+
             }
         } else {
-            print("🚗 AudioEngineManager: Route change newIn=\(inPorts) newOut=\(outPorts)")
+            Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "Route change newIn=\(inPorts) newOut=\(outPorts)")
         }
 
         let oldRate = Settings.sampleRate
@@ -259,7 +276,8 @@ final class AudioEngineManager {
     }
 
     @objc private func handleMediaServicesReset(_ notification: Notification) {
-        print("🚗 AudioEngineManager: Media services reset — restarting engine")
+        Log.line(actor: "🚗 AudioEngineManager", fn: "handleMediaServicesReset", "Media services reset — restarting engine")
+
         stopEngine()
         configureSessionAndEngine()
     }

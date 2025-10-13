@@ -48,7 +48,9 @@ class PatchManager {
     var currentPatchID: Int? {
         get {
             if let stored = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
-                print("📥 PatchManager.currentPatchID get. 💾 Loaded (\(stored)) from UserDefaults.currentPatchID")
+                
+                Log.line(actor: "📥 PatchManager", fn: "var curentPatchID.get", "💾 Loaded (\(stored)) from UserDefaults.currentPatchID")
+
                 return stored
             }
             return nil
@@ -56,10 +58,14 @@ class PatchManager {
         set {
             if let id = newValue {
                 UserDefaults.standard.set(id, forKey: "currentPatchID")
-                print("📥 PatchManager.currentPatchID set. 💾 Saved (\(id)) to UserDefaults.currentPatchID ")
+                
+                Log.line(actor: "📥 PatchManager", fn: "var curentPatchID.set", "💾 Saved (\(id)) to UserDefaults.currentPatchID")
+
             } else {
                 UserDefaults.standard.removeObject(forKey: "currentPatchID")
-                print("📥 PatchManager.currentPatchID set. 🧹 Removed currentPatchID from UserDefaults")
+                
+                Log.line(actor: "📥 PatchManager", fn: "var curentPatchID.set", "🧹 Removed currentPatchID from UserDefaults")
+
             }
         }
     }
@@ -71,23 +77,19 @@ class PatchManager {
         // TEMPORARY WHILE WE WORK ON THE APP
         //deleteAllPatches()
         
-        print("📥 PatchManager.init. Calling loadFromStorage()")
+        
+        Log.line(actor: "📥 PatchManager", fn: "init", "Calling loadFromStorage()")
+
         loadFromStorage() // loading from storage on app start
         
-        // removed this as currentPatchID does this in the getter
-//        if let storedID = UserDefaults.standard.object(forKey: "currentPatchID") as? Int {
-//            currentPatchID = storedID
-//            print("📥 PatchManager.init. Restored currentPatchID from UserDefaults: \(storedID)")
-//
-//        } else {
-//            print("⚠️ PatchManager.init. No currentPatchID found in UserDefaults — may be first launch or unset.")
-//        }
     }
     
     /// Save or update a patch, optionally specifying an ID. If no ID is given and the settings' ID is 0, a new ID is generated.
     @discardableResult
     func save(settings: PatchSettings, forID: Int? = nil) -> Int {
-        print("💾 PatchManager.save(settings:), id: \(settings.id)")
+        
+        Log.line(actor: "📥 PatchManager", fn: "save", "💾 id: \(settings.id)")
+
         
         var settingsToSave = settings
         let patchID = forID ?? (settingsToSave.id != 0 ? settingsToSave.id : generateNewPatchID())
@@ -105,16 +107,23 @@ class PatchManager {
 /// - Returns: The newly assigned patch ID, or nil if the source patch could not be found.
     @discardableResult
     func duplicatePatch(from sourceID: Int, as newName: String) -> Int? {
-        print("💾 PatchManager.duplicatePatch(from: \(sourceID), as: \(newName)) called.")
+        
+        Log.line(actor: "📥 PatchManager", fn: "duplicatePatch", "from: \(sourceID), as: \(newName)) called.")
+
+
         guard var base = getPatchData(forID: sourceID) else {
-            print("⚠️ PatchManager.duplicatePatch - Source patch not found for ID: \(sourceID)")
+            
+            Log.line(actor: "📥 PatchManager", fn: "duplicatePatch", "⚠️ Source patch not found for ID: \(sourceID)")
+
             return nil
         }
         // Force a new ID and assign the requested name
         base.id = 0
         base.name = newName
         let newID = save(settings: base)
-        print("💾 PatchManager.duplicatePatch - Duplicated patch from \(sourceID) to new ID: \(newID)")
+        
+        Log.line(actor: "📥 PatchManager", fn: "duplicatePatch", "💾 Duplicated patch from \(sourceID) to new ID: \(newID)")
+
         return newID
     }
     
@@ -131,15 +140,21 @@ class PatchManager {
     func getPatchData(forID id: Int) -> PatchSettings? {
         //print("📥 PatchManager.getPatchData(\(id)) called.")
         if let patch = patches[id] {
-            print("📥 PatchManager.getPatchData(\(id)) found in saved patches. \(String(describing: patch.name))")
+            
+            Log.line(actor: "📥 PatchManager", fn: "getPatchData", "getPatchData(\(id)) found in saved patches. \(String(describing: patch.name))")
+
             return patch
         }
         // If not saved and this is a default patch ID, return the default definition from the registry
         if id < 0, let defaultPatch = defaultPatch(forID: id) {
-            print("📥 PatchManager.getPatchData(\(id)) returning default patch from registry.")
+            
+            Log.line(actor: "📥 PatchManager", fn: "getPatchData", "getPatchData(\(id)) returning default patch from registry.")
+
             return defaultPatch
         }
-        print("📥 PatchManager.getPatchData(\(id)) not found.")
+        
+        Log.line(actor: "📥 PatchManager", fn: "getPatchData", "getPatchData(\(id)) not found.")
+
         return nil
     }
     
@@ -151,7 +166,9 @@ class PatchManager {
     
     // List all saved IDs
     func listPatches() -> [Int] {
-        print("📥 PatchManager: listPatches() called.  \(patches.keys.count) saved patches.")
+        
+        Log.line(actor: "📥 PatchManager", fn: "listPatches", "listPatches() called.  \(patches.keys.count) saved patches.")
+
         return Array(patches.keys).sorted()
     }
     
@@ -200,7 +217,9 @@ class PatchManager {
     func clearEditedDefaultPatch(forID id: Int) {
         patches.removeValue(forKey: id)
         saveToStorage()
-        print("🧹 PatchManager.clearEditedDefaultPatch.  Cleared patch ID \(id) from patches variable (we are not saving the default patch)")
+        
+        Log.line(actor: "📥 PatchManager", fn: "clearEditedDefaultPatch", "🧹 Cleared patch ID \(id) from patches variable (we are not saving the default patch)")
+
     }
 
 
@@ -208,7 +227,9 @@ class PatchManager {
     // Load everything from UserDefaults
     private func loadFromStorage() {
         guard let data = UserDefaults.standard.data(forKey: patchesKey) else {
-            print("📭 PatchManager.loadFromStorage().  No saved patch data found in UserDefaults for key: \(patchesKey)")
+            
+            Log.line(actor: "📥 PatchManager", fn: "loadFromStorage", "No saved patch data found in UserDefaults for key: \(patchesKey)")
+
             return
         }
         if let decoded = try? JSONDecoder().decode([Int: PatchSettings].self, from: data) {
@@ -229,13 +250,17 @@ class PatchManager {
     // Generate a new unique ID (increments highest existing positive ID)
     func generateNewPatchID() -> Int {
         let newID = (patches.keys.filter { $0 > 0 }.max() ?? 0) + 1
-        print("💾 PatchManager.generatedNewPatchID(): Generating new ID: \(newID)")
+        
+        Log.line(actor: "📥 PatchManager", fn: "generateNewPatchID", "Generating new ID: \(newID)")
+
         return newID
     }
     
     /// ⚠️ TEMPORARY: Deletes all saved patches on app launch.
     private func deleteAllPatches() {
-        print("⚠️ TEMPORARY: Deleting all saved patches on init.")
+        
+        Log.line(actor: "📥 PatchManager", fn: "deleteAllPatches", "⚠️ TEMPORARY: Deleting all saved patches on init.")
+
         patches.removeAll()
         saveToStorage()
     }

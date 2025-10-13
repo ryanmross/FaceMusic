@@ -135,8 +135,8 @@ private enum Prewarm {
 
         guard let window = window else { return }
         
-        print("🧍‍♂️ AppDelegate prewarming UI/Haptics/Keyboard")
-
+        Log.line(actor: "🎓 AppDelegate", fn: "prewarmAllIfNeeded", "prewarming UI/Haptics/Keyboard")
+        
         func doPrewarm(on view: UIView) {
             prewarmKeyboard(on: view)
             prewarmUIEffects(on: view)
@@ -160,7 +160,8 @@ private enum Prewarm {
 
     // Trigger keyboard subsystem warmup without showing it
     private static func prewarmKeyboard(on view: UIView) {
-        print("🧍‍♂️ AppDelegate prewarming keyboard")
+        Log.line(actor: "🎓 AppDelegate", fn: "prewarmKeyboard", "prewarming Keyboard")
+
         let tf = UITextField(frame: .zero)
         tf.isHidden = true
         // Reduce heavyweight text services and avoid showing the system keyboard
@@ -186,7 +187,7 @@ private enum Prewarm {
     // Warm up blur/material effects rendering path
     private static func prewarmUIEffects(on view: UIView) {
         
-        print("🧍‍♂️ AppDelegate prewarming UI effects")
+        Log.line(actor: "🎓 AppDelegate", fn: "prewarmUIEffects", "prewarming UI Effects")
         let blur = UIBlurEffect(style: .systemChromeMaterial)
         let v = UIVisualEffectView(effect: blur)
         v.frame = CGRect(x: -1, y: -1, width: 1, height: 1)
@@ -197,7 +198,8 @@ private enum Prewarm {
 
     // Warm up haptic generators
     private static func prewarmHaptics() {
-        print("🧍‍♂️ AppDelegate prewarming haptics")
+        Log.line(actor: "🎓 AppDelegate", fn: "prewarmHaptics", "prewarming haptics")
+
         let impact = UIImpactFeedbackGenerator(style: .medium)
         let selection = UISelectionFeedbackGenerator()
         impact.prepare()
@@ -207,7 +209,8 @@ private enum Prewarm {
     static func prewarmTextEntryAlertIfNeeded(in mainWindow: UIWindow?, completion: (() -> Void)? = nil) {
         guard !didPrewarmTextAlert else { completion?(); return }
         didPrewarmTextAlert = true
-        print("🧍‍♂️ AppDelegate FULL prewarm (real keyboard) using host + cover windows")
+        Log.line(actor: "🎓 AppDelegate", fn: "prewarmTextEntryAlertIfNeeded", "FULL prewarm (real keyboard) using host + cover windows")
+
 
         guard let mainWindow = mainWindow else {
             // Fallback: Force UIKit internals to initialize.

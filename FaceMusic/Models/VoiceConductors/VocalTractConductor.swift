@@ -153,7 +153,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     @Published var numOfVoices: Int {
         didSet {
-            print("😮 VocalTractConductor: numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
+            
+            Log.line(actor: "😮 VocalTractConductor", fn: "var numOfVoices.didSet", "numOfVoices changed to \(numOfVoices), triggering updateVoiceCount()")
+
             updateVoiceCount()
         }
     }
@@ -178,11 +180,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     internal func updateVoiceCount() {
         let currentCount = voiceBundles.count
         let desiredCount = numOfVoices
-        print("😮 VocalTractConductor.updateVoiceCount(): Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
+        
+        Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Update voice count with numOfVoices: \(numOfVoices). currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
         if currentCount == desiredCount {
-            print("😮 VocalTractConductor.updateVoiceCount(): Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Voice count unchanged.  currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
         } else if currentCount < desiredCount {
-            print("😮 VocalTractConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            
+            Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
             for _ in currentCount..<desiredCount {
                 let glottis = VocalGlottis()
                 let filter = VocalTractFilter(glottis)
@@ -193,15 +200,21 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 voiceBundles.append((glottis: glottis, filter: filter, lowpass: lowpass, fader: fader))
                 vibratoActivationTime.append(0.0)
                 if audioState == .playing {
-                    print("😮 VocalTractConductor.updateVoiceCount(): Starting new voice.")
+                    
+                    Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Starting new voice.")
+
                     startVoice(fader, glottis: glottis, filter: filter, lowpass: lowpass)
                 }
             }
         } else {
-            print("😮 VocalTractConductor.updateVoiceCount(): Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+            
+            Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Removing voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
+
             for _ in desiredCount..<currentCount {
                 if let last = voiceBundles.popLast() {
-                    print("VocalTractConductor.updateVoiceCount(): Stopping voice.")
+                    
+                    Log.line(actor: "😮 VocalTractConductor", fn: "updateVoiceCount", "Stopping voice.")
+
                     stopVoice(last.fader, glottis: last.glottis, filter: last.filter, lowpass: last.lowpass)
                     AudioEngineManager.shared.removeFromMixer(node: last.fader)
                     vibratoActivationTime.removeLast()
@@ -213,7 +226,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     private func startVoice(_ fader: Fader, glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         fader.gain = 0.0
-        print("😮 VocalTractConductor.startVoice()")
+        Log.line(actor: "😮 VocalTractConductor", fn: "startVoice", "")
+
         glottis.start()
         filter.start()
         lowpass.cutoffFrequency = globalLowPassCutoffHz
@@ -223,7 +237,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
     private func stopVoice(_ fader: Fader, glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
-        print("😮 VocalTractConductor.stopVoice()")
+        Log.line(actor: "😮 VocalTractConductor", fn: "stopVoice", "")
+
         lowpass.stop()
         let fadeEvent = AutomationEvent(targetValue: 0.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
@@ -232,7 +247,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func stopAllVoices() {
-        print("😮 VocalTractConductor.stopAllVoices()")
+        Log.line(actor: "😮 VocalTractConductor", fn: "stopAllVoices", "")
+
         for bundle in voiceBundles {
             stopVoice(bundle.fader, glottis: bundle.glottis, filter: bundle.filter, lowpass: bundle.lowpass)
         }
@@ -244,7 +260,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
 
     func disconnectFromMixer() {
-        print("😮 VocalTractConductor: 🔌 Disconnecting voices from mixer...")
+        
+        Log.line(actor: "😮 VocalTractConductor", fn: "disconnectFromMixer", "🔌 Disconnecting voices from mixer...")
+
         voiceBundles.forEach { bundle in
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
             if audioState == .playing {
@@ -257,7 +275,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
     func connectToMixer() {
-        print("😮 VocalTractConductor: 🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+        Log.line(actor: "😮 VocalTractConductor", fn: "connectToMixer", "🔗 Reconnecting voices to mixer. Only starts them if audio is playing.")
+
+        
         for bundle in voiceBundles {
             AudioEngineManager.shared.removeFromMixer(node: bundle.fader)
             AudioEngineManager.shared.addToMixer(node: bundle.fader)
@@ -387,7 +407,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         }
 
         if audioState == .waitingForFaceData {
-            print("😮 VocalTractConductor.updateWithFaceData() setting audioState to .playing")
+            
+            Log.line(actor: "😮 VocalTractConductor", fn: "updateWithFaceData", "setting audioState to .playing")
+
             audioState = .playing
             for (index, voiceBundle) in self.voiceBundles.enumerated() {
                 let delay = Double(index) * 0.1

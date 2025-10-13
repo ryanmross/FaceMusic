@@ -158,7 +158,9 @@ class MusicBrain {
         /// Recenters to the current facial pitch using the shared provider, if available.
         /// If no provider is set or it returns nil, this is a no-op.
         mutating func recenterFromCurrentFacePitch() {
-            print("🧠 MusicBrain: ARDataPitchRange.recenterFromCurrentFacePitch called")
+            
+            Log.line(actor: "🧠 MusicBrain", fn: "recenterFromCurrentFacePitch", "ARDataPitchRange.recenterFromCurrentFacePitch called")
+
             let provider = MusicBrain.currentRawPitchProvider
             if let pitch = provider() {
                 self.center = pitch
@@ -225,14 +227,18 @@ class MusicBrain {
             // if scaleMask contains a custom scale
             
             let scaleNotes = Self.pitchClasses(fromMask: mask)
-            print("🧠 MusicBrain.updateKeyAndScale: Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
+            
+            Log.line(actor: "🧠 MusicBrain", fn: "updateKeyAndScale", "Using custom scale mask: \(scaleNotes).  Calling rebuildQuantization(\(scaleNotes))")
+
             rebuildQuantization(withScaleClasses: scaleNotes)
         } else {
             // if scaleMask is nil and we want to use default key and scale
             
             let scale = ScaleType.scaleForChordType(chordType)
             self.currentScale = scale
-            print("🧠 MusicBrain.updateKeyAndScale: Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
+            
+            Log.line(actor: "🧠 MusicBrain", fn: "updateKeyAndScale", "Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
+
             rebuildQuantization(withScaleClasses: scale.intervals.map { ($0 + key.rawValue) % 12 })
         }
     }
@@ -271,7 +277,9 @@ class MusicBrain {
     }
     
     func rebuildQuantization(withScaleClasses scaleClasses: [Int]) {
-        print("🧠 MusicBrain: rebuildQuantization called, recieved scaleClasses: \(scaleClasses)")
+        
+        Log.line(actor: "🧠 MusicBrain", fn: "rebuildQuantization", "recieved scaleClasses: \(scaleClasses)")
+
         var result: [Int] = []
         for midiNote in 0...127 where scaleClasses.contains(midiNote % 12) {
             result.append(midiNote)

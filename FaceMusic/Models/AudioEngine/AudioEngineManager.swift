@@ -60,6 +60,10 @@ final class AudioEngineManager {
     }
 
     func addToMixer(node: Node, caller: String = #function) {
+        guard mixer != nil else {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "addToMixer", "⚠️ Mixer is nil or not yet initialized. Cannot add to mixer. Called from \(caller).")
+            return
+        }
         let nodeID = ObjectIdentifier(node)
         if addedFaderIDs.contains(nodeID) {
             Log.line(actor: "🚗 AudioEngineManager", fn: "addToMixer", "⚠️ Node already connected: \(node)")
@@ -70,6 +74,10 @@ final class AudioEngineManager {
     }
 
     func removeFromMixer(node: Node, caller: String = #function) {
+        guard mixer != nil else {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "removeFromMixer", "⚠️ Mixer is nil or not yet initialized. Cannot remove inputs. Called from \(caller).")
+            return
+        }
         let nodeID = ObjectIdentifier(node)
         Log.line(actor: "🚗 AudioEngineManager", fn: "removeFromMixer", "🧯 [Mixer] removeInput called from \(caller). Node: \(node)")
 
@@ -79,20 +87,28 @@ final class AudioEngineManager {
 
     }
 
-    func removeAllInputsFromMixer(caller: String = #function) {
-        Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🧯 [Mixer] removeAllInputsFromMixer called from \(caller).")
-        let connections = mixer.connections
-        for node in connections {
-            let nodeID = ObjectIdentifier(node)
-            mixer.removeInput(node)
-            addedFaderIDs.remove(nodeID)
-        }
-        logMixerState("removeAllInputsFromMixer()")
+func removeAllInputsFromMixer(caller: String = #function) {
+    guard mixer != nil else {
+        Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "⚠️ Mixer is nil or not yet initialized. Cannot remove inputs. Called from \(caller).")
+        return
     }
+    Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🧯 [Mixer] removeAllInputsFromMixer called from \(caller).")
+    let connections = mixer.connections
+    for node in connections {
+        let nodeID = ObjectIdentifier(node)
+        mixer.removeInput(node)
+        addedFaderIDs.remove(nodeID)
+    }
+    logMixerState("removeAllInputsFromMixer()")
+}
 
     
     /// Logs the current mixer state for debugging.
     func logMixerState(_ context: String) {
+        guard mixer != nil else {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "logMixerState", "⚠️ Mixer is nil or not yet initialized. Cannot log mixer state")
+            return
+        }
         let connections = mixer.connections
         Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🔍 Mixer State (\(context)) — Total Inputs: \(connections.count)")
 

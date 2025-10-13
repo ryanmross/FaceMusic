@@ -19,6 +19,7 @@
 		8D199ABC2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D199ABB2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift */; };
 		8D199ACA2C190FD500BD63A8 /* AudioKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8D199AC92C190FD500BD63A8 /* AudioKit */; };
 		8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */; };
+		8D9770512E9DAD7B003A43B1 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D9770502E9DAD78003A43B1 /* SceneDelegate.swift */; };
 		8D9F31D82E8F7F7100367C72 /* LoadingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D9F31D72E8F7F6D00367C72 /* LoadingViewController.swift */; };
 		8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC213E2C19372B00225D5F /* VirtualContent.swift */; };
 		8DCC21412C19373C00225D5F /* TexturedFace.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DCC21402C19373C00225D5F /* TexturedFace.swift */; };
@@ -62,6 +63,8 @@
 		8D199AB92C190F6400BD63A8 /* FaceMusicUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMusicUITests.swift; sourceTree = "<group>"; };
 		8D199ABB2C190F6400BD63A8 /* FaceMusicUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMusicUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		8D897DFD2E2958570045F72F /* VoiceSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSettingsViewController.swift; sourceTree = "<group>"; };
+		8D9770502E9DAD78003A43B1 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		8D9770522E9DB1EC003A43B1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8D9F31D72E8F7F6D00367C72 /* LoadingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingViewController.swift; sourceTree = "<group>"; };
 		8DCC213E2C19372B00225D5F /* VirtualContent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VirtualContent.swift; sourceTree = "<group>"; };
 		8DCC21402C19373C00225D5F /* TexturedFace.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TexturedFace.swift; sourceTree = "<group>"; };
@@ -128,7 +131,9 @@
 		8D199A982C190F6300BD63A8 /* FaceMusic */ = {
 			isa = PBXGroup;
 			children = (
+				8D9770522E9DB1EC003A43B1 /* Info.plist */,
 				8D199A992C190F6300BD63A8 /* AppDelegate.swift */,
+				8D9770502E9DAD78003A43B1 /* SceneDelegate.swift */,
 				8DD9D14C2D29DC3B008C418E /* AppSettings.swift */,
 				8DEBE57B2D236C31004F4EDD /* Models */,
 				8D199ACB2C19202200BD63A8 /* Views */,
@@ -344,6 +349,7 @@
 				8D897DFE2E2959010045F72F /* VoiceSettingsViewController.swift in Sources */,
 				8DD9D14E2D29DC3E008C418E /* AppSettings.swift in Sources */,
 				8D199A9A2C190F6300BD63A8 /* AppDelegate.swift in Sources */,
+				8D9770512E9DAD7B003A43B1 /* SceneDelegate.swift in Sources */,
 				8DCC213F2C19372B00225D5F /* VirtualContent.swift in Sources */,
 				8DEBE5972D262CBE004F4EDD /* NoteSettingsViewController.swift in Sources */,
 				8D9F31D82E8F7F7100367C72 /* LoadingViewController.swift in Sources */,
@@ -531,6 +537,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MTVA5Y5HB2;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FaceMusic/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "";
@@ -562,6 +569,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MTVA5Y5HB2;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FaceMusic/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = "";

@@ -33,7 +33,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 conductorID: Self.id,
                 imageName: "oscillator_saw_icon",
                 conductorSpecificSettings: [
-                    "vibratoAmount": AnyCodable(50.0)
+                    "vibratoAmount": AnyCodable(50.0),
+                    "waveformMorph": AnyCodable(3.0),
+                    "lowPassCutoff": AnyCodable(10000.0)
                 ]
             ),
             PatchSettings(
@@ -49,7 +51,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 conductorID: Self.id,
                 imageName: "oscillator_sine_icon",
                 conductorSpecificSettings: [
-                    "vibratoAmount": AnyCodable(20.0)
+                    "vibratoAmount": AnyCodable(20.0),
+                    "waveformMorph": AnyCodable(2.0),
+                    "lowPassCutoff": AnyCodable(12000.0)
                 ]
             )
         ]
@@ -90,6 +94,19 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var glissandoSpeed: Float
 
+    // Continuous morph value for MorphingOscillator.index (0.0 = triangle, 1.0 = square, 2.0 = sine, 3.0 = saw)
+    @Published var waveformMorph: Float = 0.0 {
+        didSet {
+            // Clamp 0...3
+            if waveformMorph < 0.0 { waveformMorph = 0.0 }
+            if waveformMorph > 3.0 { waveformMorph = 3.0 }
+            // Apply to all existing voices
+            for bundle in voiceBundles {
+                bundle.voice.index = AUValue(waveformMorph)
+            }
+        }
+    }
+
     // vibratoAmount is always scaled 0–100; scale to 0–1 semitone in getter/setter
     @Published var vibratoAmount: Float = 0.0 {
         didSet {
@@ -103,10 +120,41 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     private var vibratoPhase: Float = 0.0
     private var vibratoActivationTime: [TimeInterval] = []
 
-    @Published var lowPassCutoff: AUValue = 10000.0 // Hz, Butterworth LPF cutoff
+    // LPF settings are stored and persisted in **Hz**.
+    // Shared mapping constants and helpers (log scale 20 Hz .. 20 kHz)
+    private let lpfMinHz: Float = 20.0
+    private let lpfMaxHz: Float = 20000.0
+
+    private func lpfNormalizedToHz(_ t: Float) -> Float {
+        let tn = max(0.0, min(1.0, t))
+        let hz = lpfMinHz * pow(lpfMaxHz / lpfMinHz, tn)
+        return max(lpfMinHz, min(lpfMaxHz, hz))
+    }
+    private func lpfHzToNormalized(_ hz: Float) -> Float {
+        let clamped = max(lpfMinHz, min(lpfMaxHz, hz))
+        return log(clamped / lpfMinHz) / log(lpfMaxHz / lpfMinHz)
+    }
+
+    @Published var globalLowPassCutoffHz: Float = 10000.0 { // Hz, Butterworth LPF cutoff
+        didSet {
+            // Sanitize to audible range and apply live
+            let clamped = max(lpfMinHz, min(lpfMaxHz, globalLowPassCutoffHz))
+            if globalLowPassCutoffHz != clamped { globalLowPassCutoffHz = clamped; return }
+            
+            print ("GLOBALLOWPASSCUTOFFHZ: clamped: \(clamped), globalLowPassCutoffHz: \(globalLowPassCutoffHz)")
+            // Push to all active voices in real-time
+            for bundle in voiceBundles {
+                if bundle.lowpass.cutoffFrequency != clamped {
+                    bundle.lowpass.cutoffFrequency = clamped
+                }
+            }
+            
+        }
+    }
     
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
+    
 
     // --- GLISSANDO/VIBRATO STATE ---
     // These arrays store state for each voice
@@ -159,9 +207,10 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             print("OscillatorConductor.updateVoiceCount(): Adding voices. currentCount: \(currentCount), desiredCount: \(desiredCount)")
             for _ in currentCount..<desiredCount {
                 let osc = MorphingOscillator(waveformArray: [Table(.triangle), Table(.square), Table(.sine), Table(.sawtooth)])
+                osc.index = AUValue(waveformMorph)
                 let filter = VocalTractFilter(osc)
                 let lowpass = LowPassButterworthFilter(filter)
-                lowpass.cutoffFrequency = lowPassCutoff
+                lowpass.cutoffFrequency = globalLowPassCutoffHz
                 let fader = Fader(lowpass, gain: 0.0)
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((voice: osc, filter: filter, lowpass: lowpass, fader: fader))
@@ -189,10 +238,11 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     private func startVoice(_ fader: Fader, voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter) {
         fader.gain = 0.0
-        print("OscillatorConductor.startVoice()")
+        print("OscillatorConductor.startVoice() with lowpass: \(globalLowPassCutoffHz)")
+        voice.index = AUValue(waveformMorph)
         voice.start()
         filter.start()
-        lowpass.cutoffFrequency = lowPassCutoff
+        lowpass.cutoffFrequency = globalLowPassCutoffHz
         lowpass.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
@@ -316,7 +366,12 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 let voice = voiceBundles[index].voice
                 let filter = voiceBundles[index].filter
                 let lowpass = voiceBundles[index].lowpass
-                if lowpass.cutoffFrequency != lowPassCutoff { lowpass.cutoffFrequency = lowPassCutoff }
+                
+                // LPF is driven by globalLowPassCutoffHz's didSet; just mirror if needed
+                if lowpass.cutoffFrequency != globalLowPassCutoffHz {
+                    lowpass.cutoffFrequency = globalLowPassCutoffHz
+                }
+                
                 let currentFrequency = midiNoteToFrequency(harmony)
                 let previousTargetFrequency = Self.lastTargetFrequency[index]
 
@@ -392,7 +447,11 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applySettings(_ settings: PatchSettings) {
-        self.numOfVoices = settings.numOfVoices
+        print("〰️ OscilatorConductor.applySettings called")
+        
+        self.currentSettings = settings
+        applyConductorSpecificSettings(from: settings)
+        
         self.chordType = settings.chordType
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
@@ -402,8 +461,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         } else {
             MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
         }
-        self.currentSettings = settings
-        applyConductorSpecificSettings(from: settings)
+        
+        self.numOfVoices = settings.numOfVoices
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
@@ -415,11 +474,67 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 self.conductorSpecificSettings["vibratoAmount"] = vibrato
             }
         }
+        // Removed waveformIndex block as per instructions
+
+        // Optional: load continuous waveform morph if present
+        if let anyMorph = patch.conductorSpecificSettings?["waveformMorph"]?.value,
+           let morph = FloatValue(from: anyMorph) {
+            self.waveformMorph = max(0.0, min(3.0, morph))
+            self.conductorSpecificSettings["waveformMorph"] = self.waveformMorph
+        }
+        // Optional: load low pass cutoff if present (always apply/persist in **Hz**).
+        if let anyLP = patch.conductorSpecificSettings?["lowPassCutoff"]?.value,
+           let lowPassCutoffHz = FloatValue(from: anyLP) {
+
+            print("applyConductorSpecificSettings: lowPassCutoffHz: \(lowPassCutoffHz), patch.conductorSpecificSettings[lowpasscutoff]: \(String(describing: patch.conductorSpecificSettings?["lowPassCutoff"]?.value))")
+
+            let clamped = max(lpfMinHz, min(lpfMaxHz, lowPassCutoffHz))
+            self.globalLowPassCutoffHz = clamped
+            self.conductorSpecificSettings["lowPassCutoff"] = clamped
+            print("conductorSpecificSettings[lowPassCutoff]: \(clamped)")
+        }
     }
 
+    // Safely coerce a heterogeneous value (from AnyCodable) into an Int
+    private func intValue(from any: Any) -> Int? {
+        switch any {
+        case let v as Int:
+            return v
+        case let v as Int8:
+            return Int(v)
+        case let v as Int16:
+            return Int(v)
+        case let v as Int32:
+            return Int(v)
+        case let v as Int64:
+            return Int(v)
+        case let v as UInt:
+            return Int(v)
+        case let v as UInt8:
+            return Int(v)
+        case let v as UInt16:
+            return Int(v)
+        case let v as UInt32:
+            return Int(v)
+        case let v as UInt64:
+            return Int(v)
+        case let v as Float:
+            return Int(v)
+        case let v as Double:
+            return Int(v)
+        case let s as String:
+            return Int(s)
+        default:
+            return nil
+        }
+    }
     
     func exportConductorSpecificSettings() -> [String: Any]? {
-        return ["vibratoAmount": self.vibratoAmount]
+        return [
+            "vibratoAmount": self.vibratoAmount,
+            "waveformMorph": self.waveformMorph,
+            "lowPassCutoff": self.globalLowPassCutoffHz
+        ]
     }
     
     
@@ -439,13 +554,144 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         )
     }
     
+    // Adds four tick dots aligned to integer positions (0,1,2,3) on a UISlider
+    private func addTickDots(to slider: UISlider, dotColor: UIColor = .tertiaryLabel) {
+        // Remove existing ticks if re-adding
+        slider.subviews.filter { $0.tag == 999_001 }.forEach { $0.removeFromSuperview() }
+
+        // Ensure layout is up to date
+        slider.layoutIfNeeded()
+
+        // Compute track rect in slider's coordinate space
+        let trackRect = slider.trackRect(forBounds: slider.bounds)
+        let trackOriginX = trackRect.origin.x
+        let trackWidth = trackRect.width
+        let trackCenterY = trackRect.midY
+
+        // For values 0..3, compute normalized position and x location
+        for i in 0...3 {
+            let normalized = CGFloat(i) / 3.0
+            let x = trackOriginX + normalized * trackWidth
+
+            let dotSize: CGFloat = 6.0
+            let dot = UIView(frame: CGRect(x: x - dotSize/2, y: trackCenterY - dotSize/2, width: dotSize, height: dotSize))
+            dot.backgroundColor = dotColor
+            dot.layer.cornerRadius = dotSize / 2
+            dot.isUserInteractionEnabled = false
+            dot.tag = 999_001 // mark for cleanup if needed
+            dot.autoresizingMask = [.flexibleLeftMargin, .flexibleRightMargin, .flexibleTopMargin, .flexibleBottomMargin]
+            slider.addSubview(dot)
+        }
+    }
+    
+    // Align an array of labels so their centers sit on the slider's integer tick positions (0..3)
+    private func alignLabels(_ labels: [UILabel], to slider: UISlider) {
+        slider.layoutIfNeeded()
+        guard let superview = slider.superview, !labels.isEmpty else { return }
+
+        let trackRect = slider.trackRect(forBounds: slider.bounds)
+        let trackOriginX = trackRect.origin.x
+        let trackWidth = trackRect.width
+
+        // Convert slider origin to the labels' superview coordinate space
+        let sliderOriginInSuperview = slider.convert(CGPoint.zero, to: superview)
+
+        for (i, label) in labels.enumerated() {
+            let normalized = CGFloat(i) / 3.0 // 0, 1/3, 2/3, 1
+            let xInSlider = trackOriginX + normalized * trackWidth
+            let xInSuperview = sliderOriginInSuperview.x + xInSlider
+
+            // Ensure the label has a valid size before positioning
+            label.sizeToFit()
+            var frame = label.frame
+            frame.origin.x = xInSuperview - frame.width / 2.0
+            // Keep current y (labels container controls vertical position)
+            label.frame = frame
+        }
+    }
+    
     // MARK: - VoiceConductorProtocol
 
     
     func makeSettingsUI(target: Any?, valueChangedAction: Selector, touchUpAction: Selector) -> [UIView] {
         var views: [UIView] = []
 
-        let sliderData = createLabeledSlider(
+        // Waveform using reusable helper with track-aligned labels and tick dots
+        let waveform = createLabeledSlider(
+            title: "Waveform",
+            minLabel: "", // ignored when trackLabels provided
+            maxLabel: "",
+            minValue: 0.0,
+            maxValue: 3.0,
+            initialValue: self.waveformMorph,
+            target: target,
+            valueChangedAction: valueChangedAction,
+            touchUpAction: touchUpAction,
+            trackLabels: ["Triangle", "Square", "Sine", "Saw"],
+            integerTickCount: 4,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (v: Float) in
+                self?.waveformMorph = v
+            },
+            persist: { [weak self] (v: Float) in
+                self?.waveformMorph = v
+                self?.conductorSpecificSettings["waveformMorph"] = v
+            }
+        )
+        // Removed waveform.slider.accessibilityIdentifier that referred to waveformIndex; keep it for waveformMorph only if needed
+        waveform.slider.accessibilityIdentifier = "waveformMorph"
+        views.append(waveform.container)
+
+        // Low Pass control (logarithmic mapping)
+        let currentCutoff = max(lpfMinHz, min(lpfMaxHz, self.globalLowPassCutoffHz))
+        
+        //print("lowPass currentCutoff: \(currentCutoff)")
+        
+        // we are storing lowPass as Hz everywhere we can.  toSlider converts the hz being sent to the slider to a 0-1 float so that it can be displayed
+        let lowPass = createLabeledSlider(
+            title: "Low Pass",
+            minLabel: "20 Hz",
+            maxLabel: "20 kHz",
+            minValue: 0.0,        // normalized 0..1
+            maxValue: 1.0,
+            initialValue: currentCutoff,  // in hz
+            target: target,
+            valueChangedAction: valueChangedAction,
+            touchUpAction: touchUpAction,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (hz: Float) in
+                guard let self = self else { return }
+                // Push to engine in real time via didSet
+                self.globalLowPassCutoffHz = hz
+            },
+            persist: { [weak self] (hz: Float) in
+                guard let self = self else { return }
+                // Finalize value and persist to settings in Hz
+                self.globalLowPassCutoffHz = hz
+                self.conductorSpecificSettings["lowPassCutoff"] = self.globalLowPassCutoffHz
+            },
+            toDisplay: { [weak self] (t: Float) in
+                guard let self = self else { return 0.0 }
+                return self.lpfNormalizedToHz(t)
+            },
+            toSlider: { [weak self] (freq: Float) in
+                guard let self = self else { return 0.0 }
+                return self.lpfHzToNormalized(freq)
+            },
+            formatValueLabel: { (freq: Float) in
+                if freq >= 1000 {
+                    return String(format: "%.1f kHz", freq / 1000.0)
+                } else {
+                    return String(format: "%.0f Hz", freq)
+                }
+            }
+        )
+        lowPass.slider.accessibilityIdentifier = "lowPassCutoff"
+        lowPass.valueLabel.accessibilityIdentifier = "lowPassCutoffValueLabel"
+
+        views.append(lowPass.container)
+
+        let vibratoSlider = createLabeledSlider(
             title: "Vibrato Amount",
             minLabel: "None",
             maxLabel: "Wide",
@@ -454,17 +700,26 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             initialValue: self.vibratoAmount,
             target: target,
             valueChangedAction: valueChangedAction,
-            touchUpAction: touchUpAction
+            touchUpAction: touchUpAction,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (v: Float) in
+                self?.vibratoAmount = v
+            },
+            persist: { [weak self] (v: Float) in
+                guard let self = self else { return }
+                self.vibratoAmount = v
+                self.conductorSpecificSettings["vibratoAmount"] = v
+            }
         )
 
-        sliderData.slider.accessibilityIdentifier = "vibratoAmount"
-        sliderData.valueLabel.accessibilityIdentifier = "vibratoAmountValueLabel"
+        vibratoSlider.slider.accessibilityIdentifier = "vibratoAmount"
+        vibratoSlider.valueLabel.accessibilityIdentifier = "vibratoAmountValueLabel"
 
-        sliderData.slider.addAction(UIAction { _ in
-            sliderData.valueLabel.text = "\(Int(sliderData.slider.value)) ms"
+        vibratoSlider.slider.addAction(UIAction { _ in
+            vibratoSlider.valueLabel.text = "\(Int(vibratoSlider.slider.value)) ms"
         }, for: .valueChanged)
 
-        views.append(sliderData.container)
+        views.append(vibratoSlider.container)
         return views
     }
 
@@ -514,3 +769,16 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
 
 }
+
+extension OscillatorConductor: ConductorValueMappingProviding {
+    var valueConverters: [String: (Float) -> Float] {
+        return [
+            // Map normalized 0..1 slider value to Hz using existing helper
+            "lowPassCutoff": { [weak self] normalized in
+                guard let self = self else { return normalized }
+                return self.lpfNormalizedToHz(normalized)
+            }
+        ]
+    }
+}
+

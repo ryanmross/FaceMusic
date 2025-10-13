@@ -393,7 +393,10 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     }
     
     func applySettings(_ settings: PatchSettings) {
-        self.numOfVoices = settings.numOfVoices
+        
+        self.currentSettings = settings
+        applyConductorSpecificSettings(from: settings)
+        
         self.chordType = settings.chordType
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
@@ -403,8 +406,10 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         } else {
             MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
         }
-        self.currentSettings = settings
-        applyConductorSpecificSettings(from: settings)
+        
+        
+        self.numOfVoices = settings.numOfVoices
+
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
@@ -455,7 +460,16 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
             initialValue: self.vibratoAmount,
             target: target,
             valueChangedAction: valueChangedAction,
-            touchUpAction: touchUpAction
+            touchUpAction: touchUpAction,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (v: Float) in
+                self?.vibratoAmount = v
+            },
+            persist: { [weak self] (v: Float) in
+                guard let self = self else { return }
+                self.vibratoAmount = v
+                self.conductorSpecificSettings["vibratoAmount"] = v
+            }
         )
 
         sliderData.slider.accessibilityIdentifier = "vibratoAmount"

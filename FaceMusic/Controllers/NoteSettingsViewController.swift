@@ -123,10 +123,10 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         // --- Stack view containing the two containers ---
         let pitchRangeStack = UIStackView(arrangedSubviews: [voicePitchContainer, noteRangeContainer])
-        pitchRangeStack.axis = .horizontal
+        pitchRangeStack.axis = NSLayoutConstraint.Axis.horizontal
         pitchRangeStack.spacing = 10
-        pitchRangeStack.alignment = .top
-        pitchRangeStack.distribution = .fillEqually
+        pitchRangeStack.alignment = UIStackView.Alignment.top
+        pitchRangeStack.distribution = UIStackView.Distribution.fillEqually
         pitchRangeStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(pitchRangeStack)
         NSLayoutConstraint.activate([
@@ -146,9 +146,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         // --- Horizontal Stack for Key and Chord Containers ---
         let keyChordStack = UIStackView(arrangedSubviews: [keyContainer, chordContainer])
-        keyChordStack.axis = .horizontal
+        keyChordStack.axis = NSLayoutConstraint.Axis.horizontal
         keyChordStack.spacing = 10
-        keyChordStack.alignment = .center
+        keyChordStack.alignment = UIStackView.Alignment.center
         keyChordStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(keyChordStack)
         // Fixed height and max width
@@ -178,7 +178,22 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             initialValue: patchSettings.glissandoSpeed,
             target: self,
             valueChangedAction: #selector(glissandoSliderChanged),
-            touchUpAction: #selector(glissandoSliderDidEndSliding)
+            touchUpAction: #selector(glissandoSliderDidEndSliding),
+            showShadedBox: true,
+            liveUpdate: { [weak self] (v: Float) in
+                guard let self = self else { return }
+                // Update local slider label and patch value live
+                self.glissandoSlider.value = v
+                self.glissandoValueLabel.text = "\(Int(v)) ms"
+                self.patchSettings.glissandoSpeed = v
+            },
+            persist: { [weak self] (v: Float) in
+                guard let self = self else { return }
+                self.patchSettings.glissandoSpeed = v
+                PatchManager.shared.save(settings: self.patchSettings, forID: self.patchSettings.id)
+                VoiceConductorManager.shared.activeConductor.applySettings(self.patchSettings)
+                print("👉 🎵 NoteSettingsViewController: glissando persist - Set glissando speed to \(v) ms")
+            }
         )
 
         self.glissandoSlider = slider
@@ -186,10 +201,10 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         // --- Voices and Glissando Horizontal Stack ---
         let voicesAndGlissStack = UIStackView(arrangedSubviews: [voicesContainer, glissandoContainer])
-        voicesAndGlissStack.axis = .horizontal
+        voicesAndGlissStack.axis = NSLayoutConstraint.Axis.horizontal
         voicesAndGlissStack.spacing = 10
-        voicesAndGlissStack.alignment = .top
-        voicesAndGlissStack.distribution = .fillEqually
+        voicesAndGlissStack.alignment = UIStackView.Alignment.top
+        voicesAndGlissStack.distribution = UIStackView.Distribution.fillEqually
         voicesAndGlissStack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(voicesAndGlissStack)
 
@@ -503,6 +518,7 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         updatePianoHighlighting()
     }
 }
+
 
 
 

@@ -11,6 +11,12 @@ import AudioKitEX
 import AudioKitUI
 import AnyCodable
 
+// Optional protocol that conductors can adopt to provide per-field value converters
+protocol ConductorValueMappingProviding {
+    // Maps field keys to conversion closures from normalized [0,1] to domain-specific units
+    var valueConverters: [String: (Float) -> Float] { get }
+}
+
 class VoiceSettingsViewController: UIViewController {
     
     
@@ -19,7 +25,6 @@ class VoiceSettingsViewController: UIViewController {
     var patchSettings: PatchSettings!
     
     var closeButton: UIButton!
-    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -51,7 +56,7 @@ class VoiceSettingsViewController: UIViewController {
         let activeConductor = VoiceConductorManager.shared.activeConductor
         let customViews = activeConductor.makeSettingsUI(
             target: self,
-            valueChangedAction: #selector(handleConductorSettingUpdate(_:)),
+            valueChangedAction: #selector(noopSliderChanged(_:)),
             touchUpAction: #selector(handleConductorSettingUpdate(_:))
         ) ?? []
         
@@ -77,7 +82,7 @@ class VoiceSettingsViewController: UIViewController {
         
         let customViews = activeConductor.makeSettingsUI(
             target: self,
-            valueChangedAction: #selector(handleConductorSettingUpdate(_:)),
+            valueChangedAction: #selector(noopSliderChanged(_:)),
             touchUpAction: #selector(handleConductorSettingUpdate(_:))
         ) ?? []
         
@@ -106,13 +111,23 @@ class VoiceSettingsViewController: UIViewController {
     }
     
     @objc private func handleConductorSettingUpdate(_ sender: UISlider) {
+        
+        print("handleConductorSettingUpdate called")
         let activeConductor = VoiceConductorManager.shared.activeConductor
         if let fieldKey = sender.accessibilityIdentifier {
             
-            //print("👉 💬 VoiceSettingsViewController: handleConductorSettingUpdate() finished, calling PatchManager.save and called applyConductorSpecificSettings ")
-            
+            // Determine the value to save; ask the active conductor for a converter if available
+            let normalizedValue = sender.value
+            let valueToSave: Float
+            if let provider = activeConductor as? ConductorValueMappingProviding,
+               let converter = provider.valueConverters[fieldKey] {
+                valueToSave = converter(normalizedValue)
+            } else {
+                valueToSave = normalizedValue
+            }
+
             var updatedSettings: [String: AnyCodable] = patchSettings.conductorSpecificSettings ?? [:]
-            updatedSettings[fieldKey] = AnyCodable(sender.value)
+            updatedSettings[fieldKey] = AnyCodable(valueToSave)
             patchSettings.conductorSpecificSettings = updatedSettings
             PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
             activeConductor.applyConductorSpecificSettings(from: patchSettings)
@@ -121,6 +136,9 @@ class VoiceSettingsViewController: UIViewController {
         }
     }
     
+    @objc private func noopSliderChanged(_ sender: UISlider) {
+        // Intentionally left blank to avoid saving on continuous changes
+    }
     
     @objc private func closeSettings() {
         // Dismiss the settings view using SwiftEntryKit's dismiss method
@@ -128,3 +146,4 @@ class VoiceSettingsViewController: UIViewController {
     }
     
 }
+

@@ -108,8 +108,33 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     private var vibratoPhase: Float = 0.0
     private var vibratoActivationTime: [TimeInterval] = []
 
-    @Published var lowPassCutoff: AUValue = 4000.0  // Hz
-    
+    @Published var globalLowPassCutoffHz: Float = 10000.0 { // Hz, Butterworth LPF cutoff
+        didSet {
+            let clamped = max(lpfMinHz, min(lpfMaxHz, globalLowPassCutoffHz))
+            if globalLowPassCutoffHz != clamped { globalLowPassCutoffHz = clamped; return }
+            for bundle in voiceBundles {
+                if bundle.lowpass.cutoffFrequency != clamped {
+                    bundle.lowpass.cutoffFrequency = clamped
+                }
+            }
+        }
+    }
+
+    // LPF settings are stored and persisted in Hz. Shared mapping constants and helpers (log scale 20 Hz .. 20 kHz)
+    private let lpfMinHz: Float = 20.0
+    private let lpfMaxHz: Float = 20000.0
+
+    private func lpfNormalizedToHz(_ t: Float) -> Float {
+        let tn = max(0.0, min(1.0, t))
+        let hz = lpfMinHz * pow(lpfMaxHz / lpfMinHz, tn)
+        return max(lpfMinHz, min(lpfMaxHz, hz))
+    }
+
+    private func lpfHzToNormalized(_ hz: Float) -> Float {
+        let clamped = max(lpfMinHz, min(lpfMaxHz, hz))
+        return log(clamped / lpfMinHz) / log(lpfMaxHz / lpfMinHz)
+    }
+
     private var baseFrequencies: [Float] = []
     private var lastUpdateTime: TimeInterval = CACurrentMediaTime()
 
@@ -162,7 +187,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 let glottis = VocalGlottis()
                 let filter = VocalTractFilter(glottis)
                 let lowpass = LowPassButterworthFilter(filter)
-                lowpass.cutoffFrequency = lowPassCutoff
+                lowpass.cutoffFrequency = globalLowPassCutoffHz
                 let fader = Fader(lowpass, gain: 0.0)
                 AudioEngineManager.shared.addToMixer(node: fader)
                 voiceBundles.append((glottis: glottis, filter: filter, lowpass: lowpass, fader: fader))
@@ -191,7 +216,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         print("😮 VocalTractConductor.startVoice()")
         glottis.start()
         filter.start()
-        lowpass.cutoffFrequency = lowPassCutoff
+        lowpass.cutoffFrequency = globalLowPassCutoffHz
         lowpass.start()
         let fadeEvent = AutomationEvent(targetValue: 1.0, startTime: 0.0, rampDuration: 0.1)
         fader.automateGain(events: [fadeEvent])
@@ -313,8 +338,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 let filter = voiceBundles[index].filter
                 let lowpass = voiceBundles[index].lowpass
                 // Keep lowpass cutoff in sync with published value
-                if lowpass.cutoffFrequency != lowPassCutoff {
-                    lowpass.cutoffFrequency = lowPassCutoff
+                if lowpass.cutoffFrequency != globalLowPassCutoffHz {
+                    lowpass.cutoffFrequency = globalLowPassCutoffHz
                 }
                 let currentFrequency = midiNoteToFrequency(harmony)
                 let previousTargetFrequency = Self.lastTargetFrequency[index]
@@ -390,7 +415,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applySettings(_ settings: PatchSettings) {
-        self.numOfVoices = settings.numOfVoices
+        
+        
+        self.currentSettings = settings
+        applyConductorSpecificSettings(from: settings)
+        
         self.chordType = settings.chordType
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
@@ -400,8 +429,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         } else {
             MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
         }
-        self.currentSettings = settings
-        applyConductorSpecificSettings(from: settings)
+        
+        // numOfVoices last because this starts the voices
+        self.numOfVoices = settings.numOfVoices
     }
     
     func applyConductorSpecificSettings(from patch: PatchSettings) {
@@ -414,11 +444,21 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 self.conductorSpecificSettings["vibratoAmount"] = vibrato
             }
         }
+
+        if let anyLP = patch.conductorSpecificSettings?["lowPassCutoff"]?.value,
+           let lowPassCutoffHz = FloatValue(from: anyLP) {
+            let clamped = max(lpfMinHz, min(lpfMaxHz, lowPassCutoffHz))
+            self.globalLowPassCutoffHz = clamped
+            self.conductorSpecificSettings["lowPassCutoff"] = clamped
+        }
     }
 
     
     func exportConductorSpecificSettings() -> [String: Any]? {
-        return ["vibratoAmount": self.vibratoAmount]
+        return [
+            "vibratoAmount": self.vibratoAmount,
+            "lowPassCutoff": self.globalLowPassCutoffHz
+        ]
     }
     
     
@@ -446,6 +486,46 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     func makeSettingsUI(target: Any?, valueChangedAction: Selector, touchUpAction: Selector) -> [UIView] {
         var views: [UIView] = []
 
+        let currentCutoff = max(lpfMinHz, min(lpfMaxHz, self.globalLowPassCutoffHz))
+        let lowPass = createLabeledSlider(
+            title: "Low Pass",
+            minLabel: "20 Hz",
+            maxLabel: "20 kHz",
+            minValue: 0.0,
+            maxValue: 1.0,
+            initialValue: currentCutoff,
+            target: target,
+            valueChangedAction: valueChangedAction,
+            touchUpAction: touchUpAction,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (hz: Float) in
+                self?.globalLowPassCutoffHz = hz
+            },
+            persist: { [weak self] (hz: Float) in
+                guard let self = self else { return }
+                self.globalLowPassCutoffHz = hz
+                self.conductorSpecificSettings["lowPassCutoff"] = self.globalLowPassCutoffHz
+            },
+            toDisplay: { [weak self] (t: Float) in
+                guard let self = self else { return 0.0 }
+                return self.lpfNormalizedToHz(t)
+            },
+            toSlider: { [weak self] (freq: Float) in
+                guard let self = self else { return 0.0 }
+                return self.lpfHzToNormalized(freq)
+            },
+            formatValueLabel: { (freq: Float) in
+                if freq >= 1000 {
+                    return String(format: "%.1f kHz", freq / 1000.0)
+                } else {
+                    return String(format: "%.0f Hz", freq)
+                }
+            }
+        )
+        lowPass.slider.accessibilityIdentifier = "lowPassCutoff"
+        lowPass.valueLabel.accessibilityIdentifier = "lowPassCutoffValueLabel"
+        views.append(lowPass.container)
+
         let sliderData = createLabeledSlider(
             title: "Vibrato Amount",
             minLabel: "None",
@@ -455,7 +535,16 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             initialValue: self.vibratoAmount,
             target: target,
             valueChangedAction: valueChangedAction,
-            touchUpAction: touchUpAction
+            touchUpAction: touchUpAction,
+            showShadedBox: true,
+            liveUpdate: { [weak self] (v: Float) in
+                self?.vibratoAmount = v
+            },
+            persist: { [weak self] (v: Float) in
+                guard let self = self else { return }
+                self.vibratoAmount = v
+                self.conductorSpecificSettings["vibratoAmount"] = v
+            }
         )
 
         sliderData.slider.accessibilityIdentifier = "vibratoAmount"
@@ -512,4 +601,15 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         return result
     }
 
+}
+
+extension VocalTractConductor: ConductorValueMappingProviding {
+    var valueConverters: [String: (Float) -> Float] {
+        return [
+            "lowPassCutoff": { [weak self] normalized in
+                guard let self = self else { return normalized }
+                return self.lpfNormalizedToHz(normalized)
+            }
+        ]
+    }
 }

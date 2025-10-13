@@ -158,18 +158,18 @@ func logPatches(_ patchInput: Any, label: String = "📦 Patch Summary") {
 
     let columnWidths: [String: Int] = [
         "ID": 5,
-        "Name": 16,
+        "Name": 14,
         "Conductor": 16,
         "Key": 4,
-        "Chord": 7,
-        "Voices": 7,
+        "Chord": 6,
+        "Voices": 4,
         "Gliss": 6,
         "Pitch": 5,          // was 9
         "Range": 7,
-        "ScaleMask": 10,
-        "Image": 11,
-        "Version": 4,        // was 7
-        "Settings": 30       // was 15
+        "ScaleMask": 5,
+        "Image": 9,
+        "Version": 2,        // was 7
+        "Settings": 70       // was 15
     ]
 
     func pad(_ text: String, to column: String) -> String {

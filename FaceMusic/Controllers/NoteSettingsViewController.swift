@@ -112,7 +112,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         NotificationCenter.default.removeObserver(self)
     }
     private func setupUI() {
-        print("👉 NoteSettingsViewController.setupUI()")
+        
+        Log.line(actor: "🎵 NoteSettingsViewController", fn: "setupUI", "")
+
         // --- Voice Pitch Container ---
         let (voicePitchContainer, voicePitchPickerInstance) = createLabeledPicker(title: "Voice Pitch", tag: 10, delegate: self)
         self.voicePitchPicker = voicePitchPickerInstance
@@ -192,7 +194,8 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
                 self.patchSettings.glissandoSpeed = v
                 PatchManager.shared.save(settings: self.patchSettings, forID: self.patchSettings.id)
                 VoiceConductorManager.shared.activeConductor.applySettings(self.patchSettings)
-                print("👉 🎵 NoteSettingsViewController: glissando persist - Set glissando speed to \(v) ms")
+                Log.line(actor: "🎵 NoteSettingsViewController", fn: "setupUI.persist", "glissando persist - Set glissando speed to \(v) ms")
+
             }
         )
 
@@ -232,7 +235,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     
     private func configurePickersWithConductorSettings() {
         
-        print("👉 NoteSettingsViewController.configurePickersWithConductorSettings()")
+        
+        Log.line(actor: "🎵 NoteSettingsViewController", fn: "configurePickersWithConductorSettings()", "")
+
         // Use the current key from MusicBrain
         let currentKey = MusicBrain.shared.currentKey
         
@@ -277,7 +282,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
         MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
-        print("updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
+                
+        Log.line(actor: "🎵 NoteSettingsViewController", fn: "configurePickersWithConductorSettings()", "updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
+
         
         DispatchQueue.main.async {
             self.updatePianoHighlighting()
@@ -334,7 +341,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         switch pickerView.tag {
         case 2: // Number of Voices picker
             selectedNumOfVoices = row + 1
-            print("👉 NoteSettingsViewController: Selected number of voices: \(selectedNumOfVoices)")
+            
+            Log.line(actor: "🎵 NoteSettingsViewController", fn: "pickerView.didSelectRow", "Selected number of voices: \(selectedNumOfVoices)")
+
         case 10: // Voice Pitch
             selectedVoicePitchIndex = row
         case 11: // Note Range
@@ -358,9 +367,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         if pickerView.tag == 0 || pickerView.tag == 1 {
             // clearing scaleMask if user chose a new key or chord
             patchSettings.scaleMask = nil
+            
+            Log.line(actor: "🎵 NoteSettingsViewController", fn: "pickerView.didSelectRow", "User chose a new key or chord")
 
-
-            print("👉 NoteSettingsViewController: user chose a new key or chord")
 
             MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
             updatePianoHighlighting()
@@ -390,7 +399,9 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         patchSettings.glissandoSpeed = glissandoSlider.value
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
         VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
-        print("👉 🎵 NoteSettingsViewController: glissandoSliderDidEndSliding() - Set glissando speed to \(glissandoSlider.value) ms")
+
+        Log.line(actor: "🎵 NoteSettingsViewController", fn: "glissandoSliderDidEndSliding", "Set glissando speed to \(glissandoSlider.value) ms")
+
     }
     
     // MARK: - Piano Keyboard Setup
@@ -493,10 +504,14 @@ extension UILabel {
 // MARK: - PianoDelegate
 extension NoteSettingsViewController: PianoKeyboardDelegate {
     func pianoKeyDown(_ keyNumber: Int) {
-        print("Key down: \(keyNumber)")
+        
+        Log.line(actor: "👉 🎵 NoteSettingsViewController", fn: "pianoKeyDown", "Key down: \(keyNumber)")
+
     }
 
     func pianoKeyUp(_ keyNumber: Int) {
+        
+        Log.line(actor: "👉 🎵 NoteSettingsViewController", fn: "pianoKeyUp", "Key down: \(keyNumber)")
         let pitchClass = keyNumber % 12
         MusicBrain.shared.togglePitchClass(pitchClass)
 
@@ -505,9 +520,18 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         
         // Save the updated patch
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
+        
+        //Log.line(actor: "🎵 NoteSettingsViewController", fn: "pianoKeyUp", "PatchManager saved patch with scaleMask: \(patchSettings.scaleMask)")
+
 
         // Apply to conductor
         VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
+        
+        // testing  RYAN REMOVE
+        let conductor = VoiceConductorManager.shared.activeConductor
+        let settings = conductor.exportCurrentSettings()
+        //Log.line(actor: "🎵 NoteSettingsViewController", fn: "pianoKeyUp", "VoiceConductorManager.shared.activeConductor.settings.scaleMask: \(settings.scaleMask)")
+        // end testing
         
         // Rebuild quantization with current lowest/highest notes
         MusicBrain.shared.rebuildQuantization(

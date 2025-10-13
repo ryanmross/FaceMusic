@@ -10,6 +10,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     static var id: String { "OscillatorConductor" }
     static var displayName: String = "Oscillator"
+    static var version: Int = 1
     
     // Chain per voice: MorphingOscillator -> VocalTractFilter -> LowPassButterworthFilter -> Fader
     private var voiceBundles: [(voice: MorphingOscillator, filter: VocalTractFilter, lowpass: LowPassButterworthFilter, fader: Fader)] = []
@@ -29,7 +30,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 glissandoSpeed: 20.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "oscillator_saw_icon",
                 conductorSpecificSettings: [
@@ -47,7 +48,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 glissandoSpeed: 30.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "oscillator_sine_icon",
                 conductorSpecificSettings: [
@@ -79,6 +80,10 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var noteRangeSize: NoteRangeSize
     
+    var scaleMask: UInt16?
+    
+    
+
     
     var lowestNote: Int {
         let centerNote = voicePitchLevel.centerMIDINote
@@ -478,8 +483,9 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
-        if let scaleMask = settings.scaleMask {
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: scaleMask)
+        if let mask = settings.scaleMask {
+            self.scaleMask = mask
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: mask)
         } else {
             MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
         }
@@ -575,7 +581,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             glissandoSpeed: self.glissandoSpeed,
             voicePitchLevel: self.voicePitchLevel,
             noteRangeSize: self.noteRangeSize,
-            version: 1,
+            scaleMask: self.scaleMask,
+            version: Self.version,
             conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }
         )

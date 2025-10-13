@@ -18,6 +18,8 @@ enum AudioState {
 protocol VoiceConductorProtocol: AnyObject {
     /// A unique string ID for storing and identifying this conductor (used in PatchSettings)
     static var id: String { get }
+    
+    static var version: Int { get }
 
     /// A human-readable name for UI menus and labels
     static var displayName: String { get }
@@ -25,12 +27,14 @@ protocol VoiceConductorProtocol: AnyObject {
     
     /// The default patches specific to this conductor
     static var defaultPatches: [PatchSettings] { get }
-
+    
     var voicePitchLevel: VoicePitchLevel { get set }
     var noteRangeSize: NoteRangeSize { get set }
 
     var numOfVoices: Int { get set }
     var chordType: MusicBrain.ChordType { get set }
+    
+    var scaleMask: UInt16? { get set }
     
     var glissandoSpeed: Float { get set }
     
@@ -80,3 +84,4 @@ protocol VoiceConductorProtocol: AnyObject {
     func stopAllVoices()
 
 }
+

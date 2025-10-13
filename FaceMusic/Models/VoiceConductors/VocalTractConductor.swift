@@ -19,6 +19,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
 
     static var id: String { "VocalTractConductor" }
     static var displayName: String = "Vocal Tract"
+    static var version: Int = 1
     
     // Each voice bundle: (glottis, filter, lowpass, fader)
     private var voiceBundles: [(glottis: VocalGlottis, filter: VocalTractFilter, lowpass: LowPassButterworthFilter, fader: Fader)] = []
@@ -38,7 +39,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 glissandoSpeed: 20.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_classic",
                 conductorSpecificSettings: [
@@ -54,7 +55,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 glissandoSpeed: 30.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_widevibrato",
                 conductorSpecificSettings: [
@@ -79,6 +80,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     var voicePitchLevel: VoicePitchLevel
     
     var noteRangeSize: NoteRangeSize
+    
+    var scaleMask: UInt16?
+    
     
     
     var lowestNote: Int {
@@ -175,6 +179,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.audioState = .waitingForFaceData
         self.voicePitchLevel = defaultSettings.voicePitchLevel
         self.noteRangeSize = defaultSettings.noteRangeSize
+        self.scaleMask = nil
+        
     }
     
     internal func updateVoiceCount() {
@@ -437,7 +443,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     }
     
     func applySettings(_ settings: PatchSettings) {
-        
+        Log.line(actor: "😮 VocalTractConductor", fn: "applySettings", "applySettings called")
+
         
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
@@ -446,8 +453,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
-        if let scaleMask = settings.scaleMask {
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: scaleMask)
+        if let mask = settings.scaleMask {
+            self.scaleMask = mask
+            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: mask)
         } else {
             MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
         }
@@ -485,6 +493,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     
     func exportCurrentSettings() -> PatchSettings {
+        
+        Log.line(actor: "😮 VocalTractConductor", fn: "exportCurrentSettings", "")
+
         let lowestNote = self.lowestNote
         let highestNote = self.highestNote
         return PatchSettings(
@@ -496,7 +507,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             glissandoSpeed: self.glissandoSpeed,
             voicePitchLevel: self.voicePitchLevel,
             noteRangeSize: self.noteRangeSize,
-            version: 1,
+            scaleMask: self.scaleMask,
+            version: Self.version,
             conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }
         )
@@ -635,3 +647,4 @@ extension VocalTractConductor: ConductorValueMappingProviding {
         ]
     }
 }
+

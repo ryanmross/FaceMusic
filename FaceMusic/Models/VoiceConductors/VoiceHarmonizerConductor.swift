@@ -18,6 +18,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
 
     static var id: String { "VoiceHarmonizerConductor" }
     static var displayName: String = "Voice Harmonizer"
+    static var version: Int = 1
     
     private var voiceBundles: [(voice: MorphingOscillator, fader: Fader)] = []
     
@@ -36,7 +37,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 glissandoSpeed: 20.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_1",
                 conductorSpecificSettings: [
@@ -54,7 +55,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 glissandoSpeed: 25.0,
                 voicePitchLevel: VoicePitchLevel.medium,
                 noteRangeSize: NoteRangeSize.medium,
-                version: 1,
+                version: Self.version,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_2",
                 conductorSpecificSettings: [
@@ -81,6 +82,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     var voicePitchLevel: VoicePitchLevel
     
     var noteRangeSize: NoteRangeSize
+    
+    var scaleMask: UInt16?
     
     
     var lowestNote: Int {
@@ -440,7 +443,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
             glissandoSpeed: self.glissandoSpeed,
             voicePitchLevel: self.voicePitchLevel,
             noteRangeSize: self.noteRangeSize,
-            version: 1,
+            scaleMask: self.scaleMask,
+            version: Self.version,
             conductorID: type(of: self).id,
             conductorSpecificSettings: exportConductorSpecificSettings()?.mapValues { AnyCodable($0) }
         )

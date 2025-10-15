@@ -398,22 +398,15 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     func sessionWasInterrupted(_ session: ARSession) {
         // Inform the user that the session has been interrupted, for example, by presenting an overlay
-        
-        
-        Log.line(actor: "😮 FaceTrackerViewController", fn: "sessionWasInterrupted", "")
-
-        //AudioEngineManager.shared.removeAllInputsFromMixer()
-        //conductor = nil
-
+        Log.line(actor: "😮 ⬅️📱 FaceTrackerViewController", fn: "sessionWasInterrupted", "")
+        AudioEngineManager.shared.setSessionInterrupted(true)
     }
-        
+    
     func sessionInterruptionEnded(_ session: ARSession) {
         // Reset tracking and/or remove existing anchors if consistent tracking is required
-        
-        Log.line(actor: "😮 FaceTrackerViewController", fn: "sessionInterruptionEnded", "")
-
-        //AudioEngineManager.shared.addToMixer(node: conductor.outputNode)
-        //resetTracking()
+        Log.line(actor: "😮 ➡️📱 FaceTrackerViewController", fn: "sessionInterruptionEnded", "")
+        AudioEngineManager.shared.setSessionInterrupted(false)
+        AudioEngineManager.shared.restartEngine()
     }
     
     override var prefersHomeIndicatorAutoHidden: Bool {

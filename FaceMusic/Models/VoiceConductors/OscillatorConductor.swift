@@ -146,7 +146,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             let clamped = max(lpfMinHz, min(lpfMaxHz, globalLowPassCutoffHz))
             if globalLowPassCutoffHz != clamped { globalLowPassCutoffHz = clamped; return }
             
-            Log.line(actor: "〰️ OscillatorConductor", fn: "var globalLowPassCutoffHz", "\(globalLowPassCutoffHz)")
+            //Log.line(actor: "〰️ OscillatorConductor", fn: "var globalLowPassCutoffHz", "\(globalLowPassCutoffHz)")
 
             
             
@@ -515,7 +515,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
            let lowPassCutoffHz = FloatValue(from: anyLP) {
 
             
-            Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(lowPassCutoffHz), patch.conductorSpecificSettings[lowpasscutoff]: \(String(describing: patch.conductorSpecificSettings?["lowPassCutoff"]?.value))")
+            //Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(lowPassCutoffHz), patch.conductorSpecificSettings[lowpasscutoff]: \(String(describing: patch.conductorSpecificSettings?["lowPassCutoff"]?.value))")
 
 
             let clamped = max(lpfMinHz, min(lpfMaxHz, lowPassCutoffHz))
@@ -523,7 +523,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             self.conductorSpecificSettings["lowPassCutoff"] = clamped
             
             
-            Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(clamped)")
+            //Log.line(actor: "〰️ OscillatorConductor", fn: "applyConductorSpecificSettings", "lowPassCutoffHz: \(clamped)")
 
         }
     }

@@ -27,8 +27,17 @@ final class AudioEngineManager {
     private var addedFaderIDs = Set<ObjectIdentifier>()
     private var didAttachWatchdog = false
 
+    // MARK: - Session Interruption
+    private var isSessionInterrupted = false
+
     // Centralized session reference
     private let audioSession = AVAudioSession.sharedInstance()
+    
+    private var lastKnownRoute: AVAudioSessionRouteDescription?
+    /// Public method to set the session interruption flag
+    func setSessionInterrupted(_ value: Bool) {
+        isSessionInterrupted = value
+    }
 
     // MARK: - Init
     private init() {
@@ -113,6 +122,15 @@ func removeAllInputsFromMixer(caller: String = #function) {
         Log.line(actor: "🚗 AudioEngineManager", fn: "removeAllInputsFromMixer", "🔍 Mixer State (\(context)) — Total Inputs: \(connections.count)")
 
     }
+    
+    func forceSpeakerOutput() {
+        do {
+            try audioSession.overrideOutputAudioPort(.speaker)
+            Log.line(actor: "🚗 AudioEngineManager", fn: "forceSpeakerOutput", "🔊 Forced output to speaker")
+        } catch {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "forceSpeakerOutput", "⚠️ Failed to force speaker output: \(error)")
+        }
+    }
 
     // MARK: - Private: Configuration
     private func configureSessionAndEngine() {
@@ -162,7 +180,8 @@ func removeAllInputsFromMixer(caller: String = #function) {
                 .playAndRecord,
                 options: [
                     .mixWithOthers,
-                    .allowBluetoothA2DP
+                    .allowBluetoothA2DP,
+                    .defaultToSpeaker
                 ]
             )
             try audioSession.setMode(.default)
@@ -238,15 +257,29 @@ func removeAllInputsFromMixer(caller: String = #function) {
         }
     }
 
-    private func restartEngine() {
+    func restartEngine() {
+        if isSessionInterrupted {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "🚫 Skipping restart — session is interrupted.")
+            return
+        }
+
+        let inputDesc = audioSession.currentRoute.inputs.first
+        let sampleRate = audioSession.sampleRate
+
+        if inputDesc == nil || sampleRate < 1000 {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⏳ Delaying restart — input not ready or sampleRate too low (\(sampleRate))")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.restartEngine()
+            }
+            return
+        }
+
         engine.stop()
         do {
             try engine.start()
             Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "Engine restarted.")
-
         } catch {
             Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⚠️ Engine restart failed: \(error)")
-
         }
     }
 
@@ -258,6 +291,12 @@ func removeAllInputsFromMixer(caller: String = #function) {
 
     // MARK: - Notifications
     @objc private func handleRouteChange(_ notification: Notification) {
+        if let lastRoute = lastKnownRoute, lastRoute == audioSession.currentRoute {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "🔁 Route unchanged, skipping reconfiguration.")
+            return
+        }
+        lastKnownRoute = audioSession.currentRoute
+        
         let route = audioSession.currentRoute
         let inPorts = route.inputs.map { $0.portType.rawValue }
         let outPorts = route.outputs.map { $0.portType.rawValue }
@@ -279,6 +318,17 @@ func removeAllInputsFromMixer(caller: String = #function) {
         } else {
             Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "Route change newIn=\(inPorts) newOut=\(outPorts)")
         }
+        
+        if outPorts.contains(AVAudioSession.Port.builtInReceiver.rawValue) {
+            try? audioSession.overrideOutputAudioPort(.none)
+        } else if outPorts.contains(AVAudioSession.Port.builtInSpeaker.rawValue) {
+            try? audioSession.overrideOutputAudioPort(.speaker)
+        }
+        
+        if inPorts.isEmpty || outPorts.isEmpty {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "⚠️ Detected empty input/output routes. Attempting to recover...")
+            restartEngine()
+        }
 
         let oldRate = Settings.sampleRate
         updateSettingsFromHardware()
@@ -298,4 +348,3 @@ func removeAllInputsFromMixer(caller: String = #function) {
         configureSessionAndEngine()
     }
 }
-

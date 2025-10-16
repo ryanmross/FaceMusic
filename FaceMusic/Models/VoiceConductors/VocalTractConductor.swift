@@ -304,10 +304,6 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         // Use extracted interpolation method
         let interpolatedValues = interpolateFaceParameters(from: faceData)
 
-        //let interpolatedJawOpen: Float = interpolatedValues[.jawOpen] ?? 0
-        //let interpolatedMouthFunnel: Float = interpolatedValues[.mouthFunnel] ?? 0
-        //let interpolatedMouthClose: Float = interpolatedValues[.mouthClose] ?? 0
-
         // Map raw face pitch directly to nearest quantized note using MusicBrain
         let quantizedNote = MusicBrain.shared.nearestQuantizedNote(
             rawPitch: faceData.pitch,

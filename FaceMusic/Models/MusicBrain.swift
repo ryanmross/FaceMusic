@@ -7,6 +7,66 @@
 import Foundation
 
 class MusicBrain {
+    // musicbrain is shared
+    static let shared = MusicBrain()
+    
+    
+    // Tonic key and scale state
+    private(set) var tonicKey: NoteName
+    private(set) var tonicScale: ScaleType
+    private(set) var tonicChordType: ChordType = .major
+    
+    // User-selected chord (if different from the tonic). When nil, fall back to tonic.
+    private var userSelectedChord: Chord?
+    
+    /// Effective current chord used by the app. Falls back to tonic when no selection is made.
+    var currentSelectedChord: Chord {
+        userSelectedChord ?? Chord(root: tonicKey, type: tonicChordType)
+    }
+    
+    /// Selects a chord explicitly chosen by the user.
+    func selectChord(root: NoteName, type: ChordType) {
+        userSelectedChord = Chord(root: root, type: type)
+
+    }
+
+    /// Selects a chord explicitly chosen by the user.
+    func selectChord(_ chord: Chord) {
+        userSelectedChord = chord
+
+    }
+
+    /// Clears any user-selected chord and falls back to the tonic chord.
+    func clearSelectedChord() {
+        userSelectedChord = nil
+
+    }
+    
+    
+    
+    
+    private(set) var customScaleMask: UInt16? // nil = no override
+    private var arPitchRange = ARDataPitchRange()
+    
+    var tonicScalePitchClasses: [Int] {
+        if let mask = customScaleMask {
+            return Self.pitchClasses(fromMask: mask)
+        } else {
+            return tonicScale.intervals.map { ($0 + tonicKey.rawValue) % 12 }
+        }
+    }
+
+    // Precomputed nearest note lookup table for MIDI notes 0-127.
+    // Each entry is a nearest quantized note
+    private var nearestNoteTable: [Int]
+    
+    
+    struct Chord: Equatable, Codable {
+        let root: NoteName
+        let type: ChordType
+    }
+    
+    
     // Enum for chord types
     enum ChordType: String, CaseIterable, Codable {
         case major
@@ -179,27 +239,8 @@ class MusicBrain {
     }
     
 
-    // Current key and scale state
-    private(set) var tonicKey: NoteName
-    private(set) var tonicScale: ScaleType
-    private(set) var currentChordType: ChordType = .major
     
-    private(set) var customScaleMask: UInt16? // nil = no override
-    private var arPitchRange = ARDataPitchRange()
     
-    var tonicScalePitchClasses: [Int] {
-        if let mask = customScaleMask {
-            return Self.pitchClasses(fromMask: mask)
-        } else {
-            return tonicScale.intervals.map { ($0 + tonicKey.rawValue) % 12 }
-        }
-    }
-
-    // Precomputed nearest note lookup table for MIDI notes 0-127.
-    // Each entry is a nearest quantized note
-    private var nearestNoteTable: [Int]
-    
-    static let shared = MusicBrain()
 
     // Initialize with default key and scale, and compute lookup table
     init(key: NoteName = .C, scale: ScaleType = .major) {
@@ -230,7 +271,7 @@ class MusicBrain {
     
     func updateKeyAndScale(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
         self.tonicKey = key
-        self.currentChordType = chordType
+        self.tonicChordType = chordType
         self.customScaleMask = scaleMask
 
         if let mask = scaleMask {
@@ -313,7 +354,7 @@ class MusicBrain {
     /// Clear any custom scale mask and revert to the current key and scale.
     func clearCustomScale() {
         self.customScaleMask = nil
-        updateKeyAndScale(key: tonicKey, chordType: currentChordType)
+        updateKeyAndScale(key: tonicKey, chordType: tonicChordType)
     }
     
     /// Call this when only the voice pitch or range changes,
@@ -367,6 +408,8 @@ class MusicBrain {
 }
 
     
+
+
 
 
 

@@ -16,9 +16,8 @@ final class ChordGridViewModel: ObservableObject {
 
     struct ChordItem: Identifiable {
         let id = UUID()
-        let key: MusicBrain.NoteName
-        let type: MusicBrain.ChordType
-        var label: String { "\(key.displayName)\(type.shortDisplayName)" }
+        let chord: MusicBrain.Chord
+        var label: String { "\(chord.root.displayName)\(chord.type.shortDisplayName)" }
     }
     
 
@@ -58,7 +57,8 @@ final class ChordGridViewModel: ObservableObject {
         var output: [ChordItem] = []
         for key in keysInFifths {
             for type in chordTypesInRows {
-                output.append(ChordItem(key: key, type: type))
+                let chord = MusicBrain.Chord(root: key, type: type)
+                output.append(ChordItem(chord: chord))
             }
         }
 
@@ -142,7 +142,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         let tonicKey: MusicBrain.NoteName = viewModel.patchSettings?.tonicKey ?? .C
 
         // Find the first item matching this key
-        guard let index = items.firstIndex(where: { $0.key == tonicKey }) else { return }
+        guard let index = items.firstIndex(where: { $0.chord.root == tonicKey }) else { return }
 
         self.tonicKeyIndex = index
 
@@ -177,7 +177,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         self.collectionView.reloadData()
         // Recompute current key index based on PatchManager
         let currentKey: MusicBrain.NoteName = viewModel.patchSettings?.tonicKey ?? .C
-        self.tonicKeyIndex = self.items.firstIndex(where: { $0.key == currentKey })
+        self.tonicKeyIndex = self.items.firstIndex(where: { $0.chord.root == currentKey })
         // Ensure highlight updates on next runloop
         DispatchQueue.main.async { [weak self] in
             self?.updateHighlightRing()
@@ -203,6 +203,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         selectedIndex = indexPath.item
         updateHighlightRing()
         let item = items[indexPath.item]
+        MusicBrain.shared.selectChord(item.chord)
         onChordSelected?(item)
     }
 

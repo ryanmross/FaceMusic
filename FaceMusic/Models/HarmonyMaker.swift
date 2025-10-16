@@ -6,20 +6,33 @@ class HarmonyMaker {
     private var previousPitch: Int?
     
     func voiceChord(currentPitch: Int, numOfVoices: Int = 1) -> [Int] {
+        
+        // currentPitch is the leading tone we are currently playing
+        // currentChordRoot is the chord root we are building harmonies around
+        // currentChordType is the chord type of the chord we are building harmonies around
+        
+        let currentSelectedChord: MusicBrain.Chord = MusicBrain.shared.currentSelectedChord
+        
+        let currentChordRoot = currentSelectedChord.root
+        let currentChordType = currentSelectedChord.type
+        
+        
         guard numOfVoices > 0 else { return [] }
         previousPitch = currentPitch
 
-        let key = MusicBrain.shared.tonicKey
-        let chordType = MusicBrain.shared.currentChordType
-        let intervals = MusicBrain.shared.chordIntervals(for: chordType)
-        let rootPitch = key.rawValue + intervals[0] + 12 * 4 // Base root
+        let intervals = MusicBrain.shared.chordIntervals(for: currentChordType)
 
         var candidates: [Int] = []
         for octave in stride(from: 7, through: 2, by: -1) {
+            // starting in octave 7, working down to octave 2
+            
             let base = 12 * octave
+            
             for interval in intervals {
-                let pitch = key.rawValue + interval + base
+                // step through each interval in musicbrain
+                let pitch = currentChordRoot.rawValue + interval + base
                 if pitch < currentPitch && pitch >= minHarmonyPitch {
+                    // put all scale tones lower than currentPitch and above minHarmonyPitch into candidates
                     candidates.append(pitch)
                 }
             }
@@ -37,7 +50,7 @@ class HarmonyMaker {
 
         func score(note: Int) -> Int {
             var s = 0
-            let interval = (note - key.rawValue) % 12
+            let interval = (note - currentChordRoot.rawValue) % 12
 
             // Prioritize essential chord tones
             if interval == intervals[1] { s += 30 } // 3rd

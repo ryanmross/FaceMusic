@@ -249,7 +249,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         }
         
         // Use the current chord type from MusicBrain
-        let currentChordType = MusicBrain.shared.currentChordType
+        let currentChordType = MusicBrain.shared.tonicChordType
         if let chordIndex = chordTypes.firstIndex(of: currentChordType) {
             chordTypePicker.selectRow(chordIndex, inComponent: 0, animated: false)
         }

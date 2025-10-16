@@ -54,14 +54,12 @@ class AppSettings {
         ("G#", .GSharp), ("A", .A), ("A#", .ASharp), ("B", .B)
     ]
 
-    // Define scales as an array of tuples
-    /*
-    let scales: [(string: String, scale: Scale, chordType: ChordType)] = [
-        ("Major", .major, .major), ("Minor", .minor, .minor), ("Diminished", .wholeDiminished, .dim7), ("Half-Diminished", .halfDiminished, .halfDim7), ("Whole Tone", .leadingWholeTone, .aug)
-    ]
-    */
     
     let lowNoteThreshold: Int = 30 // Minimum MIDI note number to include non-root pitches
+
+    // Chord grid layout configuration
+    let chordGridRows: Int = 4    // Major, minor, dominant7, diminished7
+    let chordGridCols: Int = 7    
     
     // Define interpolation bounds for different parameters
     // Use the enum as the key
@@ -80,3 +78,5 @@ enum ParametersForAudioGeneration: String, CaseIterable {
     case mouthClose
     case mouthFunnel
 }
+
+

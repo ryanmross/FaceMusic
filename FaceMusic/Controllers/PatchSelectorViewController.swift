@@ -9,6 +9,10 @@ import UIKit
 import Combine
 import SwiftUI
 
+extension Notification.Name {
+    static let patchDidChange = Notification.Name("PatchDidChange")
+}
+
 // MARK: - Patch Selector (ViewModel + View + Cell + SwiftUI bridge)
 
 // MARK: ViewModel
@@ -21,6 +25,9 @@ final class PatchSelectorViewModel: ObservableObject {
     var onPatchSelected: ((PatchSettings) -> Void)?
     @Published var patchBarItems: [PatchBarItem] = []
     @Published var selectedPatchBarItemID: Int?
+
+    // MARK: CollectionView Reference
+    weak var collectionView: UICollectionView?
 
     // MARK: State
     private static let allDefaultPatches: [PatchSettings] = VoiceConductorRegistry.all.flatMap { $0.defaultPatches }
@@ -90,6 +97,7 @@ final class PatchSelectorViewModel: ObservableObject {
 
         selectedPatchBarItemID = item.id
         onPatchSelected?(patchSettings)
+        NotificationCenter.default.post(name: .patchDidChange, object: nil)
     }
 
     /// Call this to explicitly reset the current default patch back to its defaults
@@ -143,6 +151,18 @@ final class PatchSelectorViewModel: ObservableObject {
 
         }
         return items
+    }
+
+    // MARK: Center Selected Patch
+    func scrollToCenterOfSelectedPatch(animated: Bool = true) {
+        guard let selectedID = selectedPatchBarItemID,
+              let index = patchBarItems.firstIndex(where: { $0.id == selectedID }) else {
+            return
+        }
+        DispatchQueue.main.async {
+            let indexPath = IndexPath(item: index, section: 0)
+            self.collectionView?.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: animated)
+        }
     }
 }
 
@@ -219,6 +239,8 @@ final class PatchSelectorView: UIView, UICollectionViewDataSource, UICollectionV
             collectionView.leadingAnchor.constraint(equalTo: leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
+        // Assign collectionView reference to viewModel if available
+        viewModel?.collectionView = collectionView
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -422,47 +444,37 @@ final class PatchCell: UICollectionViewCell {
     static let reuseID = "PatchCell"
 
     // MARK: Subviews
-    private let imageView = UIImageView()
+    // Remove old imageView and selectionIndicatorView declarations
+    // Add a reference to the circularImageView for configuring
+    private var circularImageView: UIImageView?
+    private var selectionIndicatorView = UIView()
+
     private let nameLabel = UILabel()
-    private let selectionIndicatorView = UIView()
 
     // MARK: Init
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        contentView.addSubview(imageView)
-        contentView.addSubview(nameLabel)
-        contentView.insertSubview(selectionIndicatorView, belowSubview: imageView)
-
-        imageView.contentMode = .scaleAspectFill
-        imageView.clipsToBounds = true
-        imageView.layer.cornerRadius = 24
-        imageView.layer.masksToBounds = true
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-        selectionIndicatorView.layer.borderColor = UIColor.white.cgColor
-        selectionIndicatorView.layer.borderWidth = 4
-        selectionIndicatorView.layer.cornerRadius = 26
-        selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = false
-        selectionIndicatorView.isHidden = true
-
-        nameLabel.translatesAutoresizingMaskIntoConstraints = false
         nameLabel.font = .systemFont(ofSize: 10)
         nameLabel.textAlignment = .center
         nameLabel.numberOfLines = 2
 
+        // Use helper to create circular image button with selection indicator
+        let parts = makeCircularImageButton(metrics: .standard, cornerRadius: 24)
+        self.selectionIndicatorView = parts.selectionIndicatorView
+        self.selectionIndicatorView.isHidden = true
+        self.circularImageView = parts.imageView
+
+        parts.container.translatesAutoresizingMaskIntoConstraints = false
+        contentView.addSubview(parts.container)
+        contentView.addSubview(nameLabel)
+        nameLabel.translatesAutoresizingMaskIntoConstraints = false
+
         NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
-            imageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: 48),
-            imageView.heightAnchor.constraint(equalToConstant: 48),
+            parts.container.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            parts.container.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
 
-            selectionIndicatorView.centerXAnchor.constraint(equalTo: imageView.centerXAnchor),
-            selectionIndicatorView.centerYAnchor.constraint(equalTo: imageView.centerYAnchor),
-            selectionIndicatorView.widthAnchor.constraint(equalToConstant: 56),
-            selectionIndicatorView.heightAnchor.constraint(equalToConstant: 56),
-
-            nameLabel.topAnchor.constraint(equalTo: imageView.bottomAnchor, constant: 4),
+            nameLabel.topAnchor.constraint(equalTo: parts.container.bottomAnchor, constant: 4),
             nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
             nameLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
             nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: contentView.bottomAnchor)
@@ -474,16 +486,14 @@ final class PatchCell: UICollectionViewCell {
     // MARK: Configuration
     func configure(with item: PatchSettings) {
         nameLabel.text = item.name
-        if item.image.cgImage != nil {
-            imageView.image = item.image
-            imageView.backgroundColor = .clear
-        } else {
-            imageView.image = nil
-            imageView.backgroundColor = UIColor.black.withAlphaComponent(0.3)
+        if let iv = circularImageView {
+            configureCircularImage(iv, with: item.image, fallbackBackground: UIColor.black.withAlphaComponent(0.3))
         }
     }
 
-    func setSelected(_ selected: Bool) { selectionIndicatorView.isHidden = !selected }
+    func setSelected(_ selected: Bool) {
+        applySelectionIndicator(selectionIndicatorView, selected: selected)
+    }
 }
 
 // MARK: SwiftUI bridge
@@ -511,6 +521,3 @@ extension UIViewController {
         return top
     }
 }
-
-
-    

@@ -1,6 +1,7 @@
 import os.log
 import ARKit
 import CoreML
+import QuartzCore
 
 enum VertDirection {
     case up
@@ -34,6 +35,11 @@ struct FaceData {
 // NOTE: yaw/pitch/roll are kept for UI/UX logic but are intentionally EXCLUDED
 // from the vowel classifier inputs to avoid confounding pose with vowel shape.
 class FaceDataBrain {
+    
+    // Throttled logging for vowel predictions
+    private let logVowels: Bool = false
+    private static var lastVowelLogTime: TimeInterval = 0
+    private let vowelLogInterval: TimeInterval = 0.5
     
     static let shared = FaceDataBrain()
     
@@ -105,7 +111,7 @@ class FaceDataBrain {
             case .schwa: return (1.81, 0.71, 1.00)
             case .ux:    return (1.88, 0.75, 0.57)
             case .u:     return (1.95, 0.75, 0.49)
-            case .rr:    return (0.71, 0.12, 0.64)
+            case .rr:    return (0.71, 0.12, 0.46)
             case .none:  return (1.81, 0.71, 1.00)
             }
         }
@@ -209,7 +215,15 @@ class FaceDataBrain {
         if !probs.isEmpty {
             if let (bestLabel, bestProb) = probs.max(by: { $0.value < $1.value }) {
                 let display = Vowel(rawValue: bestLabel)?.display ?? bestLabel
-                //print("🤯 Predicted vowel: \(display) (\(String(format: "%.2f", bestProb)))")
+                
+                if logVowels {
+                    let now = CACurrentMediaTime()
+                    if now - FaceDataBrain.lastVowelLogTime >= vowelLogInterval {
+                        FaceDataBrain.lastVowelLogTime = now
+                        Log.line(actor: "🤯 FaceDataBrain", fn: "processFaceData", "Predicted vowel: \(display) (\(String(format: "%.2f", bestProb)))")
+                    }
+                }
+
             } else {
                 //print("🤯 No vowel prediction available")
             }
@@ -397,3 +411,4 @@ extension ARFaceAnchor {
         return Float(self.blendShapes[loc]?.doubleValue ?? 0.0)
     }
 }
+

@@ -225,7 +225,7 @@ class PatchManager {
 
     
     // Load everything from UserDefaults
-    private func loadFromStorage() {
+    func loadFromStorage() {
         guard let data = UserDefaults.standard.data(forKey: patchesKey) else {
             
             Log.line(actor: "📥 PatchManager", fn: "loadFromStorage", "No saved patch data found in UserDefaults for key: \(patchesKey)")

@@ -28,6 +28,16 @@ class MusicBrain {
             case .augmented: return "Augmented"
             }
         }
+        var shortDisplayName: String {
+            switch self {
+            case .major: return ""
+            case .minor: return "m"
+            case .dominant7: return "7"
+            case .diminished: return "°"
+            case .halfDiminished: return "ø"
+            case .augmented: return "+"
+            }
+        }
     }
 
     // Enum for note names
@@ -337,9 +347,28 @@ class MusicBrain {
         arPitchRange.calibrateCenter(from: rawPitch)
     }
     
+    /// Generates an array of NoteNames centered on the given key and ordered by the circle of fifths.
+    /// The count parameter determines the number of notes (must be > 0).
+    static func circleOfFifthsWindow(center: NoteName, count: Int) -> [NoteName] {
+        guard count > 0 else { return [] }
+        let half = count / 2
+        let start = -half
+        let end = start + count
+        return (start..<end).map { step in
+            let raw = center.rawValue + (7 * step)
+            let noteValue = ((raw % 12) + 12) % 12
+            guard let note = NoteName(rawValue: noteValue) else {
+                // Fallback: this should never happen, but return a sensible default
+                return .C
+            }
+            return note
+        }
+    }
 }
 
     
+
+
 
 
 

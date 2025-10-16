@@ -260,3 +260,152 @@ func createCloseButton(target: Any?, action: Selector) -> UIButton {
     return button
 }
 
+// MARK: - Reusable circular button helpers
+func makeCircularButtonViews(innerSize: CGFloat,
+                             indicatorSize: CGFloat,
+                             innerColor: UIColor = UIColor.white.withAlphaComponent(0.4)) -> (circleView: UIView, selectionIndicatorView: UIView) {
+    let circleView = UIView()
+    circleView.translatesAutoresizingMaskIntoConstraints = false
+    circleView.backgroundColor = innerColor
+    circleView.layer.cornerRadius = innerSize / 2
+    circleView.layer.masksToBounds = true
+
+    let selectionIndicatorView = UIView()
+    selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = false
+    selectionIndicatorView.layer.borderColor = UIColor.white.cgColor
+    selectionIndicatorView.layer.borderWidth = 4
+    selectionIndicatorView.layer.cornerRadius = indicatorSize / 2
+    selectionIndicatorView.isHidden = true
+
+    NSLayoutConstraint.activate([
+        circleView.widthAnchor.constraint(equalToConstant: innerSize),
+        circleView.heightAnchor.constraint(equalToConstant: innerSize),
+        selectionIndicatorView.widthAnchor.constraint(equalToConstant: indicatorSize),
+        selectionIndicatorView.heightAnchor.constraint(equalToConstant: indicatorSize)
+    ])
+
+    return (circleView, selectionIndicatorView)
+}
+
+func applySelectionIndicator(_ selectionIndicatorView: UIView, selected: Bool) {
+    selectionIndicatorView.isHidden = !selected
+}
+
+// MARK: - Circular Button Shared Utilities
+struct CircularButtonMetrics {
+    let innerSize: CGFloat
+    let indicatorSize: CGFloat
+    let ringWidth: CGFloat
+    static let standard = CircularButtonMetrics(innerSize: 48, indicatorSize: 56, ringWidth: 4)
+}
+
+func makeCircularButtonBase(metrics: CircularButtonMetrics,
+                            innerColor: UIColor = UIColor.white.withAlphaComponent(0.4)) -> (container: UIView, circleView: UIView, selectionIndicatorView: UIView) {
+    let container = UIView()
+    container.translatesAutoresizingMaskIntoConstraints = false
+
+    let parts = makeCircularButtonViews(innerSize: metrics.innerSize,
+                                        indicatorSize: metrics.indicatorSize,
+                                        innerColor: innerColor)
+    let circleView = parts.circleView
+    let selectionIndicatorView = parts.selectionIndicatorView
+
+    container.addSubview(circleView)
+    container.insertSubview(selectionIndicatorView, belowSubview: circleView)
+
+    NSLayoutConstraint.activate([
+        circleView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+        circleView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+        selectionIndicatorView.centerXAnchor.constraint(equalTo: circleView.centerXAnchor),
+        selectionIndicatorView.centerYAnchor.constraint(equalTo: circleView.centerYAnchor),
+        container.widthAnchor.constraint(greaterThanOrEqualToConstant: metrics.indicatorSize),
+        container.heightAnchor.constraint(greaterThanOrEqualToConstant: metrics.indicatorSize)
+    ])
+
+    return (container, circleView, selectionIndicatorView)
+}
+
+struct CircularLabeledButtonParts {
+    let container: UIView
+    let circleView: UIView
+    let selectionIndicatorView: UIView
+    let label: UILabel
+}
+
+func makeCircularLabeledButton(metrics: CircularButtonMetrics = .standard,
+                               font: UIFont = .systemFont(ofSize: 14, weight: .semibold),
+                               textColor: UIColor = .black,
+                               innerColor: UIColor = UIColor.white.withAlphaComponent(0.4)) -> CircularLabeledButtonParts {
+    let base = makeCircularButtonBase(metrics: metrics, innerColor: innerColor)
+    let label = UILabel()
+    label.translatesAutoresizingMaskIntoConstraints = false
+    label.font = font
+    label.textColor = textColor
+    label.textAlignment = .center
+    label.numberOfLines = 1
+    label.backgroundColor = .clear
+
+    base.container.addSubview(label)
+
+    NSLayoutConstraint.activate([
+        label.centerXAnchor.constraint(equalTo: base.circleView.centerXAnchor),
+        label.centerYAnchor.constraint(equalTo: base.circleView.centerYAnchor),
+        label.leadingAnchor.constraint(greaterThanOrEqualTo: base.circleView.leadingAnchor, constant: 4),
+        label.trailingAnchor.constraint(lessThanOrEqualTo: base.circleView.trailingAnchor, constant: -4)
+    ])
+
+    return CircularLabeledButtonParts(container: base.container,
+                                      circleView: base.circleView,
+                                      selectionIndicatorView: base.selectionIndicatorView,
+                                      label: label)
+}
+
+struct CircularImageButtonParts {
+    let container: UIView
+    let imageView: UIImageView
+    let selectionIndicatorView: UIView
+}
+
+func makeCircularImageButton(metrics: CircularButtonMetrics = .standard,
+                             cornerRadius: CGFloat? = nil) -> CircularImageButtonParts {
+    let base = makeCircularButtonBase(metrics: metrics, innerColor: .clear)
+    let imageView = UIImageView()
+    imageView.translatesAutoresizingMaskIntoConstraints = false
+    imageView.contentMode = .scaleAspectFill
+    imageView.clipsToBounds = true
+    imageView.layer.cornerRadius = cornerRadius ?? (metrics.innerSize / 2)
+
+    base.container.addSubview(imageView)
+
+    NSLayoutConstraint.activate([
+        imageView.centerXAnchor.constraint(equalTo: base.circleView.centerXAnchor),
+        imageView.centerYAnchor.constraint(equalTo: base.circleView.centerYAnchor),
+        imageView.widthAnchor.constraint(equalToConstant: metrics.innerSize),
+        imageView.heightAnchor.constraint(equalToConstant: metrics.innerSize)
+    ])
+
+    return CircularImageButtonParts(container: base.container,
+                                    imageView: imageView,
+                                    selectionIndicatorView: base.selectionIndicatorView)
+}
+
+func constrainCentered(_ child: UIView, in parent: UIView) -> [NSLayoutConstraint] {
+    return [
+        child.centerXAnchor.constraint(equalTo: parent.centerXAnchor),
+        child.centerYAnchor.constraint(equalTo: parent.centerYAnchor)
+    ]
+}
+
+func setCircularButtonSelected(selectionIndicatorView: UIView, circleView: UIView, selected: Bool) {
+    applySelectionIndicator(selectionIndicatorView, selected: selected)
+}
+
+func configureCircularImage(_ imageView: UIImageView, with image: UIImage?, fallbackBackground: UIColor = UIColor.black.withAlphaComponent(0.3)) {
+    if let image = image, image.cgImage != nil || image.ciImage != nil {
+        imageView.image = image
+        imageView.backgroundColor = .clear
+    } else {
+        imageView.image = nil
+        imageView.backgroundColor = fallbackBackground
+    }
+}

@@ -12,9 +12,14 @@ import SwiftEntryKit
 import SwiftUI
 
 class FaceTrackerViewController: UIViewController, ARSessionDelegate {
+    
     private var patchSelectorHostingController: UIHostingController<PatchSelectorViewRepresentable>?
     private var patchSelectorViewModel = PatchSelectorViewModel()
     @IBOutlet weak var sceneView: ARSCNView!
+    
+    private var chordGridHostingController: UIViewController?
+    
+    private var bottomOverlayStackView: UIStackView!
     
     var statsStackView: UIStackView!
     
@@ -24,9 +29,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
+    private let showStats = false
     private var lastStatsUpdate: TimeInterval = 0
-    
-   
     
     private let faceDataBrain = FaceDataBrain.shared
     private var lastFacePitch: Float?
@@ -48,52 +52,70 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         sceneView.preferredFramesPerSecond = 24 // Lower frame rate to prioritize audio
         
         // Show statistics such as fps and timing information for testing purposes
-        sceneView.showsStatistics = true
+        sceneView.showsStatistics = false
         
         
-        statsStackView = UIStackView()
-        statsStackView.axis = .vertical
-        statsStackView.spacing = 10
-        statsStackView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statsStackView)
         
-        
-        NSLayoutConstraint.activate([
-            statsStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
-            statsStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
-            statsStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10)
-        ])
-        
+        if showStats {
+            statsStackView = UIStackView()
+            statsStackView.axis = .vertical
+            statsStackView.spacing = 10
+            statsStackView.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(statsStackView)
 
-        
-        // Initialize stat box for testing purposes
-        faceStatsManager = FaceStatsManager(stackView: statsStackView, title: "Face Tracking")
-        audioStatsManager = StatsWindowManager(stackView: statsStackView, title: "Audio Debugging")
-        musicStatsManager = StatsWindowManager(stackView: statsStackView, title: "Music Debugging")
-        
+            NSLayoutConstraint.activate([
+                statsStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+                statsStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+                statsStackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 10)
+            ])
+
+            // Initialize stat boxes
+            faceStatsManager = FaceStatsManager(stackView: statsStackView, title: "Face Tracking")
+            audioStatsManager = StatsWindowManager(stackView: statsStackView, title: "Audio Debugging")
+            musicStatsManager = StatsWindowManager(stackView: statsStackView, title: "Music Debugging")
+        }
+         
+         
         // Setup settings button
         createButtons()
 
 
 
 
-        // Add PatchSelectorView as a SwiftUI hosting controller at the bottom
+        // Create a bottom overlay stack view to host dismissable bottom overlays
+        bottomOverlayStackView = UIStackView()
+        bottomOverlayStackView.axis = .vertical
+        bottomOverlayStackView.distribution = .fill
+        bottomOverlayStackView.alignment = .fill
+        bottomOverlayStackView.layoutMargins = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        bottomOverlayStackView.spacing = 0
+        //bottomOverlayStackView.backgroundColor = .white.withAlphaComponent(0.2)
+        bottomOverlayStackView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bottomOverlayStackView)
+
+        NSLayoutConstraint.activate([
+            bottomOverlayStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomOverlayStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomOverlayStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+
+        // Add PatchSelectorView as a SwiftUI hosting controller at the bottom (inside the stack)
         let patchSelectorView = PatchSelectorViewRepresentable(viewModel: patchSelectorViewModel)
         let hostingController = UIHostingController(rootView: patchSelectorView)
         self.patchSelectorHostingController = hostingController
 
         addChild(hostingController)
-        view.addSubview(hostingController.view)
+        bottomOverlayStackView.addArrangedSubview(hostingController.view)
         hostingController.didMove(toParent: self)
 
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
         hostingController.view.backgroundColor = .clear
-        NSLayoutConstraint.activate([
-            hostingController.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            hostingController.view.heightAnchor.constraint(equalToConstant: 100)
-        ])
+        // Keep explicit height so the stack knows how tall the patch selector is
+        hostingController.view.heightAnchor.constraint(equalToConstant: 100).isActive = true
+        hostingController.view.leadingAnchor.constraint(equalTo: bottomOverlayStackView.leadingAnchor).isActive = true
+        hostingController.view.trailingAnchor.constraint(equalTo: bottomOverlayStackView.trailingAnchor).isActive = true
+        
+        
         Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidLoad", "calling patchSelectorViewModel.loadPatches()")
 
         patchSelectorViewModel.loadPatches()
@@ -135,14 +157,20 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         voiceSettingsButton.translatesAutoresizingMaskIntoConstraints = false
         voiceSettingsButton.addTarget(self, action: #selector(voiceSettingsButtonTapped), for: .touchUpInside)
 
+        let chordGridButton = UIButton(type: .system)
+        chordGridButton.setImage(UIImage(systemName: "circle.grid.3x3"), for: .normal)
+        chordGridButton.tintColor = .white
+        chordGridButton.translatesAutoresizingMaskIntoConstraints = false
+        chordGridButton.addTarget(self, action: #selector(toggleChordGridTapped), for: .touchUpInside)
+
         let resetButton = UIButton(type: .system)
         resetButton.setImage(UIImage(systemName: "person.fill.viewfinder"), for: .normal)
         resetButton.tintColor = .white
         resetButton.translatesAutoresizingMaskIntoConstraints = false
         resetButton.addTarget(self, action: #selector(resetTrackingTapped), for: .touchUpInside)
 
-        // Stack the buttons vertically: savePatch, voiceSettings, gear, reset
-        let buttonStack = UIStackView(arrangedSubviews: [voiceSettingsButton, gearButton, resetButton, savePatchButton])
+        // Stack the buttons vertically: savePatch, voiceSettings, gear, chordGrid, reset
+        let buttonStack = UIStackView(arrangedSubviews: [voiceSettingsButton, gearButton, chordGridButton, resetButton, savePatchButton])
         buttonStack.axis = .vertical
         buttonStack.alignment = .center
         buttonStack.spacing = 10
@@ -155,9 +183,43 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
             buttonStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20)
         ])
         // Set fixed size for all buttons
-        [savePatchButton, gearButton, voiceSettingsButton, resetButton].forEach { btn in
+        [savePatchButton, gearButton, voiceSettingsButton, chordGridButton, resetButton].forEach { btn in
             btn.widthAnchor.constraint(equalToConstant: 40).isActive = true
             btn.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        }
+    }
+
+    @objc private func toggleChordGridTapped() {
+        if let controller = chordGridHostingController {
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "toggleChordGridTapped", "let controller = chordGridHostingController")
+            // remove from stack
+            controller.willMove(toParent: UIViewController?.none)
+            bottomOverlayStackView.removeArrangedSubview(controller.view)
+            controller.view.removeFromSuperview()
+            controller.removeFromParent()
+            chordGridHostingController = nil
+        } else {
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "toggleChordGridTapped", "let controller is nil, so create a new chordGridHostingController")
+            let chordGridViewModel = ChordGridViewModel()
+            let chordGridView = ChordGridView(viewModel: chordGridViewModel)
+            let controller = UIViewController()
+            controller.view = chordGridView
+            controller.view.backgroundColor = .clear
+            chordGridHostingController = controller
+
+            addChild(controller)
+            controller.view.translatesAutoresizingMaskIntoConstraints = false
+            bottomOverlayStackView.insertArrangedSubview(controller.view, at: 0)
+            controller.didMove(toParent: self)
+            controller.view.translatesAutoresizingMaskIntoConstraints = false
+            
+            // Dynamically calculate height based on rows
+            let rowHeight: CGFloat = 60.0 // Adjust per your button + spacing
+            let rowCount = max(1, AppSettings().chordGridRows)
+            let totalHeight = rowHeight * CGFloat(rowCount) + 20.0 // Add padding
+            controller.view.heightAnchor.constraint(equalToConstant: totalHeight).isActive = true
+            controller.view.leadingAnchor.constraint(equalTo: bottomOverlayStackView.leadingAnchor).isActive = true
+            controller.view.trailingAnchor.constraint(equalTo: bottomOverlayStackView.trailingAnchor).isActive = true
         }
     }
     
@@ -292,11 +354,15 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         
         Log.line(actor: "😮 FaceTrackerViewController", fn: "viewDidAppear", "FaceTrackerVC didAppear bounds: \(sceneView.bounds) scale: \(sceneView.contentScaleFactor)")
 
+
         guard !didStartAR else { return }
         didStartAR = true
         DispatchQueue.main.async { [weak self] in
             self?.resetTracking() // same ARFaceTrackingConfiguration, just started later
         }
+        
+        patchSelectorViewModel.scrollToCenterOfSelectedPatch(animated: false)
+
 
     }
     
@@ -466,16 +532,18 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
         VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
         
         // Throttle stats updates to 4 times per second
-        let now = CACurrentMediaTime()
-        if now - lastStatsUpdate > 0.25 {
-            faceStatsManager.updateFaceStats(with: faceData)
-            let conductor = VoiceConductorManager.shared.activeConductor
-            let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
-            var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
-            audioStatsString += conductor.returnAudioStats()
-            audioStatsManager.updateStats(with: audioStatsString)
-            musicStatsManager.updateStats(with: conductor.returnMusicStats())
-            lastStatsUpdate = now
+        if showStats {
+            let now = CACurrentMediaTime()
+            if now - lastStatsUpdate > 0.25 {
+                faceStatsManager.updateFaceStats(with: faceData)
+                let conductor = VoiceConductorManager.shared.activeConductor
+                let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
+                var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
+                audioStatsString += conductor.returnAudioStats()
+                audioStatsManager.updateStats(with: audioStatsString)
+                musicStatsManager.updateStats(with: conductor.returnMusicStats())
+                lastStatsUpdate = now
+            }
         }
         
         contentController.renderer(renderer, didUpdate: contentNode, for: anchor)

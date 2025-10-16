@@ -32,7 +32,7 @@ protocol VoiceConductorProtocol: AnyObject {
     var noteRangeSize: NoteRangeSize { get set }
 
     var numOfVoices: Int { get set }
-    var chordType: MusicBrain.ChordType { get set }
+    var tonicChord: MusicBrain.ChordType { get set }
     
     var scaleMask: UInt16? { get set }
     

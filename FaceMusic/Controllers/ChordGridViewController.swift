@@ -10,6 +10,9 @@ import SwiftUI
 
 final class ChordGridViewModel: ObservableObject {
     @Published var items: [ChordItem] = []
+    
+    let appSettings = AppSettings()
+    var patchSettings: PatchSettings!
 
     struct ChordItem: Identifiable {
         let id = UUID()
@@ -17,6 +20,7 @@ final class ChordGridViewModel: ObservableObject {
         let type: MusicBrain.ChordType
         var label: String { "\(key.displayName)\(type.shortDisplayName)" }
     }
+    
 
     init() {
         generateGrid()
@@ -27,26 +31,23 @@ final class ChordGridViewModel: ObservableObject {
     }
 
     func generateGrid() {
-        let settings = AppSettings()
+
+        // Refresh patch settings if available
+        if let ps = patchSettings, let refreshedSettings = PatchManager.shared.getPatchData(forID: ps.id) {
+            patchSettings = refreshedSettings
+        }
 
         // Determine grid dimensions
-        let rowCount = max(1, settings.chordGridRows)
+        let rowCount = max(1, appSettings.chordGridRows)
 
         // Try to determine desired column count; fall back to all 12 if no explicit setting exists
         let columnCount: Int = {
-            //if let value = (settings as AnyObject).value(forKey: "chordGridCols") as? Int { return max(1, value) }
+            // all 12 keys
             return 12
         }()
 
         // Determine center key from current patch if available; default to C
-        let defaultKey: MusicBrain.NoteName = .C
-        let centerKey: MusicBrain.NoteName = {
-            guard let id = PatchManager.shared.currentPatchID,
-                  let patch = PatchManager.shared.getPatchData(forID: id) else {
-                return defaultKey
-            }
-            return patch.key
-        }()
+        let centerKey: MusicBrain.NoteName = patchSettings?.tonicKey ?? .C
 
         // Build columns by key using circle of fifths centered on the current patch key
         let keysInFifths = MusicBrain.circleOfFifthsWindow(center: centerKey, count: columnCount)
@@ -73,12 +74,15 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
     }
 
     private let collectionView: UICollectionView
+    private let viewModel: ChordGridViewModel
     private var items: [ChordGridViewModel.ChordItem] = []
-    private var currentKeyIndex: Int? = nil
+    private var tonicKeyIndex: Int? = nil
     private var selectedIndex: Int?
     var onChordSelected: ((ChordGridViewModel.ChordItem) -> Void)?
 
     init(viewModel: ChordGridViewModel) {
+        self.viewModel = viewModel
+
         let layout = UICollectionViewFlowLayout()
         layout.scrollDirection = .horizontal
         layout.minimumLineSpacing = UIConstants.spacing
@@ -116,7 +120,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         
         // Attempt to center on current key after initial data load
         DispatchQueue.main.async { [weak self] in
-            self?.scrollToCenterOfCurrentKey(animated: false)
+            self?.scrollToCenterOfTonicKey(animated: false)
         }
         
         collectionView.reloadData()
@@ -133,20 +137,14 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
     }
 
     // MARK: Center Current Key
-    func scrollToCenterOfCurrentKey(animated: Bool = true) {
+    func scrollToCenterOfTonicKey(animated: Bool = true) {
         // Determine the current key from PatchManager if available; default to C
-        let currentKey: MusicBrain.NoteName = {
-            guard let id = PatchManager.shared.currentPatchID,
-                  let patch = PatchManager.shared.getPatchData(forID: id) else {
-                return .C
-            }
-            return patch.key
-        }()
+        let tonicKey: MusicBrain.NoteName = viewModel.patchSettings?.tonicKey ?? .C
 
         // Find the first item matching this key
-        guard let index = items.firstIndex(where: { $0.key == currentKey }) else { return }
+        guard let index = items.firstIndex(where: { $0.key == tonicKey }) else { return }
 
-        self.currentKeyIndex = index
+        self.tonicKeyIndex = index
 
         // Ensure scrolling occurs on the next runloop and on main thread
         DispatchQueue.main.async {
@@ -157,7 +155,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
     }
 
     private func updateHighlightRing() {
-        let indexToHighlight = selectedIndex ?? currentKeyIndex
+        let indexToHighlight = selectedIndex ?? tonicKeyIndex
         for cell in collectionView.visibleCells {
             guard let indexPath = collectionView.indexPath(for: cell), let chordCell = cell as? ChordCell else { continue }
             let isHighlighted = (indexPath.item == indexToHighlight)
@@ -169,7 +167,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         // Refresh items and center on the current key
         // We don't have direct access to the viewModel here, so recompute items if needed is not available.
         // Since ChordGridViewRepresentable.updateUIView refreshes items when SwiftUI updates, here we'll just recenter and update highlight.
-        self.scrollToCenterOfCurrentKey(animated: true)
+        self.scrollToCenterOfTonicKey(animated: true)
         self.updateHighlightRing()
     }
 
@@ -178,14 +176,8 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
         self.selectedIndex = nil
         self.collectionView.reloadData()
         // Recompute current key index based on PatchManager
-        let currentKey: MusicBrain.NoteName = {
-            guard let id = PatchManager.shared.currentPatchID,
-                  let patch = PatchManager.shared.getPatchData(forID: id) else {
-                return .C
-            }
-            return patch.key
-        }()
-        self.currentKeyIndex = self.items.firstIndex(where: { $0.key == currentKey })
+        let currentKey: MusicBrain.NoteName = viewModel.patchSettings?.tonicKey ?? .C
+        self.tonicKeyIndex = self.items.firstIndex(where: { $0.key == currentKey })
         // Ensure highlight updates on next runloop
         DispatchQueue.main.async { [weak self] in
             self?.updateHighlightRing()
@@ -201,7 +193,7 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
             return UICollectionViewCell()
         }
         cell.configure(with: items[indexPath.item].label)
-        let indexToHighlight = selectedIndex ?? currentKeyIndex
+        let indexToHighlight = selectedIndex ?? tonicKeyIndex
         let isHighlighted = (indexPath.item == indexToHighlight)
         cell.setHighlightedRing(isHighlighted)
         return cell
@@ -210,7 +202,6 @@ final class ChordGridView: UIView, UICollectionViewDataSource, UICollectionViewD
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         selectedIndex = indexPath.item
         updateHighlightRing()
-        collectionView.scrollToItem(at: indexPath, at: .centeredHorizontally, animated: true)
         let item = items[indexPath.item]
         onChordSelected?(item)
     }
@@ -275,3 +266,4 @@ struct ChordGridViewRepresentable: UIViewRepresentable {
         uiView.updateItems(viewModel.items)
     }
 }
+

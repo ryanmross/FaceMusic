@@ -14,6 +14,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                willConnectTo session: UISceneSession,
                options connectionOptions: UIScene.ConnectionOptions) {
         
+        
+        // LOG OUR SAVED PATCHES
+        logUserDefaultsPatches()
+
+        
         Log.line(actor: "🎓 SceneDelegate", fn: "scene.willConnectTo", "starting scene willConnectTo")
 
 
@@ -52,6 +57,32 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     self.window?.rootViewController = faceTrackerVC
                 }
             }
+        }
+    }
+    
+    
+    /// Logs the stored patches from UserDefaults.
+    /// - Parameter key: The UserDefaults key under which patches are stored. Defaults to "patchesKey".
+    private func logUserDefaultsPatches(key: String = "SavedPatches") {
+        let keyToUse = key
+
+        if let value = UserDefaults.standard.object(forKey: keyToUse) {
+            if let data = value as? Data {
+                // Try to decode JSON for readability; if it fails, log raw data length/base64
+                if let jsonObject = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed),
+                   let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted]),
+                   let prettyString = String(data: prettyData, encoding: .utf8) {
+                    Log.line(actor: "SceneDelegate", fn: "init", "UserDefaults[\(keyToUse)] (JSON):\n\(prettyString)")
+                } else if let utf8String = String(data: data, encoding: .utf8) {
+                    Log.line(actor: "SceneDelegate", fn: "init", "UserDefaults[\(keyToUse)] (utf8): \(utf8String)")
+                } else {
+                    Log.line(actor: "SceneDelegate", fn: "init", "UserDefaults[\(keyToUse)] Data (\(data.count) bytes, base64): \(data.base64EncodedString())")
+                }
+            } else {
+                Log.line(actor: "SceneDelegate", fn: "init", "UserDefaults[\(keyToUse)] = \(value)")
+            }
+        } else {
+            Log.line(actor: "SceneDelegate", fn: "init", "No value found in UserDefaults for key '\(keyToUse)'")
         }
     }
 
@@ -244,4 +275,11 @@ private enum Prewarm {
             }
         }
     }
+    
+    
+    
+
+    
+    
+    
 }

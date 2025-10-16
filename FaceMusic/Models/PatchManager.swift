@@ -14,8 +14,8 @@ struct PatchSettings: Codable {
     var id: Int
     var name: String?
     
-    var key: MusicBrain.NoteName
-    var chordType: MusicBrain.ChordType
+    var tonicKey: MusicBrain.NoteName
+    var tonicChord: MusicBrain.ChordType
     
     var numOfVoices: Int
     var glissandoSpeed: Float
@@ -274,8 +274,8 @@ extension PatchSettings {
         return PatchSettings(
             id: 0,
             name: "Untitled Patch",
-            key: .C,
-            chordType: .major,
+            tonicKey: .C,
+            tonicChord: .major,
             numOfVoices: 1,
             glissandoSpeed: 50,
             voicePitchLevel: .medium,

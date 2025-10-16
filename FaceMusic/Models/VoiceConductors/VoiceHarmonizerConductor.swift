@@ -31,8 +31,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
             PatchSettings(
                 id: -3001,
                 name: "Harmonizer 1",
-                key: .C,
-                chordType: .major,
+                tonicKey: .C,
+                tonicChord: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
                 voicePitchLevel: VoicePitchLevel.medium,
@@ -49,8 +49,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
             PatchSettings(
                 id: -3002,
                 name: "Harmonizer 2",
-                key: .D,
-                chordType: .minor,
+                tonicKey: .D,
+                tonicChord: .minor,
                 numOfVoices: 4,
                 glissandoSpeed: 25.0,
                 voicePitchLevel: VoicePitchLevel.medium,
@@ -73,7 +73,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     
     var currentSettings: PatchSettings?
 
-    var chordType: MusicBrain.ChordType
+    var tonicChord: MusicBrain.ChordType
     
     var currentPitch: Int?
     
@@ -144,7 +144,7 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     required init() {
         // get default key from defaultSettings
         let defaultSettings = PatchManager.shared.defaultPatchSettings
-        self.chordType = defaultSettings.chordType
+        self.tonicChord = defaultSettings.tonicChord
         
         self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
@@ -401,14 +401,14 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
         
-        self.chordType = settings.chordType
+        self.tonicChord = settings.tonicChord
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
         if let scaleMask = settings.scaleMask {
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: scaleMask)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: scaleMask)
         } else {
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord)
         }
         
         
@@ -437,8 +437,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         return PatchSettings(
             id: currentSettings?.id ?? -1,
             name: currentSettings?.name ?? "Untitled Patch",
-            key: MusicBrain.shared.currentKey,
-            chordType: self.chordType,
+            tonicKey: MusicBrain.shared.tonicKey,
+            tonicChord: self.tonicChord,
             numOfVoices: self.numOfVoices,
             glissandoSpeed: self.glissandoSpeed,
             voicePitchLevel: self.voicePitchLevel,

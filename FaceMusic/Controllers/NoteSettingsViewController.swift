@@ -239,11 +239,11 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         Log.line(actor: "🎵 NoteSettingsViewController", fn: "configurePickersWithConductorSettings()", "")
 
         // Use the current key from MusicBrain
-        let currentKey = MusicBrain.shared.currentKey
+        let tonicKey = MusicBrain.shared.tonicKey
         
         let reversedNotes = MusicBrain.NoteName.allCases.reversed()
         let reversedArray = Array(reversedNotes)
-        if let keyIndex = reversedArray.firstIndex(of: currentKey) {
+        if let keyIndex = reversedArray.firstIndex(of: tonicKey) {
             let middleRow = (reversedArray.count * 50) + keyIndex
             keyPicker.selectRow(middleRow, inComponent: 0, animated: false)
         }
@@ -360,8 +360,8 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         patchSettings.noteRangeSize = noteRangeOptions[selectedNoteRangeIndex]
         
         patchSettings.numOfVoices = selectedNumOfVoices
-        patchSettings.key = selectedKey
-        patchSettings.chordType = selectedChordType
+        patchSettings.tonicKey = selectedKey
+        patchSettings.tonicChord = selectedChordType
         patchSettings.glissandoSpeed = glissandoSlider.value
 
         if pickerView.tag == 0 || pickerView.tag == 1 {
@@ -432,10 +432,10 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
     // MARK: - Piano Highlighting
     private func updatePianoHighlighting(highlightNote: Int? = nil) {
-        //print("updatePianoHighlighting with highlightNote: \(String(describing: highlightNote)), currentScalePitchClasses: \(MusicBrain.shared.currentScalePitchClasses)")
+        //print("updatePianoHighlighting with highlightNote: \(String(describing: highlightNote)), tonicScalePitchClasses: \(MusicBrain.shared.tonicScalePitchClasses)")
 
         // Use MusicBrain's currentPitchClasses for highlighting instead of computed intervals
-        let scaleNotes = MusicBrain.shared.currentScalePitchClasses
+        let scaleNotes = MusicBrain.shared.tonicScalePitchClasses
         
         let allNotesInOctave = 60..<72
         for note in allNotesInOctave {
@@ -535,7 +535,7 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         
         // Rebuild quantization with current lowest/highest notes
         MusicBrain.shared.rebuildQuantization(
-            withScaleClasses: MusicBrain.shared.currentScalePitchClasses
+            withScaleClasses: MusicBrain.shared.tonicScalePitchClasses
         )
         
         // Refresh keyboard

@@ -201,8 +201,21 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         } else {
             Log.line(actor: "😮 FaceTrackerViewController", fn: "toggleChordGridTapped", "let controller is nil, so create a new chordGridHostingController")
             let chordGridViewModel = ChordGridViewModel()
+            
+            // import current settings from conductor into chordGrid's patchSettings
+            
+            
+            let conductor = VoiceConductorManager.shared.activeConductor
+            
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "toggleChordGridTapped", "updating chordGridViewModel.patchSettings with \(conductor)")
+            chordGridViewModel.patchSettings = conductor.exportCurrentSettings()
+
+            
             let chordGridView = ChordGridView(viewModel: chordGridViewModel)
             let controller = UIViewController()
+            
+
+            
             controller.view = chordGridView
             controller.view.backgroundColor = .clear
             chordGridHostingController = controller
@@ -405,8 +418,8 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         activeConductor.applyConductorSpecificSettings(from: settings)
 
         MusicBrain.shared.updateKeyAndScale(
-            key: settings.key,
-            chordType: settings.chordType,
+            key: settings.tonicKey,
+            chordType: settings.tonicChord,
             scaleMask: settings.scaleMask
         )
 

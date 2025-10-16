@@ -24,8 +24,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             PatchSettings(
                 id: -2001,
                 name: "Osc Saw Lead",
-                key: .C,
-                chordType: .major,
+                tonicKey: .C,
+                tonicChord: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
                 voicePitchLevel: VoicePitchLevel.medium,
@@ -42,8 +42,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             PatchSettings(
                 id: -2002,
                 name: "Osc Smooth Sine",
-                key: .C,
-                chordType: .minor,
+                tonicKey: .C,
+                tonicChord: .minor,
                 numOfVoices: 2,
                 glissandoSpeed: 30.0,
                 voicePitchLevel: VoicePitchLevel.medium,
@@ -70,7 +70,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var currentSettings: PatchSettings?
 
-    var chordType: MusicBrain.ChordType
+    var tonicChord: MusicBrain.ChordType
     
     var currentPitch: Int?
     
@@ -193,7 +193,7 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     required init() {
         // get default key from defaultSettings
         let defaultSettings = PatchManager.shared.defaultPatchSettings
-        self.chordType = defaultSettings.chordType
+        self.tonicChord = defaultSettings.tonicChord
         self.glissandoSpeed = defaultSettings.glissandoSpeed
         self.numOfVoices = defaultSettings.numOfVoices
         self.currentSettings = defaultSettings
@@ -479,15 +479,15 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.currentSettings = settings
         applyConductorSpecificSettings(from: settings)
         
-        self.chordType = settings.chordType
+        self.tonicChord = settings.tonicChord
         self.glissandoSpeed = settings.glissandoSpeed
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
         if let mask = settings.scaleMask {
             self.scaleMask = mask
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType, scaleMask: mask)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: mask)
         } else {
-            MusicBrain.shared.updateKeyAndScale(key: settings.key, chordType: settings.chordType)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord)
         }
         
         self.numOfVoices = settings.numOfVoices
@@ -575,8 +575,8 @@ class OscillatorConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         return PatchSettings(
             id: currentSettings?.id ?? -1,
             name: currentSettings?.name ?? "Untitled Patch",
-            key: MusicBrain.shared.currentKey,
-            chordType: self.chordType,
+            tonicKey: MusicBrain.shared.tonicKey,
+            tonicChord: self.tonicChord,
             numOfVoices: self.numOfVoices,
             glissandoSpeed: self.glissandoSpeed,
             voicePitchLevel: self.voicePitchLevel,

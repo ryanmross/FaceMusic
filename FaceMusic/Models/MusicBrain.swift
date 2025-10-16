@@ -180,18 +180,18 @@ class MusicBrain {
     
 
     // Current key and scale state
-    private(set) var currentKey: NoteName
-    private(set) var currentScale: ScaleType
+    private(set) var tonicKey: NoteName
+    private(set) var tonicScale: ScaleType
     private(set) var currentChordType: ChordType = .major
     
     private(set) var customScaleMask: UInt16? // nil = no override
     private var arPitchRange = ARDataPitchRange()
     
-    var currentScalePitchClasses: [Int] {
+    var tonicScalePitchClasses: [Int] {
         if let mask = customScaleMask {
             return Self.pitchClasses(fromMask: mask)
         } else {
-            return currentScale.intervals.map { ($0 + currentKey.rawValue) % 12 }
+            return tonicScale.intervals.map { ($0 + tonicKey.rawValue) % 12 }
         }
     }
 
@@ -203,8 +203,8 @@ class MusicBrain {
 
     // Initialize with default key and scale, and compute lookup table
     init(key: NoteName = .C, scale: ScaleType = .major) {
-        self.currentKey = key
-        self.currentScale = scale
+        self.tonicKey = key
+        self.tonicScale = scale
         self.nearestNoteTable = []
         //updateKeyAndScale(key: key, chordType: .major)
     }
@@ -224,12 +224,12 @@ class MusicBrain {
     }
 
     func scaleMaskFromCurrentPitchClasses() -> UInt16 {
-        return UInt16(currentScalePitchClasses.reduce(0) { $0 | (1 << ($1 % 12)) })
+        return UInt16(tonicScalePitchClasses.reduce(0) { $0 | (1 << ($1 % 12)) })
     }
 
     
     func updateKeyAndScale(key: NoteName, chordType: ChordType, scaleMask: UInt16? = nil) {
-        self.currentKey = key
+        self.tonicKey = key
         self.currentChordType = chordType
         self.customScaleMask = scaleMask
 
@@ -245,7 +245,7 @@ class MusicBrain {
             // if scaleMask is nil and we want to use default key and scale
             
             let scale = ScaleType.scaleForChordType(chordType)
-            self.currentScale = scale
+            self.tonicScale = scale
             
             Log.line(actor: "🧠 MusicBrain", fn: "updateKeyAndScale", "Using default scale \(scale).  Calling rebuildQuantization(\(scale.intervals.map { ($0 + key.rawValue) % 12 })")
 
@@ -299,7 +299,7 @@ class MusicBrain {
     
     /// Toggle the presence of a pitch class in the custom scale mask.
     func togglePitchClass(_ pitchClass: Int) {
-        var current = Set(currentScalePitchClasses)
+        var current = Set(tonicScalePitchClasses)
         if current.contains(pitchClass) {
             current.remove(pitchClass)
         } else {
@@ -313,15 +313,15 @@ class MusicBrain {
     /// Clear any custom scale mask and revert to the current key and scale.
     func clearCustomScale() {
         self.customScaleMask = nil
-        updateKeyAndScale(key: currentKey, chordType: currentChordType)
+        updateKeyAndScale(key: tonicKey, chordType: currentChordType)
     }
     
     /// Call this when only the voice pitch or range changes,
     /// and you want to rebuild quantization without resetting key/scale/mask.
     func updateVoicePitchOrRangeOnly() {
         // This is a placeholder for logic that reacts to voice pitch/range changes
-        // without resetting the customScaleMask or currentKey/Scale
-        rebuildQuantization(withScaleClasses: currentScalePitchClasses)
+        // without resetting the customScaleMask or tonicKey/Scale
+        rebuildQuantization(withScaleClasses: tonicScalePitchClasses)
     }
 
     /// Set the pitch mapping range by specifying a new center and span (half-range).

@@ -11,6 +11,7 @@ import AudioKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
+    
 
     var window: UIWindow?
 
@@ -23,6 +24,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func application(_ application: UIApplication, willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         if !ARFaceTrackingConfiguration.isSupported {
+            
+        
             /*
              Shipping apps cannot require a face-tracking-compatible device, and thus must
              offer face tracking AR as a secondary feature. In a shipping app, use the
@@ -63,8 +66,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
     }
-
-
+   
 }
 
 

@@ -9,7 +9,7 @@ class HarmonyMaker {
         guard numOfVoices > 0 else { return [] }
         previousPitch = currentPitch
 
-        let key = MusicBrain.shared.currentKey
+        let key = MusicBrain.shared.tonicKey
         let chordType = MusicBrain.shared.currentChordType
         let intervals = MusicBrain.shared.chordIntervals(for: chordType)
         let rootPitch = key.rawValue + intervals[0] + 12 * 4 // Base root

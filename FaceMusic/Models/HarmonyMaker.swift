@@ -11,7 +11,7 @@ class HarmonyMaker {
         // currentChordRoot is the chord root we are building harmonies around
         // currentChordType is the chord type of the chord we are building harmonies around
         
-        let currentSelectedChord: MusicBrain.Chord = MusicBrain.shared.currentSelectedChord
+        let currentSelectedChord: MusicBrain.ChordWithRoot = MusicBrain.shared.currentSelectedChord
         
         let currentChordRoot = currentSelectedChord.root
         let currentChordType = currentSelectedChord.type

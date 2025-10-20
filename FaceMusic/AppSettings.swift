@@ -47,19 +47,11 @@ class AppSettings {
     //let maxNumOfVoices: Int = 128
     let maxNumOfVoices: Int = DeviceCapability.suggestedMaxVoices()
     
-    // Define keys as an array of tuples
-    let keyOptions: [(string: String, key: MusicBrain.NoteName)] = [
-        ("C", .C), ("C#", .CSharp), ("D", .D), ("D#", .DSharp),
-        ("E", .E), ("F", .F), ("F#", .FSharp), ("G", .G),
-        ("G#", .GSharp), ("A", .A), ("A#", .ASharp), ("B", .B)
-    ]
-
-    
     let lowNoteThreshold: Int = 30 // Minimum MIDI note number to include non-root pitches
 
     // Chord grid layout configuration
-    let chordGridRows: Int = 4    // Major, minor, dominant7, diminished7
-    let chordGridCols: Int = 7    
+    let chordGridRows: Int = 2    
+    let chordGridCols: Int = 7
     
     // Define interpolation bounds for different parameters
     // Use the enum as the key

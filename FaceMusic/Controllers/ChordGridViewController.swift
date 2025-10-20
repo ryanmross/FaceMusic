@@ -16,7 +16,7 @@ final class ChordGridViewModel: ObservableObject {
 
     struct ChordItem: Identifiable {
         let id = UUID()
-        let chord: MusicBrain.Chord
+        let chord: MusicBrain.ChordWithRoot
         var label: String { "\(chord.root.displayName)\(chord.type.shortDisplayName)" }
     }
     
@@ -57,7 +57,7 @@ final class ChordGridViewModel: ObservableObject {
         var output: [ChordItem] = []
         for key in keysInFifths {
             for type in chordTypesInRows {
-                let chord = MusicBrain.Chord(root: key, type: type)
+                let chord = MusicBrain.ChordWithRoot(root: key, type: type)
                 output.append(ChordItem(chord: chord))
             }
         }

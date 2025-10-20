@@ -81,7 +81,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     let noteRangeOptions = NoteRangeSize.allCases
     
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
-    let chordTypes = MusicBrain.ChordType.allCases
+    let songChordTypes = MusicBrain.ChordType.songChordTypes
     
     var glissandoSlider: UISlider!
     var glissandoValueLabel: UILabel!
@@ -250,7 +250,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         
         // Use the current chord type from MusicBrain
         let currentChordType = MusicBrain.shared.tonicChordType
-        if let chordIndex = chordTypes.firstIndex(of: currentChordType) {
+        if let chordIndex = songChordTypes.firstIndex(of: currentChordType) {
             chordTypePicker.selectRow(chordIndex, inComponent: 0, animated: false)
         }
         
@@ -278,7 +278,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         // Update piano highlighting after configuring pickers
         let reversedNotesArr = Array(MusicBrain.NoteName.allCases.reversed())
         let selectedKey = reversedNotesArr[keyPicker.selectedRow(inComponent: 0) % reversedNotesArr.count]
-        let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
+        let selectedChordType = songChordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
         MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
@@ -300,7 +300,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         if pickerView.tag == 0 { // Key picker
             return MusicBrain.NoteName.allCases.count * 100
         } else if pickerView.tag == 1 { // Chord Type picker
-            return chordTypes.count
+            return songChordTypes.count
         } else if pickerView.tag == 2 { // Number of Voices picker
             return AppSettings().maxNumOfVoices // Number of voices options
         } else if pickerView.tag == 10 { // Voice Pitch
@@ -324,7 +324,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
             label.text = reversedNotes[row % reversedNotes.count].displayName
         case 1:
-            label.text = chordTypes[row].displayName
+            label.text = songChordTypes[row].displayName
         case 2:
             label.text = "\(row + 1)"
         case 10:
@@ -354,7 +354,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
 
         let reversedNotes = Array(MusicBrain.NoteName.allCases.reversed())
         let selectedKey = reversedNotes[keyPicker.selectedRow(inComponent: 0) % reversedNotes.count]
-        let selectedChordType = chordTypes[chordTypePicker.selectedRow(inComponent: 0)]
+        let selectedChordType = songChordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         patchSettings.voicePitchLevel = voicePitchOptions[selectedVoicePitchIndex]
         patchSettings.noteRangeSize = noteRangeOptions[selectedNoteRangeIndex]
@@ -542,6 +542,7 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         updatePianoHighlighting()
     }
 }
+
 
 
 

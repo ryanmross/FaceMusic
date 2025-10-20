@@ -320,7 +320,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
             NotificationCenter.default.post(name: Notification.Name("HighlightPianoKey"), object: nil, userInfo: ["midiNote": displayNote])
         }
 
-        // Use harmonyMaker with current key, no chordType argument
+        // Use harmonyMaker with current pitch and numOfVoices
         harmonies = harmonyMaker.voiceChord(currentPitch: currentPitch, numOfVoices: numOfVoices)
 
         // Ensure lead note is first

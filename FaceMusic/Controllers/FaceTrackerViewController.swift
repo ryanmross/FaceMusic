@@ -29,7 +29,7 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     
     private var faceAnchorsAndContentControllers: [ARFaceAnchor: VirtualContentController] = [:]
     
-    private let showStats = false
+    private let showStats = true
     private var lastStatsUpdate: TimeInterval = 0
     
     private let faceDataBrain = FaceDataBrain.shared
@@ -453,19 +453,23 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
     /// - Tag: resetFacePitchCenter
     func resetFacePitchCenter() {
         // Recenter MusicBrain pitch range using the most recent cached face pitch if available
+        Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "starting with lastFacePitch: \(lastFacePitch)")
         if let pitch = lastFacePitch {
             MusicBrain.currentRawPitchProvider = { [weak self] in
                 // Prefer the freshest cached pitch; if missing, fall back to processing current anchor
                 if let latest = self?.lastFacePitch {
+                    Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "returning latest: \(String(describing: self?.lastFacePitch))")
                     return latest
                 } else if let current = self?.currentFaceAnchor {
+                    Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "returning self?faceDataBrain.processFaceData(current).pitch ?? pitch")
                     return self?.faceDataBrain.processFaceData(current).pitch ?? pitch
                 } else {
+                    Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "returning pitch")
                     return pitch
                 }
             }
             
-            Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "calling MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch()")
+            Log.line(actor: "😮 FaceTrackerViewController", fn: "resetFacePitchCenter", "calling MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch() \(String(describing: MusicBrain.currentRawPitchProvider))")
 
             MusicBrain.shared.recenterPitchRangeFromCurrentFacePitch()
         } else {

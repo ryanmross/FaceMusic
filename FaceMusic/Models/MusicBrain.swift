@@ -17,21 +17,21 @@ class MusicBrain {
     private(set) var tonicChordType: ChordType = .major
     
     // User-selected chord (if different from the tonic). When nil, fall back to tonic.
-    private var userSelectedChord: Chord?
+    private var userSelectedChord: ChordWithRoot?
     
     /// Effective current chord used by the app. Falls back to tonic when no selection is made.
-    var currentSelectedChord: Chord {
-        userSelectedChord ?? Chord(root: tonicKey, type: tonicChordType)
+    var currentSelectedChord: ChordWithRoot {
+        userSelectedChord ?? ChordWithRoot(root: tonicKey, type: tonicChordType)
     }
     
     /// Selects a chord explicitly chosen by the user.
     func selectChord(root: NoteName, type: ChordType) {
-        userSelectedChord = Chord(root: root, type: type)
+        userSelectedChord = ChordWithRoot(root: root, type: type)
 
     }
 
     /// Selects a chord explicitly chosen by the user.
-    func selectChord(_ chord: Chord) {
+    func selectChord(_ chord: ChordWithRoot) {
         userSelectedChord = chord
 
     }
@@ -61,7 +61,7 @@ class MusicBrain {
     private var nearestNoteTable: [Int]
     
     
-    struct Chord: Equatable, Codable {
+    struct ChordWithRoot: Equatable, Codable {
         let root: NoteName
         let type: ChordType
     }
@@ -77,6 +77,12 @@ class MusicBrain {
         case augmented
         
         // Add other chord types as needed
+
+        /// The subset of chord types considered valid for full-song harmony selection.
+        static let songChordTypes: [ChordType] = [.major, .minor]
+
+        /// Convenience flag indicating whether this chord type is part of `songChordTypes`.
+        var isSongChordType: Bool { Self.songChordTypes.contains(self) }
         
         var displayName: String {
             switch self {
@@ -103,31 +109,31 @@ class MusicBrain {
     // Enum for note names
     enum NoteName: Int, CaseIterable, Codable {
         case C = 0
-        case CSharp = 1
+        case DFlat = 1
         case D = 2
-        case DSharp = 3
+        case EFlat = 3
         case E = 4
         case F = 5
         case FSharp = 6
         case G = 7
-        case GSharp = 8
+        case AFlat = 8
         case A = 9
-        case ASharp = 10
+        case BFlat = 10
         case B = 11
         
         var displayName: String {
             switch self {
             case .C: return "C"
-            case .CSharp: return "C#"
+            case .DFlat: return "D♭"
             case .D: return "D"
-            case .DSharp: return "D#"
+            case .EFlat: return "E♭"
             case .E: return "E"
             case .F: return "F"
-            case .FSharp: return "F#"
+            case .FSharp: return "F♯"
             case .G: return "G"
-            case .GSharp: return "G#"
+            case .AFlat: return "A♭"
             case .A: return "A"
-            case .ASharp: return "A#"
+            case .BFlat: return "B♭"
             case .B: return "B"
             }
         }
@@ -408,6 +414,8 @@ class MusicBrain {
 }
 
     
+
+
 
 
 

@@ -151,11 +151,25 @@ class FaceDataBrain {
         }
     }
 
+    @inline(__always)
+    private func clamp(_ x: Float, _ a: Float, _ b: Float) -> Float { return min(b, max(a, x)) }
 
+    // Convert a unit quaternion to Tait-Bryan XYZ (roll X, pitch Y, yaw Z)
+    private func eulerXYZ(from q: simd_quatf) -> (roll: Float, pitch: Float, yaw: Float) {
+        let m = simd_float3x3(q)
+        let roll  = atan2(m[2][1], m[2][2])
+        let pitch = -asin(clamp(m[2][0], -1.0, 1.0))
+        let yaw   = atan2(m[1][0], m[0][0])
+        return (roll, pitch, yaw)
+    }
 
-    func processFaceData(_ faceAnchor: ARFaceAnchor) -> FaceData {
-        // Extract yaw, pitch, roll
-        let (yaw, pitch, roll) = faceAnchor.transform.extractYawPitchRoll()
+    func processFaceData(_ faceAnchor: ARFaceAnchor, cameraTransform: simd_float4x4) -> FaceData {
+        // Extract yaw, pitch, roll relative to the camera using quaternion-based extraction
+        let faceWorld: simd_float4x4 = faceAnchor.transform
+        let camInv: simd_float4x4 = simd_inverse(cameraTransform)
+        let faceInCamera: simd_float4x4 = simd_mul(camInv, faceWorld)
+        let q = simd_quatf(faceInCamera)
+        let (roll, pitch, yaw) = eulerXYZ(from: q)
 
         // --- Raw blendshapes (internal) ---
         // Core for features expected by training (pucker_only)
@@ -255,6 +269,14 @@ class FaceDataBrain {
             tonguePosition: tp, tongueDiameter: td, lipOpen: lo,
             vertPosition: vertPosition, horizPosition: horizPosition
         )
+    }
+
+    // Backward-compatible wrapper: derives orientation in world space if no camera is provided
+    func processFaceData(_ faceAnchor: ARFaceAnchor) -> FaceData {
+        // Fall back to world-relative orientation by treating camera as identity (no transform)
+        // This preserves previous behavior for any existing callers.
+        let identityCam = matrix_identity_float4x4
+        return processFaceData(faceAnchor, cameraTransform: identityCam)
     }
 
     // MARK: - Classifier I/O

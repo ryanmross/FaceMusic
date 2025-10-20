@@ -542,24 +542,43 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
             return
         }
         
-        let faceData = faceDataBrain.processFaceData(faceAnchor)
-        self.lastFacePitch = faceData.pitch
-        
-        // Update Conductor with new face data
-        VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
-        
-        // Throttle stats updates to 4 times per second
-        if showStats {
-            let now = CACurrentMediaTime()
-            if now - lastStatsUpdate > 0.25 {
-                faceStatsManager.updateFaceStats(with: faceData)
-                let conductor = VoiceConductorManager.shared.activeConductor
-                let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
-                var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
-                audioStatsString += conductor.returnAudioStats()
-                audioStatsManager.updateStats(with: audioStatsString)
-                musicStatsManager.updateStats(with: conductor.returnMusicStats())
-                lastStatsUpdate = now
+        // Prefer camera-relative pose for more stable pitch/roll when device moves with the head
+        if let frame = sceneView.session.currentFrame {
+            let faceData = faceDataBrain.processFaceData(faceAnchor, cameraTransform: frame.camera.transform)
+            self.lastFacePitch = faceData.pitch
+            VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
+
+            // Throttle stats updates to 4 times per second
+            if showStats {
+                let now = CACurrentMediaTime()
+                if now - lastStatsUpdate > 0.25 {
+                    faceStatsManager.updateFaceStats(with: faceData)
+                    let conductor = VoiceConductorManager.shared.activeConductor
+                    let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
+                    var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
+                    audioStatsString += conductor.returnAudioStats()
+                    audioStatsManager.updateStats(with: audioStatsString)
+                    musicStatsManager.updateStats(with: conductor.returnMusicStats())
+                    lastStatsUpdate = now
+                }
+            }
+        } else {
+            let faceData = faceDataBrain.processFaceData(faceAnchor)
+            self.lastFacePitch = faceData.pitch
+            VoiceConductorManager.shared.activeConductor.updateWithFaceData(faceData)
+
+            if showStats {
+                let now = CACurrentMediaTime()
+                if now - lastStatsUpdate > 0.25 {
+                    faceStatsManager.updateFaceStats(with: faceData)
+                    let conductor = VoiceConductorManager.shared.activeConductor
+                    let bufferLength = AudioEngineManager.shared.engine.avEngine.outputNode.outputFormat(forBus: 0).sampleRate * Double(AVAudioSession.sharedInstance().ioBufferDuration)
+                    var audioStatsString = "Buffer Length: \(bufferLength) samples\n"
+                    audioStatsString += conductor.returnAudioStats()
+                    audioStatsManager.updateStats(with: audioStatsString)
+                    musicStatsManager.updateStats(with: conductor.returnMusicStats())
+                    lastStatsUpdate = now
+                }
             }
         }
         
@@ -583,9 +602,6 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
 
 
 
-
-
-   
 
 
 

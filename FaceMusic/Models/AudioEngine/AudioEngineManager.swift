@@ -30,6 +30,12 @@ final class AudioEngineManager {
     // MARK: - Session Interruption
     private var isSessionInterrupted = false
 
+    // MARK: - Restart policy
+    private var restartRetries = 0
+    private let maxRestartRetries = 8 // 8 * 0.5s = 4s
+    private var consecutiveStartFailures = 0
+    private let maxConsecutiveStartFailures = 3
+
     // Centralized session reference
     private let audioSession = AVAudioSession.sharedInstance()
     
@@ -53,6 +59,7 @@ final class AudioEngineManager {
             name: AVAudioSession.mediaServicesWereResetNotification,
             object: nil
         )
+        observeInterruption()
     }
 
     // MARK: - Public API
@@ -266,20 +273,45 @@ func removeAllInputsFromMixer(caller: String = #function) {
         let inputDesc = audioSession.currentRoute.inputs.first
         let sampleRate = audioSession.sampleRate
 
-        if inputDesc == nil || sampleRate < 1000 {
-            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⏳ Delaying restart — input not ready or sampleRate too low (\(sampleRate))")
+        // Only block on absurd sample rates; input can be nil while still safe to start for output
+        if sampleRate < 1000 {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⏳ Delaying restart — sampleRate too low (\(sampleRate))")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.restartEngine()
             }
             return
         }
 
+        if inputDesc == nil && restartRetries < maxRestartRetries {
+            restartRetries += 1
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⏳ Input not ready (retry \(restartRetries)/\(maxRestartRetries))")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.restartEngine()
+            }
+            return
+        }
+
+        // Ensure session is active before attempting to start
+        do {
+            try audioSession.setActive(true)
+        } catch {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⚠️ setActive(true) failed before restart: \(error)")
+        }
+
         engine.stop()
         do {
             try engine.start()
+            restartRetries = 0
+            consecutiveStartFailures = 0
             Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "Engine restarted.")
         } catch {
-            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⚠️ Engine restart failed: \(error)")
+            consecutiveStartFailures += 1
+            Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "⚠️ Engine restart failed (\(consecutiveStartFailures)/\(maxConsecutiveStartFailures)): \(error)")
+            if consecutiveStartFailures >= maxConsecutiveStartFailures {
+                Log.line(actor: "🚗 AudioEngineManager", fn: "restartEngine", "🛠 Forcing light reconfiguration after repeated failures")
+                consecutiveStartFailures = 0
+                configureSessionAndEngine()
+            }
         }
     }
 
@@ -290,6 +322,36 @@ func removeAllInputsFromMixer(caller: String = #function) {
     }
 
     // MARK: - Notifications
+
+    // MARK: - Interruption Handling
+    private func observeInterruption() {
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self = self else { return }
+            guard let userInfo = note.userInfo,
+                  let rawType = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
+
+            switch type {
+            case .began:
+                self.isSessionInterrupted = true
+                self.engine.stop()
+                Log.line(actor: "🚗 AudioEngineManager", fn: "interruption", "🔕 Interruption began")
+            case .ended:
+                self.isSessionInterrupted = false
+                // Attempt to reactivate the session before restarting
+                do {
+                    try self.audioSession.setActive(true)
+                } catch {
+                    Log.line(actor: "🚗 AudioEngineManager", fn: "interruption", "⚠️ setActive(true) after interruption failed: \(error)")
+                }
+                Log.line(actor: "🚗 AudioEngineManager", fn: "interruption", "🔔 Interruption ended — attempting restart")
+                self.restartEngine()
+            @unknown default:
+                break
+            }
+        }
+    }
+
     @objc private func handleRouteChange(_ notification: Notification) {
         if let lastRoute = lastKnownRoute, lastRoute == audioSession.currentRoute {
             Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "🔁 Route unchanged, skipping reconfiguration.")
@@ -330,6 +392,12 @@ func removeAllInputsFromMixer(caller: String = #function) {
             restartEngine()
         }
 
+        // If the route has recovered but we're still marked interrupted, clear and proceed
+        if isSessionInterrupted, !outPorts.isEmpty {
+            Log.line(actor: "🚗 AudioEngineManager", fn: "handleRouteChange", "✅ Route recovered; clearing interrupted flag.")
+            isSessionInterrupted = false
+        }
+
         let oldRate = Settings.sampleRate
         updateSettingsFromHardware()
 
@@ -348,3 +416,4 @@ func removeAllInputsFromMixer(caller: String = #function) {
         configureSessionAndEngine()
     }
 }
+

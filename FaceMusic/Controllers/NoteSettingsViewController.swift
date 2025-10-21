@@ -5,53 +5,6 @@ import AudioKitUI
 import PianoKeyboard
 //import Foundation
 
-enum VoicePitchLevel: String, Codable, CaseIterable {
-    case veryHigh, high, medium, low, veryLow
-
-    var centerMIDINote: Int {
-        switch self {
-        case .veryHigh: return 84
-        case .high: return 72
-        case .medium: return 60
-        case .low: return 48
-        case .veryLow: return 36
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .veryHigh: return "Very High"
-        case .high: return "High"
-        case .medium: return "Medium"
-        case .low: return "Low"
-        case .veryLow: return "Very Low"
-        }
-    }
-}
-
-enum NoteRangeSize: String, Codable, CaseIterable {
-    case small, medium, large, xLarge
-
-    var rangeSize: Int {
-        switch self {
-        case .small: return 12
-        case .medium: return 24
-        case .large: return 48
-        case .xLarge: return 128
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .small: return "Small"
-        case .medium: return "Medium"
-        case .large: return "Large"
-        case .xLarge: return "X-Large"
-        }
-    }
-}
-
-
 
 
 
@@ -77,8 +30,8 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
     var selectedVoicePitchIndex: Int = 2 // Default to "Medium"
     var selectedNoteRangeIndex: Int = 1 // Default to "Medium (2 Octaves)"
 
-    let voicePitchOptions = VoicePitchLevel.allCases
-    let noteRangeOptions = NoteRangeSize.allCases
+    let voicePitchOptions = MusicBrain.VoicePitchLevel.allCases
+    let noteRangeOptions = MusicBrain.NoteRangeSize.allCases
     
     var selectedNumOfVoices: Int = 1 // Store the selected number of voices
     let songChordTypes = MusicBrain.ChordType.songChordTypes
@@ -281,7 +234,7 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
         let selectedChordType = songChordTypes[chordTypePicker.selectedRow(inComponent: 0)]
         
         // ✅ Sync MusicBrain so updatePianoHighlighting uses the correct state
-        MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
+        MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask, voicePitchLevel: savedPitch, noteRangeSize: savedRange)
                 
         Log.line(actor: "🎵 NoteSettingsViewController", fn: "configurePickersWithConductorSettings()", "updating musicbrain with selectedkey: \(selectedKey), chordType: \(selectedChordType)")
 
@@ -371,14 +324,16 @@ class NoteSettingsViewController: UIViewController, UIPickerViewDelegate, UIPick
             Log.line(actor: "🎵 NoteSettingsViewController", fn: "pickerView.didSelectRow", "User chose a new key or chord")
 
 
-            MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask)
+            MusicBrain.shared.updateKeyAndScale(key: selectedKey, chordType: selectedChordType, scaleMask: patchSettings.scaleMask, voicePitchLevel: patchSettings.voicePitchLevel, noteRangeSize: patchSettings.noteRangeSize)
             updatePianoHighlighting()
         } else if pickerView.tag == 10 || pickerView.tag == 11 {
-            MusicBrain.shared.updateVoicePitchOrRangeOnly()
+            // Voice Pitch and Note Range Menus
+            MusicBrain.shared.updateVoicePitchOrRangeOnly( voicePitchLevel: patchSettings.voicePitchLevel, noteRangeSize: patchSettings.noteRangeSize)
         }
 
         PatchManager.shared.save(settings: patchSettings, forID: patchSettings.id)
         VoiceConductorManager.shared.activeConductor.applySettings(patchSettings)
+        MusicBrain.shared.updateCenterTargetMIDINoteToTonic()
     }
         
     
@@ -542,6 +497,8 @@ extension NoteSettingsViewController: PianoKeyboardDelegate {
         updatePianoHighlighting()
     }
 }
+
+
 
 
 

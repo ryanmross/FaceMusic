@@ -35,8 +35,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 tonicChord: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
-                voicePitchLevel: VoicePitchLevel.medium,
-                noteRangeSize: NoteRangeSize.medium,
+                voicePitchLevel: MusicBrain.VoicePitchLevel.medium,
+                noteRangeSize: MusicBrain.NoteRangeSize.medium,
                 version: Self.version,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_1",
@@ -53,8 +53,8 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
                 tonicChord: .minor,
                 numOfVoices: 4,
                 glissandoSpeed: 25.0,
-                voicePitchLevel: VoicePitchLevel.medium,
-                noteRangeSize: NoteRangeSize.medium,
+                voicePitchLevel: MusicBrain.VoicePitchLevel.medium,
+                noteRangeSize: MusicBrain.NoteRangeSize.medium,
                 version: Self.version,
                 conductorID: Self.id,
                 imageName: "harmonizer_default_2",
@@ -79,16 +79,16 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    var voicePitchLevel: VoicePitchLevel
+    var voicePitchLevel: MusicBrain.VoicePitchLevel
     
-    var noteRangeSize: NoteRangeSize
+    var noteRangeSize: MusicBrain.NoteRangeSize
     
     var scaleMask: UInt16?
     
     
     var lowestNote: Int {
         let centerNote = voicePitchLevel.centerMIDINote
-        let halfRange = NoteRangeSize.medium.rangeSize / 2
+        let halfRange = MusicBrain.NoteRangeSize.medium.rangeSize / 2
         return centerNote - halfRange
     }
 
@@ -406,9 +406,9 @@ class VoiceHarmonizerConductor: ObservableObject, HasAudioEngine, VoiceConductor
         self.voicePitchLevel = settings.voicePitchLevel
         self.noteRangeSize = settings.noteRangeSize
         if let scaleMask = settings.scaleMask {
-            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: scaleMask)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: scaleMask, voicePitchLevel: settings.voicePitchLevel, noteRangeSize: settings.noteRangeSize)
         } else {
-            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, voicePitchLevel: settings.voicePitchLevel, noteRangeSize: settings.noteRangeSize)
         }
         
         

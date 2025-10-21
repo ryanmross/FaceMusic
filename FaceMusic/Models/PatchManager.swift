@@ -20,8 +20,8 @@ struct PatchSettings: Codable {
     var numOfVoices: Int
     var glissandoSpeed: Float
     
-    var voicePitchLevel: VoicePitchLevel
-    var noteRangeSize: NoteRangeSize
+    var voicePitchLevel: MusicBrain.VoicePitchLevel
+    var noteRangeSize: MusicBrain.NoteRangeSize
     
     var scaleMask: UInt16? // nil -> derive from chordType; non-nil -> custom scale membership
     

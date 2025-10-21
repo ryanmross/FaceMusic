@@ -28,8 +28,8 @@ protocol VoiceConductorProtocol: AnyObject {
     /// The default patches specific to this conductor
     static var defaultPatches: [PatchSettings] { get }
     
-    var voicePitchLevel: VoicePitchLevel { get set }
-    var noteRangeSize: NoteRangeSize { get set }
+    var voicePitchLevel: MusicBrain.VoicePitchLevel { get set }
+    var noteRangeSize: MusicBrain.NoteRangeSize { get set }
 
     var numOfVoices: Int { get set }
     var tonicChord: MusicBrain.ChordType { get set }

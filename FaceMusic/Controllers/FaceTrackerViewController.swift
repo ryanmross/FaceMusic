@@ -420,7 +420,9 @@ class FaceTrackerViewController: UIViewController, ARSessionDelegate {
         MusicBrain.shared.updateKeyAndScale(
             key: settings.tonicKey,
             chordType: settings.tonicChord,
-            scaleMask: settings.scaleMask
+            scaleMask: settings.scaleMask,
+            voicePitchLevel: settings.voicePitchLevel,
+            noteRangeSize: settings.noteRangeSize
         )
 
 
@@ -599,6 +601,7 @@ extension FaceTrackerViewController: ARSCNViewDelegate {
     
     
 }
+
 
 
 

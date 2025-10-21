@@ -37,8 +37,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 tonicChord: .major,
                 numOfVoices: 3,
                 glissandoSpeed: 20.0,
-                voicePitchLevel: VoicePitchLevel.medium,
-                noteRangeSize: NoteRangeSize.medium,
+                voicePitchLevel: MusicBrain.VoicePitchLevel.medium,
+                noteRangeSize: MusicBrain.NoteRangeSize.medium,
                 version: Self.version,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_classic",
@@ -53,8 +53,8 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
                 tonicChord: .minor,
                 numOfVoices: 4,
                 glissandoSpeed: 30.0,
-                voicePitchLevel: VoicePitchLevel.medium,
-                noteRangeSize: NoteRangeSize.medium,
+                voicePitchLevel: MusicBrain.VoicePitchLevel.medium,
+                noteRangeSize: MusicBrain.NoteRangeSize.medium,
                 version: Self.version,
                 conductorID: Self.id,
                 imageName: "icon_vocaltract_widevibrato",
@@ -77,9 +77,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var harmonyMaker: HarmonyMaker = HarmonyMaker()
     
-    var voicePitchLevel: VoicePitchLevel
+    var voicePitchLevel: MusicBrain.VoicePitchLevel
     
-    var noteRangeSize: NoteRangeSize
+    var noteRangeSize: MusicBrain.NoteRangeSize
     
     var scaleMask: UInt16?
     
@@ -87,7 +87,7 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
     
     var lowestNote: Int {
         let centerNote = voicePitchLevel.centerMIDINote
-        let halfRange = NoteRangeSize.medium.rangeSize / 2
+        let halfRange = MusicBrain.NoteRangeSize.medium.rangeSize / 2
         return centerNote - halfRange
     }
 
@@ -312,6 +312,11 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         )
 
         currentPitch = quantizedNote
+        
+        Log.line(actor: "😮 VocalTractConductor", fn: "updateWithFaceData", "rawPitch: \(faceData.pitch)")
+
+        
+        
         guard let currentPitch = currentPitch else { return }
 
         let keyIndex = currentPitch % 12
@@ -451,9 +456,9 @@ class VocalTractConductor: ObservableObject, HasAudioEngine, VoiceConductorProto
         self.noteRangeSize = settings.noteRangeSize
         if let mask = settings.scaleMask {
             self.scaleMask = mask
-            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: mask)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, scaleMask: mask, voicePitchLevel: settings.voicePitchLevel, noteRangeSize: settings.noteRangeSize)
         } else {
-            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord)
+            MusicBrain.shared.updateKeyAndScale(key: settings.tonicKey, chordType: settings.tonicChord, voicePitchLevel: settings.voicePitchLevel, noteRangeSize: settings.noteRangeSize)
         }
         
         // numOfVoices last because this starts the voices
